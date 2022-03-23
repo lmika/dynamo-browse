@@ -5,42 +5,59 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	table "github.com/calyptia/go-bubble-table"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/common/ui/dispatcher"
+	"github.com/lmika/awstools/internal/common/ui/events"
+	"github.com/lmika/awstools/internal/common/ui/uimodels"
+	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
-	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
-	"log"
 	"strings"
 	"text/tabwriter"
+)
+
+var (
+	headerStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(lipgloss.Color("#4479ff"))
 )
 
 type uiModel struct {
 	table    table.Model
 	viewport viewport.Model
 
-	msgPublisher MessagePublisher
-	tableService *tables.Service
-	tableName    string
-
 	tableWidth, tableHeight int
 
 	ready     bool
 	resultSet *models.ResultSet
 	message   string
+
+	pendingInput *events.PromptForInput
+	textInput    textinput.Model
+
+	dispatcher           *dispatcher.Dispatcher
+	tableReadController  *controllers.TableReadController
+	tableWriteController *controllers.TableWriteController
 }
 
-func NewModel(tableService *tables.Service, msgPublisher MessagePublisher, tableName string) tea.Model {
+func NewModel(dispatcher *dispatcher.Dispatcher, tableReadController *controllers.TableReadController, tableWriteController *controllers.TableWriteController) tea.Model {
 	tbl := table.New([]string{"pk", "sk"}, 100, 20)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
 
+	textInput := textinput.New()
+
 	model := uiModel{
-		table:        tbl,
-		tableService: tableService,
-		tableName:    tableName,
-		msgPublisher: msgPublisher,
-		message:      "Press s to scan",
+		table:     tbl,
+		message:   "Press s to scan",
+		textInput: textInput,
+
+		dispatcher:           dispatcher,
+		tableReadController:  tableReadController,
+		tableWriteController: tableWriteController,
 	}
 
 	return model
@@ -65,16 +82,19 @@ func (m *uiModel) updateTable() {
 	m.table = newTbl
 }
 
+func (m *uiModel) selectedItem() (itemTableRow, bool) {
+	if m.ready && m.resultSet != nil && len(m.resultSet.Items) > 0 {
+		selectedItem, ok := m.table.SelectedRow().(itemTableRow)
+		if ok {
+			return selectedItem, true
+		}
+	}
+
+	return itemTableRow{}, false
+}
+
 func (m *uiModel) updateViewportToSelectedMessage() {
-	if !m.ready {
-		return
-	}
-
-	if m.resultSet == nil || len(m.resultSet.Items) == 0 {
-		return
-	}
-
-	selectedItem, ok := m.table.SelectedRow().(itemTableRow)
+	selectedItem, ok := m.selectedItem()
 	if !ok {
 		m.viewport.SetContent("(no row selected)")
 		return
@@ -83,17 +103,15 @@ func (m *uiModel) updateViewportToSelectedMessage() {
 	viewportContent := &strings.Builder{}
 	tabWriter := tabwriter.NewWriter(viewportContent, 0, 1, 1, ' ', 0)
 	for _, colName := range selectedItem.resultSet.Columns {
-		fmt.Fprintf(tabWriter, "%v\t", colName)
-
 		switch colVal := selectedItem.item[colName].(type) {
 		case nil:
-			fmt.Fprintln(tabWriter, "(nil)")
+			break
 		case *types.AttributeValueMemberS:
-			fmt.Fprintln(tabWriter, colVal.Value)
+			fmt.Fprintf(tabWriter, "%v\tS\t%s\n", colName, colVal.Value)
 		case *types.AttributeValueMemberN:
-			fmt.Fprintln(tabWriter, colVal.Value)
+			fmt.Fprintf(tabWriter, "%v\tN\t%s\n", colName, colVal.Value)
 		default:
-			fmt.Fprintln(tabWriter, "(other)")
+			fmt.Fprintf(tabWriter, "%v\t?\t%s\n", colName, "(other)")
 		}
 	}
 
@@ -102,26 +120,38 @@ func (m *uiModel) updateViewportToSelectedMessage() {
 }
 
 func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var textInputCommands tea.Cmd
+
 	switch msg := msg.(type) {
-	case setStatusMessage:
-		m.message = ""
-	case errorRaised:
-		m.message = "Error: " + msg.Error()
-	case newResultSet:
+
+	// Local events
+	case controllers.NewResultSet:
 		m.resultSet = msg.ResultSet
 		m.updateTable()
 		m.updateViewportToSelectedMessage()
+
+	// Shared events
+	case events.Error:
+		m.message = "Error: " + msg.Error()
+	case events.Message:
+		m.message = string(msg)
+	case events.PromptForInput:
+		m.textInput.Focus()
+		m.textInput.SetValue("")
+		m.pendingInput = &msg
+
+	// Tea events
 	case tea.WindowSizeMsg:
-		footerHeight := lipgloss.Height(m.footerView())
+		fixedViewsHeight := lipgloss.Height(m.headerView()) + lipgloss.Height(m.splitterView()) + lipgloss.Height(m.footerView())
 		tableHeight := msg.Height / 2
 
 		if !m.ready {
-			m.viewport = viewport.New(msg.Width, msg.Height-tableHeight-footerHeight)
+			m.viewport = viewport.New(msg.Width, msg.Height-tableHeight-fixedViewsHeight)
 			m.viewport.SetContent("(no message selected)")
 			m.ready = true
 		} else {
 			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height - tableHeight - footerHeight
+			m.viewport.Height = msg.Height - tableHeight - fixedViewsHeight
 		}
 
 		m.tableWidth, m.tableHeight = msg.Width, tableHeight
@@ -129,15 +159,21 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 
+		// If text input in focus, allow that to accept input messages
+		if m.pendingInput != nil {
+			switch msg.String() {
+			case "ctrl+c", "esc":
+				m.pendingInput = nil
+			case "enter":
+				m.dispatcher.Start(uimodels.WithPromptValue(context.Background(), m.textInput.Value()), m.pendingInput.OnDone)
+				m.pendingInput = nil
+			default:
+				m.textInput, textInputCommands = m.textInput.Update(msg)
+			}
+			break
+		}
+
 		switch msg.String() {
-		case "s":
-			m.startOperation("Scanning...", func(ctx context.Context) (tea.Msg, error) {
-				resultSet, err := m.tableService.Scan(ctx, m.tableName)
-				if err != nil {
-					return nil, err
-				}
-				return newResultSet{resultSet}, nil
-			})
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up", "i":
@@ -146,7 +182,17 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "k":
 			m.table.GoDown()
 			m.updateViewportToSelectedMessage()
+
+		// TODO: these should be moved somewhere else
+		case "s":
+			m.dispatcher.Start(context.Background(), m.tableReadController.Scan())
+		case "D":
+			if selectedItem, ok := m.selectedItem(); ok {
+				m.dispatcher.Start(context.Background(), m.tableWriteController.Delete(selectedItem.item))
+			}
 		}
+	default:
+		m.textInput, textInputCommands = m.textInput.Update(msg)
 	}
 
 	updatedTable, tableMsgs := m.table.Update(msg)
@@ -155,21 +201,7 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.table = updatedTable
 	m.viewport = updatedViewport
 
-	return m, tea.Batch(tableMsgs, viewportMsgs)
-}
-
-// TODO: this should probably be a separate service
-func (m *uiModel) startOperation(msg string, op func(ctx context.Context) (tea.Msg, error)) {
-	m.message = msg
-	go func() {
-		resMsg, err := op(context.Background())
-		if err != nil {
-			m.msgPublisher.Send(errorRaised(err))
-		} else if resMsg != nil {
-			m.msgPublisher.Send(resMsg)
-		}
-		m.msgPublisher.Send(setStatusMessage(""))
-	}()
+	return m, tea.Batch(textInputCommands, tableMsgs, viewportMsgs)
 }
 
 func (m uiModel) View() string {
@@ -177,9 +209,35 @@ func (m uiModel) View() string {
 		return "Initializing"
 	}
 
-	log.Println("Returning full view")
-	return lipgloss.JoinVertical(lipgloss.Top, m.table.View(), m.viewport.View(), m.footerView())
-	//return lipgloss.JoinVertical(lipgloss.Top, m.table.View(), m.footerView())
+	if m.pendingInput != nil {
+		return lipgloss.JoinVertical(lipgloss.Top,
+			m.headerView(),
+			m.table.View(),
+			m.splitterView(),
+			m.viewport.View(),
+			m.textInput.View(),
+		)
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Top,
+		m.headerView(),
+		m.table.View(),
+		m.splitterView(),
+		m.viewport.View(),
+		m.footerView(),
+	)
+}
+
+func (m uiModel) headerView() string {
+	title := headerStyle.Render("Table: XXX")
+	line := headerStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
+}
+
+func (m uiModel) splitterView() string {
+	title := headerStyle.Render("Item")
+	line := headerStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
 }
 
 func (m uiModel) footerView() string {

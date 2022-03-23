@@ -3,6 +3,7 @@ module github.com/lmika/awstools
 go 1.17
 
 require (
+	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.15.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.8.0 // indirect

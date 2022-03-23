@@ -1,12 +1,26 @@
 package ui
 
 import (
+	"context"
 	table "github.com/calyptia/go-bubble-table"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/common/ui/dispatcher"
+	"github.com/lmika/awstools/internal/common/ui/events"
+	"github.com/lmika/awstools/internal/common/ui/uimodels"
+	"github.com/lmika/awstools/internal/sqs-browse/controllers"
+	"github.com/lmika/awstools/internal/sqs-browse/models"
 	"log"
 	"strings"
+)
+
+var (
+	headerStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(lipgloss.Color("#eac610"))
 )
 
 type uiModel struct {
@@ -16,17 +30,28 @@ type uiModel struct {
 	ready     bool
 	tableRows []table.Row
 	message   string
+
+	pendingInput *events.PromptForInput
+	textInput    textinput.Model
+
+	dispatcher         *dispatcher.Dispatcher
+	msgSendingHandlers *controllers.MessageSendingController
 }
 
-func NewModel() tea.Model {
+func NewModel(dispatcher *dispatcher.Dispatcher, msgSendingHandlers *controllers.MessageSendingController) tea.Model {
 	tbl := table.New([]string{"seq", "message"}, 100, 20)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
 
+	textInput := textinput.New()
+
 	model := uiModel{
-		table:     tbl,
-		tableRows: rows,
-		message:   "",
+		table:      tbl,
+		tableRows:  rows,
+		message:    "",
+		textInput:  textInput,
+		msgSendingHandlers: msgSendingHandlers,
+		dispatcher: dispatcher,
 	}
 
 	return model
@@ -37,23 +62,37 @@ func (m uiModel) Init() tea.Cmd {
 }
 
 func (m *uiModel) updateViewportToSelectedMessage() {
-	if !m.ready {
-		return
-	}
-
-	if len(m.tableRows) == 0 {
-		return
-	}
-
-	if message, ok := m.table.SelectedRow().(messageTableRow); ok {
+	if message, ok := m.selectedMessage(); ok {
 		m.viewport.SetContent(message.Data)
 	} else {
 		m.viewport.SetContent("(no message selected)")
 	}
 }
 
+func (m uiModel) selectedMessage() (models.Message, bool) {
+	if m.ready && len(m.tableRows) > 0 {
+		if message, ok := m.table.SelectedRow().(messageTableRow); ok {
+			return models.Message(message), true
+		}
+	}
+	return models.Message{}, false
+}
+
 func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var textInputCommands tea.Cmd
+
 	switch msg := msg.(type) {
+	// Shared messages
+	case events.Error:
+		m.message = "Error: " + msg.Error()
+	case events.Message:
+		m.message = string(msg)
+	case events.PromptForInput:
+		m.textInput.Focus()
+		m.textInput.SetValue("")
+		m.pendingInput = &msg
+
+	// Local messages
 	case NewMessagesEvent:
 		for _, newMsg := range msg {
 			m.tableRows = append(m.tableRows, messageTableRow(*newMsg))
@@ -62,13 +101,13 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewportToSelectedMessage()
 
 	case tea.WindowSizeMsg:
-		footerHeight := lipgloss.Height(m.footerView())
+		fixedViewsHeight := lipgloss.Height(m.headerView()) + lipgloss.Height(m.splitterView()) + lipgloss.Height(m.footerView())
 
 		if !m.ready {
 			tableHeight := msg.Height / 2
 
 			m.table.SetSize(msg.Width, tableHeight)
-			m.viewport = viewport.New(msg.Width, msg.Height-tableHeight-footerHeight)
+			m.viewport = viewport.New(msg.Width, msg.Height-tableHeight-fixedViewsHeight)
 			m.viewport.SetContent("(no message selected)")
 			m.ready = true
 			log.Println("Viewport is now ready")
@@ -77,12 +116,29 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.table.SetSize(msg.Width, tableHeight)
 			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height - tableHeight - footerHeight
-			//m.viewport.YPosition = tableHeight
+			m.viewport.Height = msg.Height - tableHeight - fixedViewsHeight
 		}
 
+		m.textInput.Width = msg.Width
+
+		m.textInput, textInputCommands = m.textInput.Update(msg)
 	case tea.KeyMsg:
 
+		// If text input in focus, allow that to accept input messages
+		if m.pendingInput != nil {
+			switch msg.String() {
+			case "ctrl+c", "esc":
+				m.pendingInput = nil
+			case "enter":
+				m.dispatcher.Start(uimodels.WithPromptValue(context.Background(), m.textInput.Value()), m.pendingInput.OnDone)
+				m.pendingInput = nil
+			default:
+				m.textInput, textInputCommands = m.textInput.Update(msg)
+			}
+			break
+		}
+
+		// Normal focus
 		switch msg.String() {
 
 		case "ctrl+c", "q":
@@ -93,7 +149,15 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "k":
 			m.table.GoDown()
 			m.updateViewportToSelectedMessage()
+
+		// TODO: these should be moved somewhere else
+		case "f":
+			if selectedMessage, ok := m.selectedMessage(); ok {
+				m.dispatcher.Start(context.Background(), m.msgSendingHandlers.ForwardMessage(selectedMessage))
+			}
 		}
+	default:
+		m.textInput, textInputCommands = m.textInput.Update(msg)
 	}
 
 	updatedTable, tableMsgs := m.table.Update(msg)
@@ -102,7 +166,7 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.table = updatedTable
 	m.viewport = updatedViewport
 
-	return m, tea.Batch(tableMsgs, viewportMsgs)
+	return m, tea.Batch(textInputCommands, tableMsgs, viewportMsgs)
 }
 
 func (m uiModel) View() string {
@@ -110,9 +174,35 @@ func (m uiModel) View() string {
 		return "Initializing"
 	}
 
-	log.Println("Returning full view")
-	return lipgloss.JoinVertical(lipgloss.Top, m.table.View(), m.viewport.View(), m.footerView())
-	//return lipgloss.JoinVertical(lipgloss.Top, m.table.View(), m.footerView())
+	if m.pendingInput != nil {
+		return lipgloss.JoinVertical(lipgloss.Top,
+			m.headerView(),
+			m.table.View(),
+			m.splitterView(),
+			m.viewport.View(),
+			m.textInput.View(),
+		)
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Top,
+		m.headerView(),
+		m.table.View(),
+		m.splitterView(),
+		m.viewport.View(),
+		m.footerView(),
+	)
+}
+
+func (m uiModel) headerView() string {
+	title := headerStyle.Render("Queue: XXX")
+	line := headerStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
+}
+
+func (m uiModel) splitterView() string {
+	title := headerStyle.Render("Message")
+	line := headerStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
 }
 
 func (m uiModel) footerView() string {

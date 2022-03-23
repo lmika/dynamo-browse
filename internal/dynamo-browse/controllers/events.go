@@ -1,10 +1,7 @@
-package ui
+package controllers
 
 import "github.com/lmika/awstools/internal/dynamo-browse/models"
 
-type newResultSet struct {
+type NewResultSet struct {
 	ResultSet *models.ResultSet
 }
-
-type setStatusMessage string
-type errorRaised error

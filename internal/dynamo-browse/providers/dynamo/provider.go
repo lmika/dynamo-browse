@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
@@ -30,4 +31,12 @@ func (p *Provider) ScanItems(ctx context.Context, tableName string) ([]models.It
 	}
 
 	return items, nil
+}
+
+func (p *Provider) DeleteItem(ctx context.Context, tableName string, key map[string]types.AttributeValue) error {
+	_, err := p.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(tableName),
+		Key: key,
+	})
+	return errors.Wrap(err, "could not delete item")
 }

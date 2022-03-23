@@ -7,6 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/common/ui/dispatcher"
+	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
@@ -38,7 +40,12 @@ func main() {
 	tableService := tables.NewService(dynamoProvider)
 
 	loopback := &msgLoopback{}
-	uiModel := ui.NewModel(tableService, loopback, *flagTable)
+	uiDispatcher := dispatcher.NewDispatcher(loopback)
+
+	tableReadController := controllers.NewTableReadController(tableService, *flagTable)
+	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController, *flagTable)
+
+	uiModel := ui.NewModel(uiDispatcher, tableReadController, tableWriteController)
 	p := tea.NewProgram(uiModel, tea.WithAltScreen())
 	loopback.program = p
 

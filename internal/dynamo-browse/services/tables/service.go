@@ -2,6 +2,7 @@ package tables
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 	"sort"
@@ -49,4 +50,12 @@ func (s *Service) Scan(ctx context.Context, table string) (*models.ResultSet, er
 		Columns: columns,
 		Items: results,
 	}, nil
+}
+
+func (s *Service) Delete(ctx context.Context, name string, item models.Item) error {
+	// TODO: do not hardcode keys
+	return s.provider.DeleteItem(ctx, name, map[string]types.AttributeValue{
+		"pk": item["pk"],
+		"sk": item["sk"],
+	})
 }

@@ -6,5 +6,5 @@ import (
 )
 
 type MessageSender interface {
-	SendMessage(ctx context.Context, msg models.Message, queue string) error
+	SendMessage(ctx context.Context, msg models.Message, queue string) (string, error)
 }

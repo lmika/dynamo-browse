@@ -2,9 +2,11 @@ package tables
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 )
 
 type TableProvider interface {
 	ScanItems(ctx context.Context, tableName string) ([]models.Item, error)
+	DeleteItem(ctx context.Context, tableName string, key map[string]types.AttributeValue) error
 }

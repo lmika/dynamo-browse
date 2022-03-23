@@ -19,6 +19,20 @@ func NewProvider(client *sqs.Client) *Provider {
 	return &Provider{client: client}
 }
 
+func (p *Provider) SendMessage(ctx context.Context, msg models.Message, queue string) (string, error) {
+	// TEMP :: queue URL
+
+	out, err := p.client.SendMessage(ctx, &sqs.SendMessageInput{
+		QueueUrl: aws.String(queue),
+		MessageBody: aws.String(msg.Data),
+	})
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to send message to %v", queue)
+	}
+
+	return aws.ToString(out.MessageId), nil
+}
+
 func (p *Provider) PollForNewMessages(ctx context.Context, queue string) ([]*models.Message, error) {
 	out, err := p.client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(queue),

@@ -7,9 +7,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/common/ui/dispatcher"
+	"github.com/lmika/awstools/internal/sqs-browse/controllers"
 	"github.com/lmika/awstools/internal/sqs-browse/models"
 	"github.com/lmika/awstools/internal/sqs-browse/providers/memstore"
 	sqsprovider "github.com/lmika/awstools/internal/sqs-browse/providers/sqs"
+	"github.com/lmika/awstools/internal/sqs-browse/services/messages"
 	"github.com/lmika/awstools/internal/sqs-browse/services/pollmessage"
 	"github.com/lmika/awstools/internal/sqs-browse/ui"
 	"github.com/lmika/events"
@@ -20,6 +23,7 @@ import (
 
 func main() {
 	var flagQueue = flag.String("q", "", "queue to poll")
+	var flagTarget = flag.String("t", "", "target queue to push to")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -32,12 +36,19 @@ func main() {
 	bus := events.New()
 
 	msgStore := memstore.NewStore()
-	msgPoller := sqsprovider.NewProvider(sqsClient)
+	sqsProvider := sqsprovider.NewProvider(sqsClient)
 
-	pollService := pollmessage.NewService(msgStore, msgPoller, *flagQueue, bus)
+	messageService := messages.NewService(sqsProvider)
+	pollService := pollmessage.NewService(msgStore, sqsProvider, *flagQueue, bus)
 
-	uiModel := ui.NewModel()
+	msgSendingHandlers := controllers.NewMessageSendingController(messageService, *flagTarget)
+
+	loopback := &msgLoopback{}
+	uiDispatcher := dispatcher.NewDispatcher(loopback)
+
+	uiModel := ui.NewModel(uiDispatcher, msgSendingHandlers)
 	p := tea.NewProgram(uiModel, tea.WithAltScreen())
+	loopback.program = p
 
 	bus.On("new-messages", func(m []*models.Message) { p.Send(ui.NewMessagesEvent(m)) })
 
@@ -58,4 +69,12 @@ func main() {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
+}
+
+type msgLoopback struct {
+	program *tea.Program
+}
+
+func (m *msgLoopback) Send(msg tea.Msg) {
+	m.program.Send(msg)
 }

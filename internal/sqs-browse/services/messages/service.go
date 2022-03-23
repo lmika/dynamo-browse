@@ -10,10 +10,16 @@ type Service struct {
 	messageSender MessageSender
 }
 
-func NewService() *Service {
-	return &Service{}
+func NewService(messageSender MessageSender) *Service {
+	return &Service{
+		messageSender: messageSender,
+	}
 }
 
-func (s *Service) SendTo(ctx context.Context, msg models.Message, destQueue string) error {
-	return errors.Wrapf(s.messageSender.SendMessage(ctx, msg, destQueue), "cannot send message to %v", destQueue)
+func (s *Service) SendTo(ctx context.Context, msg models.Message, destQueue string) (string, error) {
+	messageId, err := s.messageSender.SendMessage(ctx, msg, destQueue)
+	if err != nil {
+		return "", errors.Wrapf(err, "cannot send message to %v", destQueue)
+	}
+	return messageId, nil
 }
