@@ -34,7 +34,7 @@ func (s *Service) Poll(ctx context.Context) error {
 
 		for _, msg := range newMsgs {
 			if err := s.store.Save(ctx, msg); err != nil {
-				log.Println("warn: unable to save new message %v", err)
+				log.Printf("warn: unable to save new message %v", err)
 				continue
 			}
 		}

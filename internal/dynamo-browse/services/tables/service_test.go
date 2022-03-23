@@ -10,9 +10,10 @@ import (
 )
 
 func TestService_Scan(t *testing.T) {
-	tableName := "test-table"
+	tableName := "service-scan-test-table"
 
-	client := testdynamo.SetupTestTable(t, tableName, testData)
+	client, cleanupFn := testdynamo.SetupTestTable(t, tableName, testData)
+	defer cleanupFn()
 	provider := dynamo.NewProvider(client)
 
 	t.Run("return all columns and fields in sorted order", func(t *testing.T) {

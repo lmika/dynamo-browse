@@ -14,7 +14,7 @@ import (
 
 type TestData []map[string]interface{}
 
-func SetupTestTable(t *testing.T, tableName string, testData TestData) *dynamodb.Client {
+func SetupTestTable(t *testing.T, tableName string, testData TestData) (*dynamodb.Client, func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -25,10 +25,6 @@ func SetupTestTable(t *testing.T, tableName string, testData TestData) *dynamodb
 
 	dynamoClient := dynamodb.NewFromConfig(cfg,
 		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:8000")))
-
-	dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
-		TableName: aws.String(tableName),
-	})
 
 	_, err = dynamoClient.CreateTable(ctx, &dynamodb.CreateTableInput{
 		TableName: aws.String(tableName),
@@ -58,5 +54,9 @@ func SetupTestTable(t *testing.T, tableName string, testData TestData) *dynamodb
 		assert.NoError(t, err)
 	}
 
-	return dynamoClient
+	return dynamoClient, func() {
+		dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
+			TableName: aws.String(tableName),
+		})
+	}
 }

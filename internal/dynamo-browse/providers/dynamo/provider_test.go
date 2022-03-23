@@ -10,9 +10,10 @@ import (
 )
 
 func TestProvider_ScanItems(t *testing.T) {
-	tableName := "test-table"
+	tableName := "provider-scanimages-test-table"
 
-	client := testdynamo.SetupTestTable(t, tableName, testData)
+	client, cleanupFn := testdynamo.SetupTestTable(t, tableName, testData)
+	defer cleanupFn()
 	provider := dynamo.NewProvider(client)
 
 	t.Run("should return scanned items from the table", func(t *testing.T) {
@@ -37,10 +38,11 @@ func TestProvider_ScanItems(t *testing.T) {
 }
 
 func TestProvider_DeleteItem(t *testing.T) {
-	tableName := "test-table"
+	tableName := "provider-deleteitem-test-table"
 
 	t.Run("should delete item if exists in table", func(t *testing.T) {
-		client := testdynamo.SetupTestTable(t, tableName, testData)
+		client, cleanupFn := testdynamo.SetupTestTable(t, tableName, testData)
+		defer cleanupFn()
 		provider := dynamo.NewProvider(client)
 
 		ctx := context.Background()
@@ -61,7 +63,8 @@ func TestProvider_DeleteItem(t *testing.T) {
 	})
 
 	t.Run("should do nothing if key does not exist", func(t *testing.T) {
-		client := testdynamo.SetupTestTable(t, tableName, testData)
+		client, cleanupFn := testdynamo.SetupTestTable(t, tableName, testData)
+		defer cleanupFn()
 		provider := dynamo.NewProvider(client)
 
 		ctx := context.Background()
@@ -81,7 +84,8 @@ func TestProvider_DeleteItem(t *testing.T) {
 	})
 
 	t.Run("should return error if table name does not exist", func(t *testing.T) {
-		client := testdynamo.SetupTestTable(t, tableName, testData)
+		client, cleanupFn := testdynamo.SetupTestTable(t, tableName, testData)
+		defer cleanupFn()
 		provider := dynamo.NewProvider(client)
 
 		ctx := context.Background()
