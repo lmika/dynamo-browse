@@ -24,16 +24,18 @@ func (s *Service) Scan(ctx context.Context, table string) (*models.ResultSet, er
 		return nil, errors.Wrapf(err, "unable to scan table %v", table)
 	}
 
-	// Get the columns
 	// TODO: need to get PKs and SKs from table
+	pk, sk := "pk", "sk"
+
+	// Get the columns
 	seenColumns := make(map[string]int)
-	seenColumns["pk"] = 0
-	seenColumns["sk"] = 1
+	seenColumns[pk] = 0
+	seenColumns[sk] = 1
 
 	for _, result := range results {
 		for k := range result {
 			if _, isSeen := seenColumns[k]; !isSeen {
-				seenColumns[k] = len(seenColumns)
+				seenColumns[k] = 2
 			}
 		}
 	}
@@ -43,12 +45,17 @@ func (s *Service) Scan(ctx context.Context, table string) (*models.ResultSet, er
 		columns = append(columns, k)
 	}
 	sort.Slice(columns, func(i, j int) bool {
+		if seenColumns[columns[i]] == seenColumns[columns[j]] {
+			return columns[i] < columns[j]
+		}
 		return seenColumns[columns[i]] < seenColumns[columns[j]]
 	})
 
+	models.Sort(results, pk, sk)
+
 	return &models.ResultSet{
 		Columns: columns,
-		Items: results,
+		Items:   results,
 	}, nil
 }
 
