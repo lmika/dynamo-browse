@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -17,7 +18,9 @@ func SetupTestTable(t *testing.T, tableName string, testData TestData) *dynamodb
 	t.Helper()
 	ctx := context.Background()
 
-	cfg, err := config.LoadDefaultConfig(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion("ap-southeast-2"),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("abc", "123", "")))
 	assert.NoError(t, err)
 
 	dynamoClient := dynamodb.NewFromConfig(cfg,
