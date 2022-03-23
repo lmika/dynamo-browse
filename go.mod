@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/aws/aws-sdk-go-v2 v1.15.0
 	github.com/aws/aws-sdk-go-v2/config v1.13.1
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.8.0
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.0
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.16.0
 	github.com/calyptia/go-bubble-table v0.1.0
@@ -14,12 +15,12 @@ require (
 	github.com/lmika/events v0.0.0-20200906102219-a2269cd4394e
 	github.com/lmika/gopkgs v0.0.0-20211210041137-0dc91e939890
 	github.com/pkg/errors v0.9.1
+	github.com/stretchr/testify v1.7.1
 )
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.8.0 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.8.0 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.10.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.6 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.0 // indirect
@@ -44,7 +45,6 @@ require (
 	github.com/muesli/termenv v0.11.1-0.20220212125758-44cd13922739 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
