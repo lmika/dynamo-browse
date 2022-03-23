@@ -17,10 +17,14 @@ import (
 )
 
 var (
-	headerStyle = lipgloss.NewStyle().
+	activeHeaderStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#ffffff")).
 		Background(lipgloss.Color("#eac610"))
+
+	inactiveHeaderStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#000000")).
+		Background(lipgloss.Color("#d1d1d1"))
 )
 
 type uiModel struct {
@@ -194,14 +198,14 @@ func (m uiModel) View() string {
 }
 
 func (m uiModel) headerView() string {
-	title := headerStyle.Render("Queue: XXX")
-	line := headerStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	title := activeHeaderStyle.Render("Queue: XXX")
+	line := activeHeaderStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
 	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
 }
 
 func (m uiModel) splitterView() string {
-	title := headerStyle.Render("Message")
-	line := headerStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	title := activeHeaderStyle.Render("Message")
+	line := activeHeaderStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
 	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
 }
 

@@ -32,7 +32,7 @@ func (d *Dispatcher) Start(ctx context.Context, operation uimodels.Operation) {
 
 	d.runningOp = operation
 	go func() {
-		subCtx := uimodels.WithContext(ctx, dispatcherContext{d})
+		subCtx := uimodels.WithContext(ctx, DispatcherContext{d.publisher})
 
 		err := operation.Execute(subCtx)
 		if err != nil {

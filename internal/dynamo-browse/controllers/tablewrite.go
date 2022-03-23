@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
 
@@ -22,13 +21,28 @@ func NewTableWriteController(tableService *tables.Service, tableReadControllers 
 	}
 }
 
-func (c *TableWriteController) Delete(item models.Item) uimodels.Operation {
+func (c *TableWriteController) EnableReadWrite() uimodels.Operation {
 	return uimodels.OperationFn(func(ctx context.Context) error {
 		uiCtx := uimodels.Ctx(ctx)
+		uiCtx.Send(SetReadWrite{NewValue: true})
+		uiCtx.Message("read/write mode enabled")
 
-		// TODO: only do if rw mode enabled
+		return nil
+	})
+}
 
-		uiCtx.Input("Delete item?", uimodels.OperationFn(func(ctx context.Context) error {
+func (c *TableWriteController) Delete() uimodels.Operation {
+	return uimodels.OperationFn(func(ctx context.Context) error {
+		uiCtx := uimodels.Ctx(ctx)
+		state := CurrentState(ctx)
+
+		if state.SelectedItem == nil {
+			return errors.New("no selected item")
+		} else if !state.InReadWriteMode {
+			return errors.New("not in read/write mode")
+		}
+
+		uiCtx.Input("Delete item? ", uimodels.OperationFn(func(ctx context.Context) error {
 			uiCtx := uimodels.Ctx(ctx)
 
 			if uimodels.PromptValue(ctx) != "y" {
@@ -36,7 +50,7 @@ func (c *TableWriteController) Delete(item models.Item) uimodels.Operation {
 			}
 
 			// Delete the item
-			if err := c.tableService.Delete(ctx, c.tableName, item); err != nil {
+			if err := c.tableService.Delete(ctx, c.tableName, state.SelectedItem); err != nil {
 				return err
 			}
 

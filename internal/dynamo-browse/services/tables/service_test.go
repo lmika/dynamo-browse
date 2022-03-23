@@ -24,6 +24,7 @@ func TestService_Scan(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Hash first, then range, then columns in alphabetic order
+		assert.Equal(t, rs.Table, tableName)
 		assert.Equal(t, rs.Columns, []string{"pk", "sk", "alpha", "beta", "gamma"})
 		assert.Equal(t, rs.Items[0], testdynamo.TestRecordAsItem(t, testData[1]))
 		assert.Equal(t, rs.Items[1], testdynamo.TestRecordAsItem(t, testData[0]))

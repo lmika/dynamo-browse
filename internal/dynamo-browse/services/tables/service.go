@@ -54,6 +54,7 @@ func (s *Service) Scan(ctx context.Context, table string) (*models.ResultSet, er
 	models.Sort(results, pk, sk)
 
 	return &models.ResultSet{
+		Table:   table,
 		Columns: columns,
 		Items:   results,
 	}, nil

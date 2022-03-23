@@ -13,16 +13,19 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"strings"
 	"text/tabwriter"
 )
 
 var (
-	headerStyle = lipgloss.NewStyle().
+	activeHeaderStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#ffffff")).
 		Background(lipgloss.Color("#4479ff"))
+
+	inactiveHeaderStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#000000")).
+		Background(lipgloss.Color("#d1d1d1"))
 )
 
 type uiModel struct {
@@ -32,7 +35,8 @@ type uiModel struct {
 	tableWidth, tableHeight int
 
 	ready     bool
-	resultSet *models.ResultSet
+	//resultSet *models.ResultSet
+	state controllers.State
 	message   string
 
 	pendingInput *events.PromptForInput
@@ -72,10 +76,11 @@ func (m *uiModel) updateTable() {
 		return
 	}
 
-	newTbl := table.New(m.resultSet.Columns, m.tableWidth, m.tableHeight)
-	newRows := make([]table.Row, len(m.resultSet.Items))
-	for i, r := range m.resultSet.Items {
-		newRows[i] = itemTableRow{m.resultSet, r}
+	resultSet := m.state.ResultSet
+	newTbl := table.New(resultSet.Columns, m.tableWidth, m.tableHeight)
+	newRows := make([]table.Row, len(resultSet.Items))
+	for i, r := range resultSet.Items {
+		newRows[i] = itemTableRow{resultSet, r}
 	}
 	newTbl.SetRows(newRows)
 
@@ -83,7 +88,8 @@ func (m *uiModel) updateTable() {
 }
 
 func (m *uiModel) selectedItem() (itemTableRow, bool) {
-	if m.ready && m.resultSet != nil && len(m.resultSet.Items) > 0 {
+	resultSet := m.state.ResultSet
+	if m.ready && resultSet != nil && len(resultSet.Items) > 0 {
 		selectedItem, ok := m.table.SelectedRow().(itemTableRow)
 		if ok {
 			return selectedItem, true
@@ -126,9 +132,11 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Local events
 	case controllers.NewResultSet:
-		m.resultSet = msg.ResultSet
+		m.state.ResultSet = msg.ResultSet
 		m.updateTable()
 		m.updateViewportToSelectedMessage()
+	case controllers.SetReadWrite:
+		m.state.InReadWriteMode = msg.NewValue
 
 	// Shared events
 	case events.Error:
@@ -136,6 +144,7 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.Message:
 		m.message = string(msg)
 	case events.PromptForInput:
+		m.textInput.Prompt = msg.Prompt
 		m.textInput.Focus()
 		m.textInput.SetValue("")
 		m.pendingInput = &msg
@@ -185,11 +194,11 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// TODO: these should be moved somewhere else
 		case "s":
-			m.dispatcher.Start(context.Background(), m.tableReadController.Scan())
+			m.invokeOperation(m.tableReadController.Scan())
 		case "D":
-			if selectedItem, ok := m.selectedItem(); ok {
-				m.dispatcher.Start(context.Background(), m.tableWriteController.Delete(selectedItem.item))
-			}
+			m.invokeOperation(m.tableWriteController.Delete())
+		case "w":
+			m.invokeOperation(m.tableWriteController.EnableReadWrite())
 		}
 	default:
 		m.textInput, textInputCommands = m.textInput.Update(msg)
@@ -202,6 +211,16 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.viewport = updatedViewport
 
 	return m, tea.Batch(textInputCommands, tableMsgs, viewportMsgs)
+}
+
+func (m uiModel) invokeOperation(op uimodels.Operation) {
+	state := m.state
+	if selectedItem, ok := m.selectedItem(); ok {
+		state.SelectedItem = selectedItem.item
+	}
+
+	ctx := controllers.ContextWithState(context.Background(), state)
+	m.dispatcher.Start(ctx, op)
 }
 
 func (m uiModel) View() string {
@@ -229,14 +248,21 @@ func (m uiModel) View() string {
 }
 
 func (m uiModel) headerView() string {
-	title := headerStyle.Render("Table: XXX")
-	line := headerStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	var titleText string
+	if m.state.ResultSet != nil {
+		titleText = "Table: " + m.state.ResultSet.Table
+	} else {
+		titleText = "No table"
+	}
+
+	title := activeHeaderStyle.Render(titleText)
+	line := activeHeaderStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
 	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
 }
 
 func (m uiModel) splitterView() string {
-	title := headerStyle.Render("Item")
-	line := headerStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	title := inactiveHeaderStyle.Render("Item")
+	line := inactiveHeaderStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
 	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
 }
 

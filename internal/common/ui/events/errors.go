@@ -12,5 +12,6 @@ type Message string
 
 // PromptForInput indicates that the context is requesting a line of input
 type PromptForInput struct {
+	Prompt string
 	OnDone uimodels.Operation
 }

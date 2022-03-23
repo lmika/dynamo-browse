@@ -7,24 +7,25 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 )
 
-type dispatcherContext struct {
-	d *Dispatcher
+type DispatcherContext struct {
+	Publisher MessagePublisher
 }
 
-func (dc dispatcherContext) Messagef(format string, args ...interface{}) {
-	dc.d.publisher.Send(events.Message(fmt.Sprintf(format, args...)))
+func (dc DispatcherContext) Messagef(format string, args ...interface{}) {
+	dc.Publisher.Send(events.Message(fmt.Sprintf(format, args...)))
 }
 
-func (dc dispatcherContext) Send(teaMessage tea.Msg) {
-	dc.d.publisher.Send(teaMessage)
+func (dc DispatcherContext) Send(teaMessage tea.Msg) {
+	dc.Publisher.Send(teaMessage)
 }
 
-func (dc dispatcherContext) Message(msg string) {
-	dc.d.publisher.Send(events.Message(msg))
+func (dc DispatcherContext) Message(msg string) {
+	dc.Publisher.Send(events.Message(msg))
 }
 
-func (dc dispatcherContext) Input(prompt string, onDone uimodels.Operation) {
-	dc.d.publisher.Send(events.PromptForInput{
+func (dc DispatcherContext) Input(prompt string, onDone uimodels.Operation) {
+	dc.Publisher.Send(events.PromptForInput{
+		Prompt: prompt,
 		OnDone: onDone,
 	})
 }
