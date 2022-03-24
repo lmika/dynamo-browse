@@ -69,8 +69,13 @@ func (c *TableWriteController) Duplicate() uimodels.Operation {
 					return errors.New("operation aborted")
 				}
 
+				tableInfo, err := c.tableReadControllers.tableInfo(ctx)
+				if err != nil {
+					return err
+				}
+
 				// Delete the item
-				if err := c.tableService.Put(ctx, c.tableName, newItem); err != nil {
+				if err := c.tableService.Put(ctx, tableInfo, newItem); err != nil {
 					return err
 				}
 
@@ -105,8 +110,13 @@ func (c *TableWriteController) Delete() uimodels.Operation {
 				return errors.New("operation aborted")
 			}
 
+			tableInfo, err := c.tableReadControllers.tableInfo(ctx)
+			if err != nil {
+				return err
+			}
+
 			// Delete the item
-			if err := c.tableService.Delete(ctx, c.tableName, state.SelectedItem); err != nil {
+			if err := c.tableService.Delete(ctx, tableInfo, state.SelectedItem); err != nil {
 				return err
 			}
 

@@ -2,7 +2,6 @@ package tables
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 	"sort"
@@ -18,24 +17,34 @@ func NewService(provider TableProvider) *Service {
 	}
 }
 
-func (s *Service) Scan(ctx context.Context, table string) (*models.ResultSet, error) {
-	results, err := s.provider.ScanItems(ctx, table)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to scan table %v", table)
-	}
+func (s *Service) Describe(ctx context.Context, table string) (*models.TableInfo, error) {
+	return s.provider.DescribeTable(ctx, table)
+}
 
-	// TODO: need to get PKs and SKs from table
-	pk, sk := "pk", "sk"
+func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*models.ResultSet, error) {
+	results, err := s.provider.ScanItems(ctx, tableInfo.Name)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
+	}
 
 	// Get the columns
 	seenColumns := make(map[string]int)
-	seenColumns[pk] = 0
-	seenColumns[sk] = 1
+	seenColumns[tableInfo.Keys.PartitionKey] = 0
+	if tableInfo.Keys.SortKey != "" {
+		seenColumns[tableInfo.Keys.SortKey] = 1
+	}
 
+	for _, definedAttribute := range tableInfo.DefinedAttributes {
+		if _, seen := seenColumns[definedAttribute]; !seen {
+			seenColumns[definedAttribute] = len(seenColumns)
+		}
+	}
+
+	otherColsRank := len(seenColumns)
 	for _, result := range results {
 		for k := range result {
 			if _, isSeen := seenColumns[k]; !isSeen {
-				seenColumns[k] = 2
+				seenColumns[k] = otherColsRank
 			}
 		}
 	}
@@ -51,23 +60,19 @@ func (s *Service) Scan(ctx context.Context, table string) (*models.ResultSet, er
 		return seenColumns[columns[i]] < seenColumns[columns[j]]
 	})
 
-	models.Sort(results, pk, sk)
+	models.Sort(results, tableInfo)
 
 	return &models.ResultSet{
-		Table:   table,
+		TableInfo:   tableInfo,
 		Columns: columns,
 		Items:   results,
 	}, nil
 }
 
-func (s *Service) Put(ctx context.Context, tableName string, item models.Item) error {
-	return s.provider.PutItem(ctx, tableName, item)
+func (s *Service) Put(ctx context.Context, tableInfo *models.TableInfo, item models.Item) error {
+	return s.provider.PutItem(ctx, tableInfo.Name, item)
 }
 
-func (s *Service) Delete(ctx context.Context, name string, item models.Item) error {
-	// TODO: do not hardcode keys
-	return s.provider.DeleteItem(ctx, name, map[string]types.AttributeValue{
-		"pk": item["pk"],
-		"sk": item["sk"],
-	})
+func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, item models.Item) error {
+	return s.provider.DeleteItem(ctx, tableInfo.Name, item.KeyValue(tableInfo))
 }

@@ -13,6 +13,32 @@ type Provider struct {
 	client *dynamodb.Client
 }
 
+func (p *Provider) DescribeTable(ctx context.Context, tableName string) (*models.TableInfo, error) {
+	out, err := p.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
+		TableName: aws.String(tableName),
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot describe table %v", tableName)
+	}
+
+	var tableInfo models.TableInfo
+	tableInfo.Name = aws.ToString(out.Table.TableName)
+
+	for _, keySchema := range out.Table.KeySchema {
+		if keySchema.KeyType == types.KeyTypeHash {
+			tableInfo.Keys.PartitionKey = aws.ToString(keySchema.AttributeName)
+		} else if keySchema.KeyType == types.KeyTypeRange {
+			tableInfo.Keys.SortKey = aws.ToString(keySchema.AttributeName)
+		}
+	}
+
+	for _, definedAttribute := range out.Table.AttributeDefinitions {
+		tableInfo.DefinedAttributes = append(tableInfo.DefinedAttributes, aws.ToString(definedAttribute.AttributeName))
+	}
+
+	return &tableInfo, nil
+}
+
 func (p *Provider) PutItem(ctx context.Context, name string, item models.Item) error {
 	_, err := p.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(name),

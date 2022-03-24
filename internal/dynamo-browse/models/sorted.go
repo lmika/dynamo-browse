@@ -5,13 +5,13 @@ import "sort"
 // sortedItems is a collection of items that is sorted.
 // Items are sorted based on the PK, and SK in ascending order
 type sortedItems struct {
-	pk, sk string
-	items  []Item
+	tableInfo *TableInfo
+	items     []Item
 }
 
 // Sort sorts the items in place
-func Sort(items []Item, pk, sk string) {
-	si := sortedItems{items: items, pk: pk, sk: sk}
+func Sort(items []Item, tableInfo *TableInfo) {
+	si := sortedItems{items: items, tableInfo: tableInfo}
 	sort.Sort(&si)
 }
 
@@ -21,7 +21,7 @@ func (si *sortedItems) Len() int {
 
 func (si *sortedItems) Less(i, j int) bool {
 	// Compare primary keys
-	pv1, pv2 := si.items[i][si.pk], si.items[j][si.pk]
+	pv1, pv2 := si.items[i][si.tableInfo.Keys.PartitionKey], si.items[j][si.tableInfo.Keys.PartitionKey]
 	pc, ok := compareScalarAttributes(pv1, pv2)
 	if !ok {
 		return i < j
@@ -34,16 +34,18 @@ func (si *sortedItems) Less(i, j int) bool {
 	}
 
 	// Partition keys are equal, compare sort key
-	sv1, sv2 := si.items[i][si.sk], si.items[j][si.sk]
-	sc, ok := compareScalarAttributes(sv1, sv2)
-	if !ok {
-		return i < j
-	}
+	if sortKey := si.tableInfo.Keys.SortKey; sortKey != "" {
+		sv1, sv2 := si.items[i][sortKey], si.items[j][sortKey]
+		sc, ok := compareScalarAttributes(sv1, sv2)
+		if !ok {
+			return i < j
+		}
 
-	if sc < 0 {
-		return true
-	} else if sc > 0 {
-		return false
+		if sc < 0 {
+			return true
+		} else if sc > 0 {
+			return false
+		}
 	}
 
 	// This should never happen, but just in case

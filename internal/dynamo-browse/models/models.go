@@ -3,9 +3,9 @@ package models
 import "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 type ResultSet struct {
-	Table   string
-	Columns []string
-	Items   []Item
+	TableInfo *TableInfo
+	Columns   []string
+	Items     []Item
 }
 
 type Item map[string]types.AttributeValue
@@ -20,4 +20,13 @@ func (i Item) Clone() Item {
 	}
 
 	return newItem
+}
+
+func (i Item) KeyValue(info *TableInfo) map[string]types.AttributeValue {
+	itemKey := make(map[string]types.AttributeValue)
+	itemKey[info.Keys.PartitionKey] = i[info.Keys.PartitionKey]
+	if info.Keys.SortKey != "" {
+		itemKey[info.Keys.SortKey] = i[info.Keys.SortKey]
+	}
+	return itemKey
 }

@@ -71,6 +71,7 @@ func NewModel(dispatcher *dispatcher.Dispatcher, commandController *commandctrl.
 }
 
 func (m uiModel) Init() tea.Cmd {
+	m.invokeOperation(context.Background(), m.tableReadController.Scan())
 	return nil
 }
 
@@ -257,7 +258,7 @@ func (m uiModel) View() string {
 func (m uiModel) headerView() string {
 	var titleText string
 	if m.state.ResultSet != nil {
-		titleText = "Table: " + m.state.ResultSet.Table
+		titleText = "Table: " + m.state.ResultSet.TableInfo.Name
 	} else {
 		titleText = "No table"
 	}
