@@ -2,6 +2,7 @@ package dynamo
 
 import (
 	"context"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -42,7 +43,7 @@ func (p *Provider) DescribeTable(ctx context.Context, tableName string) (*models
 func (p *Provider) PutItem(ctx context.Context, name string, item models.Item) error {
 	_, err := p.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(name),
-		Item: item,
+		Item:      item,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot execute put on table %v", name)
@@ -73,7 +74,7 @@ func (p *Provider) ScanItems(ctx context.Context, tableName string) ([]models.It
 func (p *Provider) DeleteItem(ctx context.Context, tableName string, key map[string]types.AttributeValue) error {
 	_, err := p.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(tableName),
-		Key: key,
+		Key:       key,
 	})
 	return errors.Wrap(err, "could not delete item")
 }

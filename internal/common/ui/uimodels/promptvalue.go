@@ -2,7 +2,8 @@ package uimodels
 
 import "context"
 
-type promptValueKeyType struct {}
+type promptValueKeyType struct{}
+
 var promptValueKey = promptValueKeyType{}
 
 func PromptValue(ctx context.Context) string {

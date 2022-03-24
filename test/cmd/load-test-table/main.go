@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"log"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -12,7 +14,6 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/gopkgs/cli"
-	"log"
 )
 
 func main() {
@@ -52,12 +53,17 @@ func main() {
 		log.Fatalf("warn: cannot create table: %v", tableName)
 	}
 
+	tableInfo := &models.TableInfo{
+		Name: tableName,
+		Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"},
+	}
+
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
 	tableService := tables.NewService(dynamoProvider)
 
 	for i := 0; i < totalItems; i++ {
 		key := uuid.New().String()
-		if err := tableService.Put(ctx, tableName, models.Item{
+		if err := tableService.Put(ctx, tableInfo, models.Item{
 			"pk":      &types.AttributeValueMemberS{Value: key},
 			"sk":      &types.AttributeValueMemberS{Value: key},
 			"name":    &types.AttributeValueMemberS{Value: gofakeit.Name()},

@@ -10,8 +10,8 @@ type patchMod interface {
 }
 
 type setAttributeMod struct {
-	key  string
-	to   types.AttributeValue
+	key string
+	to  types.AttributeValue
 }
 
 func (sa setAttributeMod) Apply(item models.Item) {

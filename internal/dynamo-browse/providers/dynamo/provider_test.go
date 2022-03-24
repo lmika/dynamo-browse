@@ -2,11 +2,12 @@ package dynamo_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/test/testdynamo"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestProvider_ScanItems(t *testing.T) {

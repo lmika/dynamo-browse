@@ -2,7 +2,8 @@ package uimodels
 
 import "context"
 
-type uiContextKeyType struct {}
+type uiContextKeyType struct{}
+
 var uiContextKey = uiContextKeyType{}
 
 func Ctx(ctx context.Context) UIContext {

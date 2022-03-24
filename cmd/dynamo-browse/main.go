@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,7 +17,6 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
 	"github.com/lmika/gopkgs/cli"
-	"os"
 )
 
 func main() {
@@ -49,8 +50,8 @@ func main() {
 
 	commandController := commandctrl.NewCommandController(map[string]uimodels.Operation{
 		"scan": tableReadController.Scan(),
-		"rw": tableWriteController.ToggleReadWrite(),
-		"dup": tableWriteController.Duplicate(),
+		"rw":   tableWriteController.ToggleReadWrite(),
+		"dup":  tableWriteController.Duplicate(),
 	})
 
 	uiModel := ui.NewModel(uiDispatcher, commandController, tableReadController, tableWriteController)
@@ -77,4 +78,3 @@ type msgLoopback struct {
 func (m *msgLoopback) Send(msg tea.Msg) {
 	m.program.Send(msg)
 }
-

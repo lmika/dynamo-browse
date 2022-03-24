@@ -2,6 +2,7 @@ package tables
 
 import (
 	"context"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 )

@@ -11,4 +11,3 @@ type OperationFn func(ctx context.Context) error
 func (f OperationFn) Execute(ctx context.Context) error {
 	return f(ctx)
 }
-

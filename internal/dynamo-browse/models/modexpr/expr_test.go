@@ -1,11 +1,12 @@
 package modexpr_test
 
 import (
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/models/modexpr"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestModExpr_Patch(t *testing.T) {
@@ -26,7 +27,7 @@ func TestModExpr_Patch(t *testing.T) {
 		assert.NoError(t, err)
 
 		oldItem := models.Item{
-			"old": &types.AttributeValueMemberS{Value: "before"},
+			"old":  &types.AttributeValueMemberS{Value: "before"},
 			"beta": &types.AttributeValueMemberS{Value: "before beta"},
 		}
 		newItem, err := modExpr.Patch(oldItem)
@@ -42,7 +43,7 @@ func TestModExpr_Patch(t *testing.T) {
 		assert.NoError(t, err)
 
 		oldItem := models.Item{
-			"old": &types.AttributeValueMemberS{Value: "before"},
+			"old":  &types.AttributeValueMemberS{Value: "before"},
 			"beta": &types.AttributeValueMemberS{Value: "before beta"},
 		}
 		newItem, err := modExpr.Patch(oldItem)

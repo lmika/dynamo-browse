@@ -2,11 +2,12 @@ package commandctrl_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/test/testuictx"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestCommandController_Prompt(t *testing.T) {

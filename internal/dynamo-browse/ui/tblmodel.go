@@ -2,11 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	table "github.com/calyptia/go-bubble-table"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
-	"io"
-	"strings"
 )
 
 type itemTableRow struct {

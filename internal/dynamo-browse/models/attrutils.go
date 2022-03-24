@@ -1,8 +1,9 @@
 package models
 
 import (
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"math/big"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 func compareScalarAttributes(x, y types.AttributeValue) (int, bool) {

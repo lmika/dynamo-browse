@@ -1,9 +1,10 @@
 package modexpr
 
 import (
+	"strconv"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/pkg/errors"
-	"strconv"
 )
 
 func (a *astLiteralValue) dynamoValue() (types.AttributeValue, error) {

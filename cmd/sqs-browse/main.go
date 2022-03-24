@@ -4,6 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,8 +20,6 @@ import (
 	"github.com/lmika/awstools/internal/sqs-browse/ui"
 	"github.com/lmika/events"
 	"github.com/lmika/gopkgs/cli"
-	"log"
-	"os"
 )
 
 func main() {
@@ -39,7 +40,7 @@ func main() {
 	if err != nil {
 		cli.Fatalf("cannot create workspace file: %v", err)
 	}
-	workspaceFile.Close()		// We just need the filename
+	workspaceFile.Close() // We just need the filename
 
 	msgStore, err := stormstore.NewStore(workspaceFile.Name())
 	if err != nil {

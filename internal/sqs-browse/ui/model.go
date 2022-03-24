@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
+	"strings"
+
 	table "github.com/calyptia/go-bubble-table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -14,19 +17,17 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/sqs-browse/controllers"
 	"github.com/lmika/awstools/internal/sqs-browse/models"
-	"log"
-	"strings"
 )
 
 var (
 	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#eac610"))
+				Bold(true).
+				Foreground(lipgloss.Color("#ffffff")).
+				Background(lipgloss.Color("#eac610"))
 
 	inactiveHeaderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#000000")).
-		Background(lipgloss.Color("#d1d1d1"))
+				Foreground(lipgloss.Color("#000000")).
+				Background(lipgloss.Color("#d1d1d1"))
 )
 
 type uiModel struct {
@@ -52,12 +53,12 @@ func NewModel(dispatcher *dispatcher.Dispatcher, msgSendingHandlers *controllers
 	textInput := textinput.New()
 
 	model := uiModel{
-		table:      tbl,
-		tableRows:  rows,
-		message:    "",
-		textInput:  textInput,
+		table:              tbl,
+		tableRows:          rows,
+		message:            "",
+		textInput:          textInput,
 		msgSendingHandlers: msgSendingHandlers,
-		dispatcher: dispatcher,
+		dispatcher:         dispatcher,
 	}
 
 	return model

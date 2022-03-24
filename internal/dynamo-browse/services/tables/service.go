@@ -2,9 +2,10 @@ package tables
 
 import (
 	"context"
+	"sort"
+
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
-	"sort"
 )
 
 type Service struct {
@@ -63,9 +64,9 @@ func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*model
 	models.Sort(results, tableInfo)
 
 	return &models.ResultSet{
-		TableInfo:   tableInfo,
-		Columns: columns,
-		Items:   results,
+		TableInfo: tableInfo,
+		Columns:   columns,
+		Items:     results,
 	}, nil
 }
 

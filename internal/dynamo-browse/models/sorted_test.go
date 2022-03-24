@@ -1,18 +1,21 @@
 package models_test
 
 import (
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestSort(t *testing.T) {
 	t.Run("pk and sk are both strings", func(t *testing.T) {
+		tableInfo := &models.TableInfo{Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"}}
+
 		items := make([]models.Item, len(testStringData))
 		copy(items, testStringData)
 
-		models.Sort(items, "pk", "sk")
+		models.Sort(items, tableInfo)
 
 		assert.Equal(t, items[0], testStringData[1])
 		assert.Equal(t, items[1], testStringData[2])
@@ -20,10 +23,12 @@ func TestSort(t *testing.T) {
 	})
 
 	t.Run("pk and sk are both numbers", func(t *testing.T) {
+		tableInfo := &models.TableInfo{Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"}}
+
 		items := make([]models.Item, len(testNumberData))
 		copy(items, testNumberData)
 
-		models.Sort(items, "pk", "sk")
+		models.Sort(items, tableInfo)
 
 		assert.Equal(t, items[0], testNumberData[2])
 		assert.Equal(t, items[1], testNumberData[1])
@@ -31,10 +36,12 @@ func TestSort(t *testing.T) {
 	})
 
 	t.Run("pk and sk are both bools", func(t *testing.T) {
+		tableInfo := &models.TableInfo{Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"}}
+
 		items := make([]models.Item, len(testBoolData))
 		copy(items, testBoolData)
 
-		models.Sort(items, "pk", "sk")
+		models.Sort(items, tableInfo)
 
 		assert.Equal(t, items[0], testBoolData[2])
 		assert.Equal(t, items[1], testBoolData[1])

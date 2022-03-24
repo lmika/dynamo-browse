@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"flag"
+	"log"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/pkg/errors"
-	"log"
-	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/lmika/gopkgs/cli"
 )
@@ -44,9 +45,9 @@ func main() {
 	msgCount := 0
 	for {
 		out, err := client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
-			QueueUrl: aws.String(*flagQueue),
+			QueueUrl:            aws.String(*flagQueue),
 			MaxNumberOfMessages: 10,
-			WaitTimeSeconds: 1,
+			WaitTimeSeconds:     1,
 		})
 		if err != nil {
 			log.Fatalf("error receiving messages: %v", err)
@@ -59,7 +60,7 @@ func main() {
 		for _, msg := range out.Messages {
 			if err := handleMessage(ctx, outDir, msg); err == nil {
 				messagesToDelete = append(messagesToDelete, types.DeleteMessageBatchRequestEntry{
-					Id: msg.MessageId,
+					Id:            msg.MessageId,
 					ReceiptHandle: msg.ReceiptHandle,
 				})
 				msgCount += 1
@@ -74,7 +75,7 @@ func main() {
 
 		if _, err := client.DeleteMessageBatch(ctx, &sqs.DeleteMessageBatchInput{
 			QueueUrl: aws.String(*flagQueue),
-			Entries: messagesToDelete,
+			Entries:  messagesToDelete,
 		}); err != nil {
 			log.Printf("error deleting messages from queue: %v", err)
 			break
@@ -85,7 +86,7 @@ func main() {
 }
 
 func handleMessage(ctx context.Context, outDir string, msg types.Message) error {
-	outFile := filepath.Join(outDir, aws.ToString(msg.MessageId) + ".json")
+	outFile := filepath.Join(outDir, aws.ToString(msg.MessageId)+".json")
 	msgBody := aws.ToString(msg.Body)
 
 	log.Printf("%v -> %v", aws.ToString(msg.MessageId), outFile)

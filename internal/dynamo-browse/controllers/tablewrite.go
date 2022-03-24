@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/models/modexpr"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
@@ -9,16 +10,16 @@ import (
 )
 
 type TableWriteController struct {
-	tableService *tables.Service
+	tableService         *tables.Service
 	tableReadControllers *TableReadController
-	tableName string
+	tableName            string
 }
 
 func NewTableWriteController(tableService *tables.Service, tableReadControllers *TableReadController, tableName string) *TableWriteController {
 	return &TableWriteController{
-		tableService: tableService,
+		tableService:         tableService,
 		tableReadControllers: tableReadControllers,
-		tableName: tableName,
+		tableName:            tableName,
 	}
 }
 

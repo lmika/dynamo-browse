@@ -2,7 +2,8 @@ package commandctrl
 
 import "context"
 
-type commandArgContextKeyType struct {}
+type commandArgContextKeyType struct{}
+
 var commandArgContextKey = commandArgContextKeyType{}
 
 func WithCommandArgs(ctx context.Context, args []string) context.Context {

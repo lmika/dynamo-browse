@@ -2,6 +2,8 @@ package controllers_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
@@ -10,7 +12,6 @@ import (
 	"github.com/lmika/awstools/test/testdynamo"
 	"github.com/lmika/awstools/test/testuictx"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestTableWriteController_ToggleReadWrite(t *testing.T) {
@@ -47,7 +48,10 @@ func TestTableWriteController_Delete(t *testing.T) {
 		twc, ctrls, closeFn := setupController(t)
 		t.Cleanup(closeFn)
 
-		resultSet, err := ctrls.tableService.Scan(context.Background(), ctrls.tableName)
+		ti, err := ctrls.tableService.Describe(context.Background(), ctrls.tableName)
+		assert.NoError(t, err)
+
+		resultSet, err := ctrls.tableService.Scan(context.Background(), ti)
 		assert.NoError(t, err)
 		assert.Len(t, resultSet.Items, 3)
 
@@ -71,7 +75,7 @@ func TestTableWriteController_Delete(t *testing.T) {
 		err = promptRequest.OnDone.Execute(uimodels.WithPromptValue(ctx, "y"))
 		assert.NoError(t, err)
 
-		afterResultSet, err := ctrls.tableService.Scan(context.Background(), ctrls.tableName)
+		afterResultSet, err := ctrls.tableService.Scan(context.Background(), ti)
 		assert.NoError(t, err)
 		assert.Len(t, afterResultSet.Items, 2)
 		assert.Contains(t, afterResultSet.Items, resultSet.Items[0])
@@ -83,7 +87,10 @@ func TestTableWriteController_Delete(t *testing.T) {
 		twc, ctrls, closeFn := setupController(t)
 		t.Cleanup(closeFn)
 
-		resultSet, err := ctrls.tableService.Scan(context.Background(), ctrls.tableName)
+		ti, err := ctrls.tableService.Describe(context.Background(), ctrls.tableName)
+		assert.NoError(t, err)
+
+		resultSet, err := ctrls.tableService.Scan(context.Background(), ti)
 		assert.NoError(t, err)
 		assert.Len(t, resultSet.Items, 3)
 
@@ -107,7 +114,7 @@ func TestTableWriteController_Delete(t *testing.T) {
 		err = promptRequest.OnDone.Execute(uimodels.WithPromptValue(ctx, "n"))
 		assert.Error(t, err)
 
-		afterResultSet, err := ctrls.tableService.Scan(context.Background(), ctrls.tableName)
+		afterResultSet, err := ctrls.tableService.Scan(context.Background(), ti)
 		assert.NoError(t, err)
 		assert.Len(t, afterResultSet.Items, 3)
 		assert.Contains(t, afterResultSet.Items, resultSet.Items[0])
@@ -119,7 +126,10 @@ func TestTableWriteController_Delete(t *testing.T) {
 		tableWriteController, ctrls, closeFn := setupController(t)
 		t.Cleanup(closeFn)
 
-		resultSet, err := ctrls.tableService.Scan(context.Background(), ctrls.tableName)
+		ti, err := ctrls.tableService.Describe(context.Background(), ctrls.tableName)
+		assert.NoError(t, err)
+
+		resultSet, err := ctrls.tableService.Scan(context.Background(), ti)
 		assert.NoError(t, err)
 		assert.Len(t, resultSet.Items, 3)
 

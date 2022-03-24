@@ -2,10 +2,11 @@ package ui
 
 import (
 	"fmt"
-	"github.com/lmika/awstools/internal/sqs-browse/models"
-	table "github.com/calyptia/go-bubble-table"
 	"io"
 	"strings"
+
+	table "github.com/calyptia/go-bubble-table"
+	"github.com/lmika/awstools/internal/sqs-browse/models"
 )
 
 type messageTableRow models.Message

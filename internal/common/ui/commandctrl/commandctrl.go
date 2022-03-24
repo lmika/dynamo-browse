@@ -2,11 +2,12 @@ package commandctrl
 
 import (
 	"context"
+	"strings"
+
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/shellwords"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 type CommandController struct {

@@ -2,13 +2,14 @@ package sqs
 
 import (
 	"context"
+	"log"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/lmika/awstools/internal/sqs-browse/models"
 	"github.com/pkg/errors"
-	"log"
-	"time"
 )
 
 type Provider struct {
@@ -23,7 +24,7 @@ func (p *Provider) SendMessage(ctx context.Context, msg models.Message, queue st
 	// TEMP :: queue URL
 
 	out, err := p.client.SendMessage(ctx, &sqs.SendMessageInput{
-		QueueUrl: aws.String(queue),
+		QueueUrl:    aws.String(queue),
 		MessageBody: aws.String(msg.Data),
 	})
 	if err != nil {

@@ -3,6 +3,9 @@ package ui
 import (
 	"context"
 	"fmt"
+	"strings"
+	"text/tabwriter"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	table "github.com/calyptia/go-bubble-table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -14,8 +17,6 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
-	"strings"
-	"text/tabwriter"
 )
 
 var (
@@ -156,7 +157,7 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Tea events
 	case tea.WindowSizeMsg:
 		fixedViewsHeight := lipgloss.Height(m.headerView()) + lipgloss.Height(m.splitterView()) + lipgloss.Height(m.footerView())
-		viewportHeight := msg.Height / 2		// TODO: make this dynamic
+		viewportHeight := msg.Height / 2 // TODO: make this dynamic
 		if viewportHeight > 15 {
 			viewportHeight = 15
 		}

@@ -2,10 +2,11 @@ package dispatcher
 
 import (
 	"context"
+	"sync"
+
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/pkg/errors"
-	"sync"
 )
 
 type Dispatcher struct {
@@ -13,7 +14,6 @@ type Dispatcher struct {
 	runningOp uimodels.Operation
 	publisher MessagePublisher
 }
-
 
 func NewDispatcher(publisher MessagePublisher) *Dispatcher {
 	return &Dispatcher{
@@ -44,6 +44,3 @@ func (d *Dispatcher) Start(ctx context.Context, operation uimodels.Operation) {
 		d.runningOp = nil
 	}()
 }
-
-
-

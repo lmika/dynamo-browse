@@ -2,9 +2,10 @@ package pollmessage
 
 import (
 	"context"
+	"log"
+
 	"github.com/lmika/events"
 	"github.com/pkg/errors"
-	"log"
 )
 
 type Service struct {
