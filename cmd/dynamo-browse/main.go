@@ -7,7 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
+	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
@@ -45,7 +47,13 @@ func main() {
 	tableReadController := controllers.NewTableReadController(tableService, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController, *flagTable)
 
-	uiModel := ui.NewModel(uiDispatcher, tableReadController, tableWriteController)
+	commandController := commandctrl.NewCommandController(map[string]uimodels.Operation{
+		"scan": tableReadController.Scan(),
+		"rw": tableWriteController.ToggleReadWrite(),
+		"dup": tableWriteController.Duplicate(),
+	})
+
+	uiModel := ui.NewModel(uiDispatcher, commandController, tableReadController, tableWriteController)
 	p := tea.NewProgram(uiModel, tea.WithAltScreen())
 	loopback.program = p
 

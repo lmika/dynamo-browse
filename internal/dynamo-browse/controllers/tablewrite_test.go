@@ -13,20 +13,32 @@ import (
 	"testing"
 )
 
-func TestTableWriteController_EnableReadWrite(t *testing.T) {
+func TestTableWriteController_ToggleReadWrite(t *testing.T) {
 	twc, _, closeFn := setupController(t)
 	t.Cleanup(closeFn)
 
-	t.Run("should send event enabling read write", func(t *testing.T) {
+	t.Run("should enabling read write if disabled", func(t *testing.T) {
 		ctx, uiCtx := testuictx.New(context.Background())
 		ctx = controllers.ContextWithState(ctx, controllers.State{
 			InReadWriteMode: false,
 		})
 
-		err := twc.EnableReadWrite().Execute(ctx)
+		err := twc.ToggleReadWrite().Execute(ctx)
 		assert.NoError(t, err)
 
 		assert.Contains(t, uiCtx.Messages, controllers.SetReadWrite{NewValue: true})
+	})
+
+	t.Run("should disable read write if enabled", func(t *testing.T) {
+		ctx, uiCtx := testuictx.New(context.Background())
+		ctx = controllers.ContextWithState(ctx, controllers.State{
+			InReadWriteMode: true,
+		})
+
+		err := twc.ToggleReadWrite().Execute(ctx)
+		assert.NoError(t, err)
+
+		assert.Contains(t, uiCtx.Messages, controllers.SetReadWrite{NewValue: false})
 	})
 }
 

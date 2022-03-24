@@ -9,3 +9,15 @@ type ResultSet struct {
 }
 
 type Item map[string]types.AttributeValue
+
+// Clone creates a clone of the current item
+func (i Item) Clone() Item {
+	newItem := Item{}
+
+	// TODO: should be a deep clone?
+	for k, v := range i {
+		newItem[k] = v
+	}
+
+	return newItem
+}

@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	table "github.com/calyptia/go-bubble-table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -67,7 +69,13 @@ func (m uiModel) Init() tea.Cmd {
 
 func (m *uiModel) updateViewportToSelectedMessage() {
 	if message, ok := m.selectedMessage(); ok {
-		m.viewport.SetContent(message.Data)
+		// TODO: not all messages are JSON
+		formattedJson := new(bytes.Buffer)
+		if err := json.Indent(formattedJson, []byte(message.Data), "", "   "); err == nil {
+			m.viewport.SetContent(formattedJson.String())
+		} else {
+			m.viewport.SetContent(message.Data)
+		}
 	} else {
 		m.viewport.SetContent("(no message selected)")
 	}
@@ -204,8 +212,8 @@ func (m uiModel) headerView() string {
 }
 
 func (m uiModel) splitterView() string {
-	title := activeHeaderStyle.Render("Message")
-	line := activeHeaderStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
+	title := inactiveHeaderStyle.Render("Message")
+	line := inactiveHeaderStyle.Render(strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title))))
 	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
 }
 

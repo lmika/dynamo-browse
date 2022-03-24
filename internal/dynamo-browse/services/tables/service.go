@@ -60,6 +60,10 @@ func (s *Service) Scan(ctx context.Context, table string) (*models.ResultSet, er
 	}, nil
 }
 
+func (s *Service) Put(ctx context.Context, tableName string, item models.Item) error {
+	return s.provider.PutItem(ctx, tableName, item)
+}
+
 func (s *Service) Delete(ctx context.Context, name string, item models.Item) error {
 	// TODO: do not hardcode keys
 	return s.provider.DeleteItem(ctx, name, map[string]types.AttributeValue{

@@ -13,6 +13,17 @@ type Provider struct {
 	client *dynamodb.Client
 }
 
+func (p *Provider) PutItem(ctx context.Context, name string, item models.Item) error {
+	_, err := p.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(name),
+		Item: item,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "cannot execute put on table %v", name)
+	}
+	return nil
+}
+
 func NewProvider(client *dynamodb.Client) *Provider {
 	return &Provider{client: client}
 }

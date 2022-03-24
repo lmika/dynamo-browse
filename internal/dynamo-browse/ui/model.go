@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
@@ -19,13 +20,13 @@ import (
 
 var (
 	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#4479ff"))
+				Bold(true).
+				Foreground(lipgloss.Color("#ffffff")).
+				Background(lipgloss.Color("#4479ff"))
 
 	inactiveHeaderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#000000")).
-		Background(lipgloss.Color("#d1d1d1"))
+				Foreground(lipgloss.Color("#000000")).
+				Background(lipgloss.Color("#d1d1d1"))
 )
 
 type uiModel struct {
@@ -34,20 +35,21 @@ type uiModel struct {
 
 	tableWidth, tableHeight int
 
-	ready     bool
+	ready bool
 	//resultSet *models.ResultSet
-	state controllers.State
-	message   string
+	state   controllers.State
+	message string
 
 	pendingInput *events.PromptForInput
 	textInput    textinput.Model
 
 	dispatcher           *dispatcher.Dispatcher
+	commandController    *commandctrl.CommandController
 	tableReadController  *controllers.TableReadController
 	tableWriteController *controllers.TableWriteController
 }
 
-func NewModel(dispatcher *dispatcher.Dispatcher, tableReadController *controllers.TableReadController, tableWriteController *controllers.TableWriteController) tea.Model {
+func NewModel(dispatcher *dispatcher.Dispatcher, commandController *commandctrl.CommandController, tableReadController *controllers.TableReadController, tableWriteController *controllers.TableWriteController) tea.Model {
 	tbl := table.New([]string{"pk", "sk"}, 100, 20)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
@@ -60,6 +62,7 @@ func NewModel(dispatcher *dispatcher.Dispatcher, tableReadController *controller
 		textInput: textInput,
 
 		dispatcher:           dispatcher,
+		commandController:    commandController,
 		tableReadController:  tableReadController,
 		tableWriteController: tableWriteController,
 	}
@@ -174,7 +177,7 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+c", "esc":
 				m.pendingInput = nil
 			case "enter":
-				m.dispatcher.Start(uimodels.WithPromptValue(context.Background(), m.textInput.Value()), m.pendingInput.OnDone)
+				m.invokeOperation(uimodels.WithPromptValue(context.Background(), m.textInput.Value()), m.pendingInput.OnDone)
 				m.pendingInput = nil
 			default:
 				m.textInput, textInputCommands = m.textInput.Update(msg)
@@ -193,12 +196,12 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.updateViewportToSelectedMessage()
 
 		// TODO: these should be moved somewhere else
+		case ":":
+			m.invokeOperation(context.Background(), m.commandController.Prompt())
 		case "s":
-			m.invokeOperation(m.tableReadController.Scan())
+			m.invokeOperation(context.Background(), m.tableReadController.Scan())
 		case "D":
-			m.invokeOperation(m.tableWriteController.Delete())
-		case "w":
-			m.invokeOperation(m.tableWriteController.EnableReadWrite())
+			m.invokeOperation(context.Background(), m.tableWriteController.Delete())
 		}
 	default:
 		m.textInput, textInputCommands = m.textInput.Update(msg)
@@ -213,13 +216,13 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(textInputCommands, tableMsgs, viewportMsgs)
 }
 
-func (m uiModel) invokeOperation(op uimodels.Operation) {
+func (m uiModel) invokeOperation(ctx context.Context, op uimodels.Operation) {
 	state := m.state
 	if selectedItem, ok := m.selectedItem(); ok {
 		state.SelectedItem = selectedItem.item
 	}
 
-	ctx := controllers.ContextWithState(context.Background(), state)
+	ctx = controllers.ContextWithState(ctx, state)
 	m.dispatcher.Start(ctx, op)
 }
 

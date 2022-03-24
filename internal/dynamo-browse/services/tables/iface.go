@@ -9,4 +9,5 @@ import (
 type TableProvider interface {
 	ScanItems(ctx context.Context, tableName string) ([]models.Item, error)
 	DeleteItem(ctx context.Context, tableName string, key map[string]types.AttributeValue) error
+	PutItem(ctx context.Context, name string, item models.Item) error
 }
