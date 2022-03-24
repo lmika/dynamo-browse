@@ -2,9 +2,7 @@ package modexpr
 
 import (
 	"github.com/alecthomas/participle/v2"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/pkg/errors"
-	"strconv"
 )
 
 type astExpr struct {
@@ -12,19 +10,17 @@ type astExpr struct {
 }
 
 type astAttribute struct {
-	Name  string `parser:"@Ident '='"`
-	Value string `parser:"@String"`
+	Names *astKeyList      `parser:"@@ '='"`
+	Value *astLiteralValue `parser:"@@"`
 }
 
-func (a astAttribute) dynamoValue() (types.AttributeValue, error) {
-	// TODO: should be based on type
-	s, err := strconv.Unquote(a.Value)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot unquote string")
-	}
-	return &types.AttributeValueMemberS{Value: s}, nil
+type astKeyList struct {
+	Names []string `parser:"@Ident ('/' @Ident)*"`
 }
 
+type astLiteralValue struct {
+	String string `parser:"@String"`
+}
 
 var parser = participle.MustBuild(&astExpr{})
 

@@ -36,4 +36,20 @@ func TestModExpr_Patch(t *testing.T) {
 		assert.Equal(t, "new value", newItem["alpha"].(*types.AttributeValueMemberS).Value)
 		assert.Equal(t, "another new value", newItem["beta"].(*types.AttributeValueMemberS).Value)
 	})
+
+	t.Run("patch with key tuple", func(t *testing.T) {
+		modExpr, err := modexpr.Parse(`alpha/beta="new value"`)
+		assert.NoError(t, err)
+
+		oldItem := models.Item{
+			"old": &types.AttributeValueMemberS{Value: "before"},
+			"beta": &types.AttributeValueMemberS{Value: "before beta"},
+		}
+		newItem, err := modExpr.Patch(oldItem)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "before", newItem["old"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "new value", newItem["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "new value", newItem["beta"].(*types.AttributeValueMemberS).Value)
+	})
 }

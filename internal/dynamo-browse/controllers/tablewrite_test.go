@@ -55,7 +55,7 @@ func TestTableWriteController_Delete(t *testing.T) {
 		ctx = controllers.ContextWithState(ctx, controllers.State{
 			ResultSet:       resultSet,
 			SelectedItem:    resultSet.Items[1],
-			InReadWriteMode: false,
+			InReadWriteMode: true,
 		})
 
 		op := twc.Delete()
@@ -91,7 +91,7 @@ func TestTableWriteController_Delete(t *testing.T) {
 		ctx = controllers.ContextWithState(ctx, controllers.State{
 			ResultSet:       resultSet,
 			SelectedItem:    resultSet.Items[1],
-			InReadWriteMode: false,
+			InReadWriteMode: true,
 		})
 
 		op := twc.Delete()

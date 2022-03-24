@@ -155,10 +155,14 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Tea events
 	case tea.WindowSizeMsg:
 		fixedViewsHeight := lipgloss.Height(m.headerView()) + lipgloss.Height(m.splitterView()) + lipgloss.Height(m.footerView())
-		tableHeight := msg.Height / 2
+		viewportHeight := msg.Height / 2		// TODO: make this dynamic
+		if viewportHeight > 15 {
+			viewportHeight = 15
+		}
+		tableHeight := msg.Height - fixedViewsHeight - viewportHeight
 
 		if !m.ready {
-			m.viewport = viewport.New(msg.Width, msg.Height-tableHeight-fixedViewsHeight)
+			m.viewport = viewport.New(msg.Width, viewportHeight)
 			m.viewport.SetContent("(no message selected)")
 			m.ready = true
 		} else {

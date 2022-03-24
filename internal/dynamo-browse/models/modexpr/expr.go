@@ -7,15 +7,14 @@ type ModExpr struct {
 }
 
 func (me *ModExpr) Patch(item models.Item) (models.Item, error) {
-	newItem := item.Clone()
+	mods, err := me.ast.calcPatchMods(item)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, attribute := range me.ast.Attributes {
-		var err error
-		name := attribute.Name
-		newItem[name], err = attribute.dynamoValue()
-		if err != nil {
-			return nil, err
-		}
+	newItem := item.Clone()
+	for _, mod := range mods {
+		mod.Apply(newItem)
 	}
 
 	return newItem, nil

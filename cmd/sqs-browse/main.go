@@ -10,8 +10,8 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
 	"github.com/lmika/awstools/internal/sqs-browse/controllers"
 	"github.com/lmika/awstools/internal/sqs-browse/models"
-	"github.com/lmika/awstools/internal/sqs-browse/providers/memstore"
 	sqsprovider "github.com/lmika/awstools/internal/sqs-browse/providers/sqs"
+	"github.com/lmika/awstools/internal/sqs-browse/providers/stormstore"
 	"github.com/lmika/awstools/internal/sqs-browse/services/messages"
 	"github.com/lmika/awstools/internal/sqs-browse/services/pollmessage"
 	"github.com/lmika/awstools/internal/sqs-browse/ui"
@@ -35,7 +35,18 @@ func main() {
 
 	bus := events.New()
 
-	msgStore := memstore.NewStore()
+	workspaceFile, err := os.CreateTemp("", "sqs-browse*.workspace")
+	if err != nil {
+		cli.Fatalf("cannot create workspace file: %v", err)
+	}
+	workspaceFile.Close()		// We just need the filename
+
+	msgStore, err := stormstore.NewStore(workspaceFile.Name())
+	if err != nil {
+		cli.Fatalf("cannot open workspace: %v", err)
+	}
+	defer msgStore.Close()
+
 	sqsProvider := sqsprovider.NewProvider(sqsClient)
 
 	messageService := messages.NewService(sqsProvider)
@@ -58,6 +69,8 @@ func main() {
 		os.Exit(1)
 	}
 	defer f.Close()
+
+	log.Printf("workspace file: %v", workspaceFile.Name())
 
 	go func() {
 		if err := pollService.Poll(context.Background()); err != nil {

@@ -11,7 +11,7 @@ import (
 
 func TestCommandController_Prompt(t *testing.T) {
 	t.Run("prompt user for a command", func(t *testing.T) {
-		cmd := commandctrl.NewCommandController()
+		cmd := commandctrl.NewCommandController(nil)
 
 		ctx, uiCtx := testuictx.New(context.Background())
 		err := cmd.Prompt().Execute(ctx)
