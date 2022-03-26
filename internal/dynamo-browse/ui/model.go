@@ -34,10 +34,12 @@ type uiModel struct {
 	table    table.Model
 	viewport viewport.Model
 
+	// TEMP
+	tableSelect tea.Model
+
 	tableWidth, tableHeight int
 
-	ready bool
-	//resultSet *models.ResultSet
+	ready   bool
 	state   controllers.State
 	message string
 
@@ -62,6 +64,11 @@ func NewModel(dispatcher *dispatcher.Dispatcher, commandController *commandctrl.
 		message:   "Press s to scan",
 		textInput: textInput,
 
+		// TEMP
+		tableSelect: newSizeWaitModel(func(w, h int) tea.Model {
+			return newTableSelectModel(w, h)
+		}),
+
 		dispatcher:           dispatcher,
 		commandController:    commandController,
 		tableReadController:  tableReadController,
@@ -72,7 +79,7 @@ func NewModel(dispatcher *dispatcher.Dispatcher, commandController *commandctrl.
 }
 
 func (m uiModel) Init() tea.Cmd {
-	m.invokeOperation(context.Background(), m.tableReadController.Scan())
+	//m.invokeOperation(context.Background(), m.tableReadController.Scan())
 	return nil
 }
 
@@ -215,11 +222,13 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	updatedTable, tableMsgs := m.table.Update(msg)
 	updatedViewport, viewportMsgs := m.viewport.Update(msg)
+	updatedTableSelectModel, tableSelectMsgs := m.tableSelect.Update(msg)
 
 	m.table = updatedTable
 	m.viewport = updatedViewport
+	m.tableSelect = updatedTableSelectModel
 
-	return m, tea.Batch(textInputCommands, tableMsgs, viewportMsgs)
+	return m, tea.Batch(textInputCommands, tableMsgs, viewportMsgs, tableSelectMsgs)
 }
 
 func (m uiModel) invokeOperation(ctx context.Context, op uimodels.Operation) {
@@ -233,27 +242,32 @@ func (m uiModel) invokeOperation(ctx context.Context, op uimodels.Operation) {
 }
 
 func (m uiModel) View() string {
-	if !m.ready {
-		return "Initializing"
-	}
+	// TEMP
+	return m.tableSelect.View()
 
-	if m.pendingInput != nil {
+	/*
+		if !m.ready {
+			return "Initializing"
+		}
+
+		if m.pendingInput != nil {
+			return lipgloss.JoinVertical(lipgloss.Top,
+				m.headerView(),
+				m.table.View(),
+				m.splitterView(),
+				m.viewport.View(),
+				m.textInput.View(),
+			)
+		}
+
 		return lipgloss.JoinVertical(lipgloss.Top,
 			m.headerView(),
 			m.table.View(),
 			m.splitterView(),
 			m.viewport.View(),
-			m.textInput.View(),
+			m.footerView(),
 		)
-	}
-
-	return lipgloss.JoinVertical(lipgloss.Top,
-		m.headerView(),
-		m.table.View(),
-		m.splitterView(),
-		m.viewport.View(),
-		m.footerView(),
-	)
+	*/
 }
 
 func (m uiModel) headerView() string {

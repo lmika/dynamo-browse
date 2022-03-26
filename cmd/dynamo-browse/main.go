@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
-
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,6 +15,8 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
 	"github.com/lmika/gopkgs/cli"
+	"log"
+	"os"
 )
 
 func main() {
@@ -58,6 +58,18 @@ func main() {
 	p := tea.NewProgram(uiModel, tea.WithAltScreen())
 	loopback.program = p
 
+	// TEMP -- profiling
+	//cf, err := os.Create("trace.out")
+	//if err != nil {
+	//	log.Fatal("could not create CPU profile: ", err)
+	//}
+	//defer cf.Close() // error handling omitted for example
+	//if err := trace.Start(cf); err != nil {
+	//	log.Fatal("could not start CPU profile: ", err)
+	//}
+	//defer trace.Stop()
+	// END TEMP
+
 	f, err := tea.LogToFile("debug.log", "debug")
 	if err != nil {
 		fmt.Println("fatal:", err)
@@ -65,6 +77,7 @@ func main() {
 	}
 	defer f.Close()
 
+	log.Println("launching")
 	if err := p.Start(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
