@@ -21,9 +21,6 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/modal"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/tableselect"
@@ -71,21 +68,27 @@ func main() {
 		"dup": tableWriteController.Duplicate(),
 	})
 
-	uiModel := ui.NewModel(uiDispatcher, commandController, tableReadController, tableWriteController)
+	_ = uiDispatcher
+	_ = commandController
+
+	// uiModel := ui.NewModel(uiDispatcher, commandController, tableReadController, tableWriteController)
 
 	// TEMP
-	_ = uiModel
+	// _ = uiModel
 	// END TEMP
 
-	var model tea.Model = statusandprompt.New(
-		layout.NewVBox(
-			layout.LastChildFixedAt(11),
-			dynamotableview.New(tableReadController),
-			dynamoitemview.New(),
-		),
-		"Hello world",
-	)
-	model = layout.FullScreen(tableselect.New(model))
+	/*
+		var model tea.Model = statusandprompt.New(
+			layout.NewVBox(
+				layout.LastChildFixedAt(11),
+				dynamotableview.New(tableReadController),
+				dynamoitemview.New(),
+			),
+			"Hello world",
+		)
+		model = layout.FullScreen(tableselect.New(model))
+	*/
+	model := ui.NewModel(tableReadController)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()
