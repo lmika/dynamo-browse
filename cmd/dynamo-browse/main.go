@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
@@ -19,6 +20,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/modal"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/lmika/gopkgs/cli"
 	"log"
 	"os"
@@ -65,13 +67,17 @@ func main() {
 	_ = uiModel
 	// END TEMP
 
-	model := layout.FullScreen(statusandprompt.New(
+	var model tea.Model = statusandprompt.New(
 		layout.NewVBox(
 			frame.NewFrame("This is the header", true, layout.Model(newTestModel("this is the top"))),
 			frame.NewFrame("This is another header", false, layout.Model(newTestModel("this is the bottom"))),
 		),
 		"Hello world",
-	))
+	)
+	model = layout.FullScreen(tableselect.New(model))
+
+	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
+	lipgloss.HasDarkBackground()
 
 	//frameSet := frameset.New([]frameset.Frame{
 	//	{
@@ -129,8 +135,8 @@ func newTestModel(descr string) tea.Model {
 		OnKeyPressed: func(k string) tea.Cmd {
 			log.Println("got key press: " + k)
 			if k == "enter" {
-				return statusandprompt.Prompt("What is your car? ", func(val string) tea.Cmd {
-					return statusandprompt.SetStatus("Your car is = " + val)
+				return tableselect.ShowTableSelect(func(n string) tea.Cmd {
+					return statusandprompt.SetStatus("New table = " + n)
 				})
 			} else if k == "k" {
 				return modal.PopMode

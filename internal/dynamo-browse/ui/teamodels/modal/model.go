@@ -2,6 +2,7 @@ package modal
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
 	"log"
 )
@@ -18,30 +19,34 @@ func New(baseMode tea.Model) Modal {
 }
 
 func (m Modal) Init() tea.Cmd {
-	return nil
+	return m.baseMode.Init()
 }
 
-func (m *Modal) pushMode(model tea.Model) {
+// Push pushes a new model onto the modal stack
+func (m *Modal) Push(model tea.Model) {
 	m.modeStack = append(m.modeStack, model)
 	log.Printf("pusing new mode: len = %v", len(m.modeStack))
 }
 
-func (m *Modal) popMode() {
+// Pop pops a model from the stack
+func (m *Modal) Pop() (p tea.Model) {
 	if len(m.modeStack) > 0 {
+		p = m.modeStack[len(m.modeStack)-1]
 		m.modeStack = m.modeStack[:len(m.modeStack)-1]
+		return p
 	}
+	return nil
+}
+
+// Len returns the number of models on the mode stack
+func (m Modal) Len() int {
+	return len(m.modeStack)
 }
 
 func (m Modal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cc utils.CmdCollector
 
 	switch msg := msg.(type) {
-	case newModePushed:
-		m.pushMode(msg)
-		return m, nil
-	case modePopped:
-		m.popMode()
-		return m, nil
 	case tea.KeyMsg, tea.MouseMsg:
 		// only notify top level stack
 		if len(m.modeStack) > 0 {
@@ -68,4 +73,12 @@ func (m Modal) View() string {
 		return m.modeStack[len(m.modeStack)-1].View()
 	}
 	return m.baseMode.View()
+}
+
+func (m Modal) Resize(w, h int) layout.ResizingModel {
+	m.baseMode = layout.Resize(m.baseMode, w, h)
+	for i := range m.modeStack {
+		m.modeStack[i] = layout.Resize(m.modeStack[i], w, h)
+	}
+	return m
 }
