@@ -6,6 +6,12 @@ type CmdCollector struct {
 	cmds []tea.Cmd
 }
 
+func (c *CmdCollector) Add(cmd tea.Cmd) {
+	if cmd != nil {
+		c.cmds = append(c.cmds, cmd)
+	}
+}
+
 func (c *CmdCollector) Collect(m tea.Model, cmd tea.Cmd) tea.Model {
 	if cmd != nil {
 		c.cmds = append(c.cmds, cmd)

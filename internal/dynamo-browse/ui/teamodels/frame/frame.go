@@ -13,17 +13,22 @@ var (
 		Bold(true).
 		Foreground(lipgloss.Color("#ffffff")).
 		Background(lipgloss.Color("#4479ff"))
+
+	inactiveHeaderStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#000000")).
+		Background(lipgloss.Color("#d1d1d1"))
 )
 
 // Frame is a frame that appears in the
 type Frame struct {
 	header string
+	active bool
 	model  layout.ResizingModel
 	width  int
 }
 
-func NewFrame(header string, model layout.ResizingModel) Frame {
-	return Frame{header, model, 0}
+func NewFrame(header string, active bool, model layout.ResizingModel) Frame {
+	return Frame{header, active, model, 0}
 }
 
 func (f Frame) Init() tea.Cmd {
@@ -31,6 +36,14 @@ func (f Frame) Init() tea.Cmd {
 }
 
 func (f Frame) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case tea.KeyMsg:
+		// If frame is not active, do not receive key messages
+		if !f.active {
+			return f, nil
+		}
+	}
+
 	newModel, cmd := f.model.Update(msg)
 	f.model = newModel.(layout.ResizingModel)
 	return f, cmd
@@ -48,8 +61,13 @@ func (f Frame) Resize(w, h int) layout.ResizingModel {
 }
 
 func (f Frame) headerView() string {
+	style := inactiveHeaderStyle
+	if f.active {
+		style = activeHeaderStyle
+	}
+
 	titleText := f.header
-	title := activeHeaderStyle.Render(titleText)
-	line := activeHeaderStyle.Render(strings.Repeat(" ", utils.Max(0, f.width-lipgloss.Width(title))))
+	title := style.Render(titleText)
+	line := style.Render(strings.Repeat(" ", utils.Max(0, f.width-lipgloss.Width(title))))
 	return lipgloss.JoinHorizontal(lipgloss.Left, title, line)
 }

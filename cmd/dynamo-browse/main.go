@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/brianvoe/gofakeit/v6"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
@@ -19,6 +18,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/modal"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/gopkgs/cli"
 	"log"
 	"os"
@@ -65,9 +65,12 @@ func main() {
 	_ = uiModel
 	// END TEMP
 
-	model := layout.FullScreen(layout.NewVBox(
-		frame.NewFrame("This is the header", layout.Model(newTestModel("this is the top"))),
-		frame.NewFrame("This is another header", layout.Model(newTestModel("this is the bottom"))),
+	model := layout.FullScreen(statusandprompt.New(
+		layout.NewVBox(
+			frame.NewFrame("This is the header", true, layout.Model(newTestModel("this is the top"))),
+			frame.NewFrame("This is another header", false, layout.Model(newTestModel("this is the bottom"))),
+		),
+		"Hello world",
 	))
 
 	//frameSet := frameset.New([]frameset.Frame{
@@ -126,7 +129,9 @@ func newTestModel(descr string) tea.Model {
 		OnKeyPressed: func(k string) tea.Cmd {
 			log.Println("got key press: " + k)
 			if k == "enter" {
-				return modal.PushMode(newTestModel("this is mode " + gofakeit.CarModel() + " (press k to end)"))
+				return statusandprompt.Prompt("What is your car? ", func(val string) tea.Cmd {
+					return statusandprompt.SetStatus("Your car is = " + val)
+				})
 			} else if k == "k" {
 				return modal.PopMode
 			}
