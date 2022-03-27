@@ -15,13 +15,13 @@ func (ti tableItem) Title() string {
 }
 
 func (ti tableItem) Description() string {
-	return "abc"
+	return ""
 }
 
-func toListItems[T list.Item](xs []T) []list.Item {
+func toListItems(xs []string) []list.Item {
 	ls := make([]list.Item, len(xs))
 	for i, x := range xs {
-		ls[i] = x
+		ls[i] = tableItem{name: x}
 	}
 	return ls
 }

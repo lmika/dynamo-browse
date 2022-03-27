@@ -20,14 +20,8 @@ type listController struct {
 	list list.Model
 }
 
-func newListController(w, h int) listController {
-	tableItems := []tableItem{
-		{name: "alpha"},
-		{name: "beta"},
-		{name: "gamma"},
-	}
-
-	items := toListItems(tableItems)
+func newListController(tableNames []string, w, h int) listController {
+	items := toListItems(tableNames)
 
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = false

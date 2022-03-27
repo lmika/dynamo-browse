@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
 )
@@ -13,7 +14,7 @@ import (
 type StatusAndPrompt struct {
 	model         layout.ResizingModel
 	statusMessage string
-	pendingInput  *startPromptMsg
+	pendingInput  *events.PromptForInputMsg
 	textInput     textinput.Model
 	width         int
 }
@@ -29,15 +30,19 @@ func (s StatusAndPrompt) Init() tea.Cmd {
 
 func (s StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case setStatusMsg:
-		s.statusMessage = string(msg)
-	case startPromptMsg:
+	case events.ErrorMsg:
+		s.statusMessage = "Error: " + msg.Error()
+	case events.StatusMsg:
+		s.statusMessage = string(s.statusMessage)
+	case events.MessageWithStatus:
+		s.statusMessage = msg.StatusMessage()
+	case events.PromptForInputMsg:
 		if s.pendingInput != nil {
 			// ignore, already in an input
 			return s, nil
 		}
 
-		s.textInput.Prompt = msg.prompt
+		s.textInput.Prompt = msg.Prompt
 		s.textInput.Focus()
 		s.textInput.SetValue("")
 		s.pendingInput = &msg
@@ -51,7 +56,7 @@ func (s StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				pendingInput := s.pendingInput
 				s.pendingInput = nil
 
-				return s, pendingInput.onDone(s.textInput.Value())
+				return s, pendingInput.OnDone(s.textInput.Value())
 			}
 		}
 	}

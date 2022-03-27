@@ -1,17 +1,17 @@
 package events
 
 import (
-	"github.com/lmika/awstools/internal/common/ui/uimodels"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // Error indicates that an error occurred
-type Error error
+type ErrorMsg error
 
 // Message indicates that a message should be shown to the user
-type Message string
+type StatusMsg string
 
 // PromptForInput indicates that the context is requesting a line of input
-type PromptForInput struct {
+type PromptForInputMsg struct {
 	Prompt string
-	OnDone uimodels.Operation
+	OnDone func(value string) tea.Cmd
 }

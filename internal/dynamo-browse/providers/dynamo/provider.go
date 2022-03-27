@@ -14,6 +14,15 @@ type Provider struct {
 	client *dynamodb.Client
 }
 
+func (p *Provider) ListTables(ctx context.Context) ([]string, error) {
+	out, err := p.client.ListTables(ctx, &dynamodb.ListTablesInput{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot list tables")
+	}
+
+	return out.TableNames, nil
+}
+
 func (p *Provider) DescribeTable(ctx context.Context, tableName string) (*models.TableInfo, error) {
 	out, err := p.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: aws.String(tableName),

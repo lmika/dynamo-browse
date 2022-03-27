@@ -57,7 +57,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// TEMP
 		case "s":
-			return m, m.tableReadControllers.Scan()
+			return m, m.tableReadControllers.Rescan(m.resultSet)
 		case "ctrl+c", "esc":
 			return m, tea.Quit
 		}

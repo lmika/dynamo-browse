@@ -18,6 +18,10 @@ func NewService(provider TableProvider) *Service {
 	}
 }
 
+func (s *Service) ListTables(ctx context.Context) ([]string, error) {
+	return s.provider.ListTables(ctx)
+}
+
 func (s *Service) Describe(ctx context.Context, table string) (*models.TableInfo, error) {
 	return s.provider.DescribeTable(ctx, table)
 }

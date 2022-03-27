@@ -2,13 +2,14 @@ package tableselect
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
 )
 
 type Model struct {
 	submodel         tea.Model
-	pendingSelection *showTableSelectMsg
+	pendingSelection *controllers.PromptForTableMsg
 	listController   listController
 	isLoading        bool
 	w, h             int
@@ -25,10 +26,10 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cc utils.CmdCollector
 	switch msg := msg.(type) {
-	case showTableSelectMsg:
+	case controllers.PromptForTableMsg:
 		m.isLoading = false
 		m.pendingSelection = &msg
-		m.listController = newListController(m.w, m.h)
+		m.listController = newListController(msg.Tables, m.w, m.h)
 		return m, nil
 	case indicateLoadingTablesMsg:
 		m.isLoading = true
@@ -37,10 +38,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.pendingSelection != nil {
 			switch msg.String() {
 			case "enter":
-				var sel showTableSelectMsg
+				var sel controllers.PromptForTableMsg
 				sel, m.pendingSelection = *m.pendingSelection, nil
 
-				return m, sel.onSelected(m.listController.list.SelectedItem().(tableItem).name)
+				return m, sel.OnSelected(m.listController.list.SelectedItem().(tableItem).name)
 			default:
 				m.listController = cc.Collect(m.listController.Update(msg)).(listController)
 				return m, cc.Cmd()

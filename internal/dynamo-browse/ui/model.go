@@ -33,7 +33,7 @@ func NewModel(rc *controllers.TableReadController) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.tableReadController.Scan()
+	return m.tableReadController.Init()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

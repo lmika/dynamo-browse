@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
-	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 )
@@ -40,8 +39,8 @@ type uiModel struct {
 	state   controllers.State
 	message string
 
-	pendingInput *events.PromptForInput
-	textInput    textinput.Model
+	// pendingInput *events.PromptForInput
+	textInput textinput.Model
 
 	dispatcher           *dispatcher.Dispatcher
 	commandController    *commandctrl.CommandController
@@ -152,15 +151,15 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state.InReadWriteMode = msg.NewValue
 
 	// Shared events
-	case events.Error:
-		m.message = "Error: " + msg.Error()
-	case events.Message:
-		m.message = string(msg)
-	case events.PromptForInput:
-		m.textInput.Prompt = msg.Prompt
-		m.textInput.Focus()
-		m.textInput.SetValue("")
-		m.pendingInput = &msg
+	// case events.Error:
+	// 	m.message = "Error: " + msg.Error()
+	// case events.Message:
+	// 	m.message = string(msg)
+	// case events.PromptForInput:
+	// 	m.textInput.Prompt = msg.Prompt
+	// 	m.textInput.Focus()
+	// 	m.textInput.SetValue("")
+	// 	m.pendingInput = &msg
 
 	// Tea events
 	case tea.WindowSizeMsg:
@@ -186,18 +185,18 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 
 		// If text input in focus, allow that to accept input messages
-		if m.pendingInput != nil {
-			switch msg.String() {
-			case "ctrl+c", "esc":
-				m.pendingInput = nil
-			case "enter":
-				m.invokeOperation(uimodels.WithPromptValue(context.Background(), m.textInput.Value()), m.pendingInput.OnDone)
-				m.pendingInput = nil
-			default:
-				m.textInput, textInputCommands = m.textInput.Update(msg)
-			}
-			break
-		}
+		// if m.pendingInput != nil {
+		// 	switch msg.String() {
+		// 	case "ctrl+c", "esc":
+		// 		m.pendingInput = nil
+		// 	case "enter":
+		// 		m.invokeOperation(uimodels.WithPromptValue(context.Background(), m.textInput.Value()), m.pendingInput.OnDone)
+		// 		m.pendingInput = nil
+		// 	default:
+		// 		m.textInput, textInputCommands = m.textInput.Update(msg)
+		// 	}
+		// 	break
+		// }
 
 		switch msg.String() {
 		case "ctrl+c", "q":

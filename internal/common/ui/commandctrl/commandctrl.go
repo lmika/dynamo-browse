@@ -23,9 +23,9 @@ func NewCommandController(commands map[string]uimodels.Operation) *CommandContro
 func (c *CommandController) Prompt() uimodels.Operation {
 	return uimodels.OperationFn(func(ctx context.Context) error {
 		uiCtx := uimodels.Ctx(ctx)
-		uiCtx.Send(events.PromptForInput{
+		uiCtx.Send(events.PromptForInputMsg{
 			Prompt: ":",
-			OnDone: c.Execute(),
+			// OnDone: c.Execute(),
 		})
 		return nil
 	})

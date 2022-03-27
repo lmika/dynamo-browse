@@ -22,7 +22,6 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/modal"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/lmika/gopkgs/cli"
 )
@@ -157,7 +156,8 @@ func newTestModel(descr string) tea.Model {
 							return nil
 						},
 						tableselect.ShowTableSelect(func(n string) tea.Cmd {
-							return statusandprompt.SetStatus("New table = " + n)
+							// return statusandprompt.SetStatus("New table = " + n)
+							return nil
 						}),
 					),
 				)
