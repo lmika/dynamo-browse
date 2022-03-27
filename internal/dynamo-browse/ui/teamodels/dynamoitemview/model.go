@@ -8,14 +8,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 )
 
 type Model struct {
-	ready    bool
-	viewport viewport.Model
-	w, h     int
+	ready      bool
+	frameTitle frame.FrameTitle
+	viewport   viewport.Model
+	w, h       int
 
 	// model state
 	currentResultSet *models.ResultSet
@@ -24,7 +27,8 @@ type Model struct {
 
 func New() Model {
 	return Model{
-		viewport: viewport.New(100, 100),
+		frameTitle: frame.NewFrameTitle("Item", false),
+		viewport:   viewport.New(100, 100),
 	}
 }
 
@@ -47,18 +51,19 @@ func (m Model) View() string {
 	if !m.ready {
 		return ""
 	}
-	return m.viewport.View()
+	return lipgloss.JoinVertical(lipgloss.Top, m.frameTitle.View(), m.viewport.View())
 }
 
 func (m Model) Resize(w, h int) layout.ResizingModel {
 	m.w, m.h = w, h
 	if !m.ready {
-		m.viewport = viewport.New(w, h-1)
+		m.viewport = viewport.New(w, h-1-m.frameTitle.HeaderHeight())
 		m.ready = true
 	} else {
 		m.viewport.Width = w
-		m.viewport.Height = h
+		m.viewport.Height = h - m.frameTitle.HeaderHeight()
 	}
+	m.frameTitle.Resize(w, h)
 	return m
 }
 
@@ -84,6 +89,6 @@ func (m *Model) updateViewportToSelectedMessage() {
 
 	tabWriter.Flush()
 	m.viewport.Width = m.w
-	m.viewport.Height = m.h
+	m.viewport.Height = m.h - m.frameTitle.HeaderHeight()
 	m.viewport.SetContent(viewportContent.String())
 }

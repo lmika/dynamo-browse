@@ -1,66 +1,51 @@
 package frame
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
 )
 
 var (
 	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#4479ff"))
+				Bold(true).
+				Foreground(lipgloss.Color("#ffffff")).
+				Background(lipgloss.Color("#4479ff"))
 
 	inactiveHeaderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#000000")).
-		Background(lipgloss.Color("#d1d1d1"))
+				Foreground(lipgloss.Color("#000000")).
+				Background(lipgloss.Color("#d1d1d1"))
 )
 
 // Frame is a frame that appears in the
-type Frame struct {
+type FrameTitle struct {
 	header string
 	active bool
-	model  layout.ResizingModel
 	width  int
 }
 
-func NewFrame(header string, active bool, model layout.ResizingModel) Frame {
-	return Frame{header, active, model, 0}
+func NewFrameTitle(header string, active bool) FrameTitle {
+	return FrameTitle{header, active, 0}
 }
 
-func (f Frame) Init() tea.Cmd {
-	return f.model.Init()
+func (f *FrameTitle) SetTitle(title string) {
+	f.header = title
 }
 
-func (f Frame) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case tea.KeyMsg:
-		// If frame is not active, do not receive key messages
-		if !f.active {
-			return f, nil
-		}
-	}
-
-	newModel, cmd := f.model.Update(msg)
-	f.model = newModel.(layout.ResizingModel)
-	return f, cmd
+func (f FrameTitle) View() string {
+	return f.headerView()
 }
 
-func (f Frame) View() string {
-	return lipgloss.JoinVertical(lipgloss.Top, f.headerView(), f.model.View())
-}
-
-func (f Frame) Resize(w, h int) layout.ResizingModel {
+func (f *FrameTitle) Resize(w, h int) {
 	f.width = w
-	headerHeight := lipgloss.Height(f.headerView())
-	f.model = f.model.Resize(w, h-headerHeight)
-	return f
 }
 
-func (f Frame) headerView() string {
+func (f FrameTitle) HeaderHeight() int {
+	return lipgloss.Height(f.headerView())
+}
+
+func (f FrameTitle) headerView() string {
 	style := inactiveHeaderStyle
 	if f.active {
 		style = activeHeaderStyle

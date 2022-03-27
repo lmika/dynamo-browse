@@ -3,14 +3,17 @@ package dynamotableview
 import (
 	table "github.com/calyptia/go-bubble-table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 )
 
 type Model struct {
 	tableReadControllers *controllers.TableReadController
+	frameTitle           frame.FrameTitle
 	table                table.Model
 	w, h                 int
 
@@ -23,7 +26,13 @@ func New(tableReadControllers *controllers.TableReadController) Model {
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
 
-	return Model{tableReadControllers: tableReadControllers, table: tbl}
+	frameTitle := frame.NewFrameTitle("No table", true)
+
+	return Model{
+		tableReadControllers: tableReadControllers,
+		frameTitle:           frameTitle,
+		table:                tbl,
+	}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -58,19 +67,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	return m.table.View()
+	return lipgloss.JoinVertical(lipgloss.Top, m.frameTitle.View(), m.table.View())
 }
 
 func (m Model) Resize(w, h int) layout.ResizingModel {
 	m.w, m.h = w, h
-	m.table.SetSize(w, h)
+	tblHeight := h - m.frameTitle.HeaderHeight()
+	m.table.SetSize(w, tblHeight)
+	m.frameTitle.Resize(w, h)
 	return m
 }
 
 func (m *Model) updateTable() {
 	resultSet := m.resultSet
 
-	newTbl := table.New(resultSet.Columns, m.w, m.h)
+	m.frameTitle.SetTitle("Table: " + resultSet.TableInfo.Name)
+
+	newTbl := table.New(resultSet.Columns, m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, len(resultSet.Items))
 	for i, r := range resultSet.Items {
 		newRows[i] = itemTableRow{resultSet, r}

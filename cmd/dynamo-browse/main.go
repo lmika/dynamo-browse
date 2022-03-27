@@ -23,7 +23,6 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/modal"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
@@ -81,8 +80,8 @@ func main() {
 	var model tea.Model = statusandprompt.New(
 		layout.NewVBox(
 			layout.LastChildFixedAt(11),
-			frame.NewFrame("This is the header", true, dynamotableview.New(tableReadController)),
-			frame.NewFrame("This is another header", false, dynamoitemview.New()),
+			dynamotableview.New(tableReadController),
+			dynamoitemview.New(),
 		),
 		"Hello world",
 	)
