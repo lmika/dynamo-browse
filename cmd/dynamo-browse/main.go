@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/brianvoe/gofakeit/v6"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
@@ -14,6 +15,10 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/modal"
 	"github.com/lmika/gopkgs/cli"
 	"log"
 	"os"
@@ -55,8 +60,31 @@ func main() {
 	})
 
 	uiModel := ui.NewModel(uiDispatcher, commandController, tableReadController, tableWriteController)
-	p := tea.NewProgram(uiModel, tea.WithAltScreen())
-	loopback.program = p
+
+	// TEMP
+	_ = uiModel
+	// END TEMP
+
+	model := layout.FullScreen(layout.NewVBox(
+		frame.NewFrame("This is the header", layout.Model(newTestModel("this is the top"))),
+		frame.NewFrame("This is another header", layout.Model(newTestModel("this is the bottom"))),
+	))
+
+	//frameSet := frameset.New([]frameset.Frame{
+	//	{
+	//		Header: "Frame 1",
+	//		Model:  newTestModel("this is model 1"),
+	//	},
+	//	{
+	//		Header: "Frame 2",
+	//		Model:  newTestModel("this is model 2"),
+	//	},
+	//})
+	//
+	//modal := modal.New(frameSet)
+
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	//loopback.program = p
 
 	// TEMP -- profiling
 	//cf, err := os.Create("trace.out")
@@ -90,4 +118,19 @@ type msgLoopback struct {
 
 func (m *msgLoopback) Send(msg tea.Msg) {
 	m.program.Send(msg)
+}
+
+func newTestModel(descr string) tea.Model {
+	return teamodels.TestModel{
+		Message: descr,
+		OnKeyPressed: func(k string) tea.Cmd {
+			log.Println("got key press: " + k)
+			if k == "enter" {
+				return modal.PushMode(newTestModel("this is mode " + gofakeit.CarModel() + " (press k to end)"))
+			} else if k == "k" {
+				return modal.PopMode
+			}
+			return nil
+		},
+	}
 }
