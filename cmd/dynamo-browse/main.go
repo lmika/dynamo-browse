@@ -24,6 +24,7 @@ import (
 	"github.com/lmika/gopkgs/cli"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -135,9 +136,18 @@ func newTestModel(descr string) tea.Model {
 		OnKeyPressed: func(k string) tea.Cmd {
 			log.Println("got key press: " + k)
 			if k == "enter" {
-				return tableselect.ShowTableSelect(func(n string) tea.Cmd {
-					return statusandprompt.SetStatus("New table = " + n)
-				})
+				return tea.Batch(
+					tableselect.IndicateLoadingTables(),
+					tea.Sequentially(
+						func() tea.Msg {
+							<-time.After(2 * time.Second)
+							return nil
+						},
+						tableselect.ShowTableSelect(func(n string) tea.Cmd {
+							return statusandprompt.SetStatus("New table = " + n)
+						}),
+					),
+				)
 			} else if k == "k" {
 				return modal.PopMode
 			}
