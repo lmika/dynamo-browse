@@ -2,11 +2,8 @@ package ui
 
 import (
 	"context"
-	"fmt"
 	"strings"
-	"text/tabwriter"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	table "github.com/calyptia/go-bubble-table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -83,6 +80,7 @@ func (m uiModel) Init() tea.Cmd {
 	return nil
 }
 
+/*
 func (m *uiModel) updateTable() {
 	if !m.ready {
 		return
@@ -98,6 +96,8 @@ func (m *uiModel) updateTable() {
 
 	m.table = newTbl
 }
+
+
 
 func (m *uiModel) selectedItem() (itemTableRow, bool) {
 	resultSet := m.state.ResultSet
@@ -136,6 +136,7 @@ func (m *uiModel) updateViewportToSelectedMessage() {
 	tabWriter.Flush()
 	m.viewport.SetContent(viewportContent.String())
 }
+*/
 
 func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var textInputCommands tea.Cmd
@@ -145,8 +146,8 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Local events
 	case controllers.NewResultSet:
 		m.state.ResultSet = msg.ResultSet
-		m.updateTable()
-		m.updateViewportToSelectedMessage()
+		// m.updateTable()
+		// m.updateViewportToSelectedMessage()
 	case controllers.SetReadWrite:
 		m.state.InReadWriteMode = msg.NewValue
 
@@ -203,16 +204,16 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "up", "i":
 			m.table.GoUp()
-			m.updateViewportToSelectedMessage()
+			// m.updateViewportToSelectedMessage()
 		case "down", "k":
 			m.table.GoDown()
-			m.updateViewportToSelectedMessage()
+			// m.updateViewportToSelectedMessage()
 
 		// TODO: these should be moved somewhere else
 		case ":":
 			m.invokeOperation(context.Background(), m.commandController.Prompt())
-		case "s":
-			m.invokeOperation(context.Background(), m.tableReadController.Scan())
+		// case "s":
+		// m.invokeOperation(context.Background(), m.tableReadController.Scan())
 		case "D":
 			m.invokeOperation(context.Background(), m.tableWriteController.Delete())
 		}
@@ -233,9 +234,9 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m uiModel) invokeOperation(ctx context.Context, op uimodels.Operation) {
 	state := m.state
-	if selectedItem, ok := m.selectedItem(); ok {
-		state.SelectedItem = selectedItem.item
-	}
+	// if selectedItem, ok := m.selectedItem(); ok {
+	// 	state.SelectedItem = selectedItem.item
+	// }
 
 	ctx = controllers.ContextWithState(ctx, state)
 	m.dispatcher.Start(ctx, op)

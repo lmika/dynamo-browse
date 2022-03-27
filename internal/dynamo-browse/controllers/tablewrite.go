@@ -81,9 +81,9 @@ func (c *TableWriteController) Duplicate() uimodels.Operation {
 				}
 
 				// Rescan to get updated items
-				if err := c.tableReadControllers.doScan(ctx, true); err != nil {
-					return err
-				}
+				// if err := c.tableReadControllers.doScan(ctx, true); err != nil {
+				// 	return err
+				// }
 
 				return nil
 			}))
@@ -122,9 +122,9 @@ func (c *TableWriteController) Delete() uimodels.Operation {
 			}
 
 			// Rescan to get updated items
-			if err := c.tableReadControllers.doScan(ctx, true); err != nil {
-				return err
-			}
+			// if err := c.tableReadControllers.doScan(ctx, true); err != nil {
+			// 	return err
+			// }
 
 			uiCtx.Message("Item deleted")
 			return nil

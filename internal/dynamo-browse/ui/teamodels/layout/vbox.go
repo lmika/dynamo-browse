@@ -1,18 +1,20 @@
 package layout
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
-	"strings"
 )
 
 // VBox is a model which will display its children vertically.
 type VBox struct {
+	boxSize  BoxSize
 	children []ResizingModel
 }
 
-func NewVBox(children ...ResizingModel) VBox {
-	return VBox{children: children}
+func NewVBox(boxSize BoxSize, children ...ResizingModel) VBox {
+	return VBox{boxSize: boxSize, children: children}
 }
 
 func (vb VBox) Init() tea.Cmd {
@@ -43,14 +45,9 @@ func (vb VBox) View() string {
 }
 
 func (vb VBox) Resize(w, h int) ResizingModel {
-	childrenHeight := h / len(vb.children)
-	lastChildRem := h % len(vb.children)
 	for i, c := range vb.children {
-		if i == len(vb.children)-1 {
-			vb.children[i] = c.Resize(w, childrenHeight+lastChildRem)
-		} else {
-			vb.children[i] = c.Resize(w, childrenHeight)
-		}
+		childHeight := vb.boxSize.childSize(i, len(vb.children), h)
+		vb.children[i] = c.Resize(w, childHeight)
 	}
 	return vb
 }

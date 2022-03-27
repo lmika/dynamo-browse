@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/brianvoe/gofakeit/v6"
@@ -21,7 +22,9 @@ func main() {
 	tableName := "awstools-test"
 	totalItems := 300
 
-	cfg, err := config.LoadDefaultConfig(ctx)
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion("ap-southeast-2"),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("abc", "123", "")))
 	if err != nil {
 		cli.Fatalf("cannot load AWS config: %v", err)
 	}
@@ -32,7 +35,7 @@ func main() {
 	if _, err = dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
 		TableName: aws.String(tableName),
 	}); err != nil {
-		log.Printf("warn: cannot delete table: %v", tableName)
+		log.Printf("warn: cannot delete table: %v: %v", tableName, err)
 	}
 
 	if _, err = dynamoClient.CreateTable(ctx, &dynamodb.CreateTableInput{

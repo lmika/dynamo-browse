@@ -4,7 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
+	"os"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -16,15 +21,13 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/modal"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/lmika/gopkgs/cli"
-	"log"
-	"os"
-	"time"
 )
 
 func main() {
@@ -33,7 +36,13 @@ func main() {
 	flag.Parse()
 
 	ctx := context.Background()
-	cfg, err := config.LoadDefaultConfig(ctx)
+
+	// TEMP
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion("ap-southeast-2"),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("abc", "123", "")))
+
+	// END TEMP
 	if err != nil {
 		cli.Fatalf("cannot load AWS config: %v", err)
 	}
@@ -57,9 +66,9 @@ func main() {
 	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController, *flagTable)
 
 	commandController := commandctrl.NewCommandController(map[string]uimodels.Operation{
-		"scan": tableReadController.Scan(),
-		"rw":   tableWriteController.ToggleReadWrite(),
-		"dup":  tableWriteController.Duplicate(),
+		// "scan": tableReadController.Scan(),
+		"rw":  tableWriteController.ToggleReadWrite(),
+		"dup": tableWriteController.Duplicate(),
 	})
 
 	uiModel := ui.NewModel(uiDispatcher, commandController, tableReadController, tableWriteController)
@@ -70,7 +79,8 @@ func main() {
 
 	var model tea.Model = statusandprompt.New(
 		layout.NewVBox(
-			frame.NewFrame("This is the header", true, layout.Model(newTestModel("this is the top"))),
+			layout.LastChildFixedAt(11),
+			frame.NewFrame("This is the header", true, dynamotableview.New(tableReadController)),
 			frame.NewFrame("This is another header", false, layout.Model(newTestModel("this is the bottom"))),
 		),
 		"Hello world",
