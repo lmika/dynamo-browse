@@ -21,6 +21,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
@@ -81,7 +82,7 @@ func main() {
 		layout.NewVBox(
 			layout.LastChildFixedAt(11),
 			frame.NewFrame("This is the header", true, dynamotableview.New(tableReadController)),
-			frame.NewFrame("This is another header", false, layout.Model(newTestModel("this is the bottom"))),
+			frame.NewFrame("This is another header", false, dynamoitemview.New()),
 		),
 		"Hello world",
 	)

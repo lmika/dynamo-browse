@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 )
 
@@ -34,16 +35,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case controllers.NewResultSet:
 		m.resultSet = msg.ResultSet
 		m.updateTable()
-		return m, nil
+		return m, m.postSelectedItemChanged
 	case tea.KeyMsg:
 		switch msg.String() {
 		// Table nav
 		case "i", "up":
 			m.table.GoUp()
-			return m, nil
+			return m, m.postSelectedItemChanged
 		case "k", "down":
 			m.table.GoDown()
-			return m, nil
+			return m, m.postSelectedItemChanged
 
 		// TEMP
 		case "s":
@@ -89,6 +90,15 @@ func (m *Model) selectedItem() (itemTableRow, bool) {
 	}
 
 	return itemTableRow{}, false
+}
+
+func (m *Model) postSelectedItemChanged() tea.Msg {
+	item, ok := m.selectedItem()
+	if !ok {
+		return nil
+	}
+
+	return dynamoitemview.NewItemSelected{ResultSet: item.resultSet, Item: item.item}
 }
 
 /*
