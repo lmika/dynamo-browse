@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"context"
-	"log"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
@@ -52,20 +50,16 @@ func (c *TableReadController) scanTable(name string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
-		log.Println("Fetching table info")
 		tableInfo, err := c.tableService.Describe(ctx, name)
 		if err != nil {
 			return events.Error(errors.Wrapf(err, "cannot describe %v", c.tableName))
 		}
 
-		log.Println("Scanning")
 		resultSet, err := c.tableService.Scan(ctx, tableInfo)
 		if err != nil {
-			log.Println("error: ", err)
 			return events.Error(err)
 		}
 
-		log.Println("Scan done")
 		return NewResultSet{resultSet}
 	}
 }
@@ -74,14 +68,11 @@ func (c *TableReadController) Rescan(resultSet *models.ResultSet) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
-		log.Println("Scanning")
 		resultSet, err := c.tableService.Scan(ctx, resultSet.TableInfo)
 		if err != nil {
-			log.Println("error: ", err)
 			return events.Error(err)
 		}
 
-		log.Println("Scan done")
 		return NewResultSet{resultSet}
 	}
 }

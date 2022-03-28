@@ -2,6 +2,7 @@ package ui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
@@ -12,12 +13,13 @@ import (
 
 type Model struct {
 	tableReadController *controllers.TableReadController
+	commandController   *commandctrl.CommandController
 
 	root tea.Model
 }
 
-func NewModel(rc *controllers.TableReadController) Model {
-	dtv := dynamotableview.New(rc)
+func NewModel(rc *controllers.TableReadController, cc *commandctrl.CommandController) Model {
+	dtv := dynamotableview.New(rc, cc)
 	div := dynamoitemview.New()
 
 	m := statusandprompt.New(
@@ -28,6 +30,7 @@ func NewModel(rc *controllers.TableReadController) Model {
 
 	return Model{
 		tableReadController: rc,
+		commandController:   cc,
 		root:                root,
 	}
 }

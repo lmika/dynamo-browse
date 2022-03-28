@@ -4,6 +4,7 @@ import (
 	table "github.com/calyptia/go-bubble-table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -13,15 +14,17 @@ import (
 
 type Model struct {
 	tableReadControllers *controllers.TableReadController
-	frameTitle           frame.FrameTitle
-	table                table.Model
-	w, h                 int
+	commandCtrl          *commandctrl.CommandController
+
+	frameTitle frame.FrameTitle
+	table      table.Model
+	w, h       int
 
 	// model state
 	resultSet *models.ResultSet
 }
 
-func New(tableReadControllers *controllers.TableReadController) Model {
+func New(tableReadControllers *controllers.TableReadController, commandCtrl *commandctrl.CommandController) Model {
 	tbl := table.New([]string{"pk", "sk"}, 100, 100)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
@@ -30,6 +33,7 @@ func New(tableReadControllers *controllers.TableReadController) Model {
 
 	return Model{
 		tableReadControllers: tableReadControllers,
+		commandCtrl:          commandCtrl,
 		frameTitle:           frameTitle,
 		table:                tbl,
 	}
@@ -58,6 +62,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// TEMP
 		case "s":
 			return m, m.tableReadControllers.Rescan(m.resultSet)
+		case ":":
+			return m, m.commandCtrl.Prompt()
+		// END TEMP
 		case "ctrl+c", "esc":
 			return m, tea.Quit
 		}
