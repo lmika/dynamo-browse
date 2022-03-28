@@ -6,5 +6,5 @@ import (
 )
 
 type SSMProvider interface {
-	List(ctx context.Context) (*models.SSMParameters, error)
+	List(ctx context.Context, prefix string, nextToken string) (*models.SSMParameters, error)
 }

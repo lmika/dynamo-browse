@@ -19,13 +19,17 @@ type Model struct {
 }
 
 func New() *Model {
-	frameTitle := frame.NewFrameTitle("SSM", true)
+	frameTitle := frame.NewFrameTitle("SSM: /", true)
 	table := table.New([]string{"name", "type", "value"}, 0, 0)
 
 	return &Model{
 		frameTitle: frameTitle,
 		table: table,
 	}
+}
+
+func (m *Model) SetPrefix(newPrefix string) {
+	m.frameTitle.SetTitle("SSM: " + newPrefix)
 }
 
 func (m *Model) SetParameters(parameters *models.SSMParameters) {

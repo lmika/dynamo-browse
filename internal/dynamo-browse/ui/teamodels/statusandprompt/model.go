@@ -19,16 +19,16 @@ type StatusAndPrompt struct {
 	width         int
 }
 
-func New(model layout.ResizingModel, initialMsg string) StatusAndPrompt {
+func New(model layout.ResizingModel, initialMsg string) *StatusAndPrompt {
 	textInput := textinput.New()
-	return StatusAndPrompt{model: model, statusMessage: initialMsg, textInput: textInput}
+	return &StatusAndPrompt{model: model, statusMessage: initialMsg, textInput: textInput}
 }
 
-func (s StatusAndPrompt) Init() tea.Cmd {
+func (s *StatusAndPrompt) Init() tea.Cmd {
 	return s.model.Init()
 }
 
-func (s StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case events.ErrorMsg:
 		s.statusMessage = "Error: " + msg.Error()
@@ -80,18 +80,22 @@ func (s StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, cmd
 }
 
-func (s StatusAndPrompt) View() string {
+func (s *StatusAndPrompt) InPrompt() bool {
+	return s.pendingInput != nil
+}
+
+func (s *StatusAndPrompt) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, s.model.View(), s.viewStatus())
 }
 
-func (s StatusAndPrompt) Resize(w, h int) layout.ResizingModel {
+func (s *StatusAndPrompt) Resize(w, h int) layout.ResizingModel {
 	s.width = w
 	submodelHeight := h - lipgloss.Height(s.viewStatus())
 	s.model = s.model.Resize(w, submodelHeight)
 	return s
 }
 
-func (s StatusAndPrompt) viewStatus() string {
+func (s *StatusAndPrompt) viewStatus() string {
 	if s.pendingInput != nil {
 		return s.textInput.View()
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/logging"
 	"github.com/lmika/awstools/internal/ssm-browse/controllers"
 	"github.com/lmika/awstools/internal/ssm-browse/providers/awsssm"
@@ -33,7 +34,17 @@ func main() {
 	service := ssmparameters.NewService(provider)
 
 	ctrl := controllers.New(service)
-	model := ui.NewModel(ctrl)
+
+	cmdController := commandctrl.NewCommandController()
+	cmdController.AddCommands(&commandctrl.CommandContext{
+		Commands: map[string]commandctrl.Command{
+			"cd": func(args []string) tea.Cmd {
+				return ctrl.ChangePrefix(args[0])
+			},
+		},
+	})
+
+	model := ui.NewModel(ctrl, cmdController)
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 

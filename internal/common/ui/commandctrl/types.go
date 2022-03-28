@@ -9,3 +9,9 @@ func NoArgCommand(cmd tea.Cmd) Command {
 		return cmd
 	}
 }
+
+type CommandContext struct {
+	Commands map[string]Command
+
+	parent   *CommandContext
+}
