@@ -14,7 +14,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
 	"github.com/lmika/awstools/internal/common/ui/events"
-	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/sqs-browse/controllers"
 	"github.com/lmika/awstools/internal/sqs-browse/models"
 )
@@ -38,7 +37,7 @@ type uiModel struct {
 	tableRows []table.Row
 	message   string
 
-	pendingInput *events.PromptForInput
+	pendingInput *events.PromptForInputMsg
 	textInput    textinput.Model
 
 	dispatcher         *dispatcher.Dispatcher
@@ -96,14 +95,15 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	// Shared messages
-	case events.Error:
+	case events.ErrorMsg:
 		m.message = "Error: " + msg.Error()
-	case events.Message:
+	case events.StatusMsg:
 		m.message = string(msg)
-	case events.PromptForInput:
-		m.textInput.Focus()
-		m.textInput.SetValue("")
-		m.pendingInput = &msg
+	case events.PromptForInputMsg:
+		// TODO
+		//m.textInput.Focus()
+		//m.textInput.SetValue("")
+		//m.pendingInput = &msg
 
 	// Local messages
 	case NewMessagesEvent:
@@ -143,7 +143,7 @@ func (m uiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+c", "esc":
 				m.pendingInput = nil
 			case "enter":
-				m.dispatcher.Start(uimodels.WithPromptValue(context.Background(), m.textInput.Value()), m.pendingInput.OnDone)
+				//m.dispatcher.Start(uimodels.WithPromptValue(context.Background(), m.textInput.Value()), m.pendingInput.OnDone)
 				m.pendingInput = nil
 			default:
 				m.textInput, textInputCommands = m.textInput.Update(msg)
