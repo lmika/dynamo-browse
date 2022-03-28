@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -34,9 +33,7 @@ func main() {
 	ctx := context.Background()
 
 	// TEMP
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion("ap-southeast-2"),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("abc", "123", "")))
+	cfg, err := config.LoadDefaultConfig(ctx)
 
 	// END TEMP
 	if err != nil {

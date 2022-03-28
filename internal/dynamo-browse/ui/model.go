@@ -21,7 +21,7 @@ func NewModel(rc *controllers.TableReadController) Model {
 	div := dynamoitemview.New()
 
 	m := statusandprompt.New(
-		layout.NewVBox(layout.LastChildFixedAt(11), dtv, div),
+		layout.NewVBox(layout.LastChildFixedAt(17), dtv, div),
 		"Hello world",
 	)
 	root := layout.FullScreen(tableselect.New(m))

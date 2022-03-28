@@ -57,7 +57,8 @@ func (m Model) View() string {
 func (m Model) Resize(w, h int) layout.ResizingModel {
 	m.w, m.h = w, h
 	if !m.ready {
-		m.viewport = viewport.New(w, h-1-m.frameTitle.HeaderHeight())
+		m.viewport = viewport.New(w, h-m.frameTitle.HeaderHeight())
+		m.viewport.SetContent("")
 		m.ready = true
 	} else {
 		m.viewport.Width = w

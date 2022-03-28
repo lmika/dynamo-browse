@@ -12,6 +12,10 @@ type equalSize struct {
 }
 
 func (l equalSize) childSize(idx, cnt, available int) int {
+	if cnt == 1 {
+		return available
+	}
+
 	childrenHeight := available / cnt
 	lastChildRem := available % cnt
 	if idx == cnt-1 {

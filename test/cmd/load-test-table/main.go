@@ -2,15 +2,14 @@ package main
 
 import (
 	"context"
+	"github.com/brianvoe/gofakeit/v6"
+	"github.com/google/uuid"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/brianvoe/gofakeit/v6"
-	"github.com/google/uuid"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
@@ -22,9 +21,7 @@ func main() {
 	tableName := "awstools-test"
 	totalItems := 300
 
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion("ap-southeast-2"),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("abc", "123", "")))
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		cli.Fatalf("cannot load AWS config: %v", err)
 	}
@@ -63,6 +60,8 @@ func main() {
 
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
 	tableService := tables.NewService(dynamoProvider)
+
+	_, _ = tableService, tableInfo
 
 	for i := 0; i < totalItems; i++ {
 		key := uuid.New().String()

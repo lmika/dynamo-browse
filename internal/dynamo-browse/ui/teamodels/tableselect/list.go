@@ -27,6 +27,7 @@ func newListController(tableNames []string, w, h int) listController {
 	delegate.ShowDescription = false
 
 	list := list.New(items, delegate, w, h)
+	list.SetShowTitle(false)
 
 	return listController{list: list}
 }
