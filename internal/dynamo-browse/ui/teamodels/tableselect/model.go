@@ -1,6 +1,7 @@
 package tableselect
 
 import (
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
@@ -38,14 +39,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.pendingSelection != nil {
 			switch msg.String() {
 			case "enter":
-				var sel controllers.PromptForTableMsg
-				sel, m.pendingSelection = *m.pendingSelection, nil
+				if m.listController.list.FilterState() != list.Filtering {
+					var sel controllers.PromptForTableMsg
+					sel, m.pendingSelection = *m.pendingSelection, nil
 
-				return m, sel.OnSelected(m.listController.list.SelectedItem().(tableItem).name)
-			default:
-				m.listController = cc.Collect(m.listController.Update(msg)).(listController)
-				return m, cc.Cmd()
+					return m, sel.OnSelected(m.listController.list.SelectedItem().(tableItem).name)
+				}
 			}
+
+			m.listController = cc.Collect(m.listController.Update(msg)).(listController)
+			return m, cc.Cmd()
 		}
 	}
 

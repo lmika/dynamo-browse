@@ -26,7 +26,9 @@ func newListController(tableNames []string, w, h int) listController {
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = false
 
-	return listController{list.New(items, delegate, w, h)}
+	list := list.New(items, delegate, w, h)
+
+	return listController{list: list}
 }
 
 func (l listController) Init() tea.Cmd {
