@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/*
   pull_request:
     branches:
       - main
@@ -24,7 +23,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
       - name: Configure
         run: |
           git config --global url."https://${{ secrets.GO_MODULES_TOKEN }}:x-oauth-basic@github.com/lmika".insteadOf "https://github.com/lmika"

@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"context"
-
-	"github.com/lmika/awstools/internal/common/ui/uimodels"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/pkg/errors"
@@ -21,6 +21,63 @@ func NewTableReadController(tableService *tables.Service, tableName string) *Tab
 	}
 }
 
+// Init does an initial scan of the table.  If no table is specified, it prompts for a table, then does a scan.
+func (c *TableReadController) Init() tea.Cmd {
+	if c.tableName == "" {
+		return c.listTables()
+	} else {
+		return c.scanTable(c.tableName)
+	}
+}
+
+func (c *TableReadController) listTables() tea.Cmd {
+	return func() tea.Msg {
+		tables, err := c.tableService.ListTables(context.Background())
+		if err != nil {
+			return events.Error(err)
+		}
+
+		return PromptForTableMsg{
+			Tables: tables,
+			OnSelected: func(tableName string) tea.Cmd {
+				return c.scanTable(tableName)
+			},
+		}
+	}
+}
+
+func (c *TableReadController) scanTable(name string) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+
+		tableInfo, err := c.tableService.Describe(ctx, name)
+		if err != nil {
+			return events.Error(errors.Wrapf(err, "cannot describe %v", c.tableName))
+		}
+
+		resultSet, err := c.tableService.Scan(ctx, tableInfo)
+		if err != nil {
+			return events.Error(err)
+		}
+
+		return NewResultSet{resultSet}
+	}
+}
+
+func (c *TableReadController) Rescan(resultSet *models.ResultSet) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+
+		resultSet, err := c.tableService.Scan(ctx, resultSet.TableInfo)
+		if err != nil {
+			return events.Error(err)
+		}
+
+		return NewResultSet{resultSet}
+	}
+}
+
+/*
 func (c *TableReadController) Scan() uimodels.Operation {
 	return uimodels.OperationFn(func(ctx context.Context) error {
 		return c.doScan(ctx, false)
@@ -50,17 +107,20 @@ func (c *TableReadController) doScan(ctx context.Context, quiet bool) (err error
 	uiCtx.Send(NewResultSet{resultSet})
 	return nil
 }
+*/
 
 // tableInfo returns the table info from the state if a result set exists.  If not, it fetches the
 // table information from the service.
-func (c *TableReadController) tableInfo(ctx context.Context) (*models.TableInfo, error) {
-	if existingResultSet := CurrentState(ctx).ResultSet; existingResultSet != nil {
-		return existingResultSet.TableInfo, nil
-	}
+// func (c *TableReadController) tableInfo(ctx context.Context) (*models.TableInfo, error) {
+// 	/*
+// 		if existingResultSet := CurrentState(ctx).ResultSet; existingResultSet != nil {
+// 			return existingResultSet.TableInfo, nil
+// 		}
+// 	*/
 
-	tableInfo, err := c.tableService.Describe(ctx, c.tableName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot describe %v", c.tableName)
-	}
-	return tableInfo, nil
-}
+// 	tableInfo, err := c.tableService.Describe(ctx, c.tableName)
+// 	if err != nil {
+// 		return nil, errors.Wrapf(err, "cannot describe %v", c.tableName)
+// 	}
+// 	return tableInfo, nil
+// }

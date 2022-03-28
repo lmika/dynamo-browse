@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
+	"github.com/brianvoe/gofakeit/v6"
+	"github.com/google/uuid"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/brianvoe/gofakeit/v6"
-	"github.com/google/uuid"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
@@ -32,7 +32,7 @@ func main() {
 	if _, err = dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
 		TableName: aws.String(tableName),
 	}); err != nil {
-		log.Printf("warn: cannot delete table: %v", tableName)
+		log.Printf("warn: cannot delete table: %v: %v", tableName, err)
 	}
 
 	if _, err = dynamoClient.CreateTable(ctx, &dynamodb.CreateTableInput{
@@ -60,6 +60,8 @@ func main() {
 
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
 	tableService := tables.NewService(dynamoProvider)
+
+	_, _ = tableService, tableInfo
 
 	for i := 0; i < totalItems; i++ {
 		key := uuid.New().String()

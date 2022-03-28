@@ -4,19 +4,18 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
-
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
-	"github.com/lmika/awstools/internal/common/ui/dispatcher"
-	"github.com/lmika/awstools/internal/common/ui/uimodels"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui"
 	"github.com/lmika/gopkgs/cli"
+	"log"
+	"os"
 )
 
 func main() {
@@ -25,6 +24,7 @@ func main() {
 	flag.Parse()
 
 	ctx := context.Background()
+
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		cli.Fatalf("cannot load AWS config: %v", err)
@@ -42,21 +42,22 @@ func main() {
 
 	tableService := tables.NewService(dynamoProvider)
 
-	loopback := &msgLoopback{}
-	uiDispatcher := dispatcher.NewDispatcher(loopback)
-
 	tableReadController := controllers.NewTableReadController(tableService, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController, *flagTable)
+	_ = tableWriteController
 
-	commandController := commandctrl.NewCommandController(map[string]uimodels.Operation{
-		"scan": tableReadController.Scan(),
-		"rw":   tableWriteController.ToggleReadWrite(),
-		"dup":  tableWriteController.Duplicate(),
+	commandController := commandctrl.NewCommandController(map[string]commandctrl.Command{
+		"q": commandctrl.NoArgCommand(tea.Quit),
+		//"rw":  tableWriteController.ToggleReadWrite(),
+		//"dup": tableWriteController.Duplicate(),
 	})
 
-	uiModel := ui.NewModel(uiDispatcher, commandController, tableReadController, tableWriteController)
-	p := tea.NewProgram(uiModel, tea.WithAltScreen())
-	loopback.program = p
+	model := ui.NewModel(tableReadController, commandController)
+
+	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
+	lipgloss.HasDarkBackground()
+
+	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	f, err := tea.LogToFile("debug.log", "debug")
 	if err != nil {
@@ -65,16 +66,18 @@ func main() {
 	}
 	defer f.Close()
 
+	log.Println("launching")
 	if err := p.Start(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
 }
 
-type msgLoopback struct {
-	program *tea.Program
-}
-
-func (m *msgLoopback) Send(msg tea.Msg) {
-	m.program.Send(msg)
-}
+//
+//type msgLoopback struct {
+//	program *tea.Program
+//}
+//
+//func (m *msgLoopback) Send(msg tea.Msg) {
+//	m.program.Send(msg)
+//}
