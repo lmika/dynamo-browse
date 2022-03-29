@@ -19,16 +19,16 @@ type Model struct {
 	w, h             int
 }
 
-func New(submodel tea.Model) Model {
+func New(submodel tea.Model) *Model {
 	frameTitle := frame.NewFrameTitle("Select table", false)
-	return Model{frameTitle: frameTitle, submodel: submodel}
+	return &Model{frameTitle: frameTitle, submodel: submodel}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return m.submodel.Init()
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cc utils.CmdCollector
 	switch msg := msg.(type) {
 	case controllers.PromptForTableMsg:
@@ -60,7 +60,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cc.Cmd()
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	if m.pendingSelection != nil {
 		return lipgloss.JoinVertical(lipgloss.Top, m.frameTitle.View(), m.listController.View())
 	} else if m.isLoading {
@@ -70,11 +70,11 @@ func (m Model) View() string {
 	return m.submodel.View()
 }
 
-func (m Model) shouldShow() bool {
+func (m *Model) Visible() bool {
 	return m.pendingSelection != nil || m.isLoading
 }
 
-func (m Model) Resize(w, h int) layout.ResizingModel {
+func (m *Model) Resize(w, h int) layout.ResizingModel {
 	m.w, m.h = w, h
 	m.submodel = layout.Resize(m.submodel, w, h)
 

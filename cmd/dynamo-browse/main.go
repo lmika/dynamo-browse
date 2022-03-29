@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
+	"github.com/lmika/awstools/internal/common/ui/logging"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
@@ -46,10 +47,18 @@ func main() {
 	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController, *flagTable)
 	_ = tableWriteController
 
-	commandController := commandctrl.NewCommandController(map[string]commandctrl.Command{
-		"q": commandctrl.NoArgCommand(tea.Quit),
-		//"rw":  tableWriteController.ToggleReadWrite(),
-		//"dup": tableWriteController.Duplicate(),
+	commandController := commandctrl.NewCommandController()
+	commandController.AddCommands(&commandctrl.CommandContext{
+		Commands: map[string]commandctrl.Command{
+			"q": commandctrl.NoArgCommand(tea.Quit),
+			"table": func(args []string) tea.Cmd {
+				if len(args) == 0 {
+					return tableReadController.ListTables()
+				} else {
+					return tableReadController.ScanTable(args[0])
+				}
+			},
+		},
 	})
 
 	model := ui.NewModel(tableReadController, commandController)
@@ -59,12 +68,8 @@ func main() {
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		fmt.Println("fatal:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
+	closeFn := logging.EnableLogging()
+	defer closeFn()
 
 	log.Println("launching")
 	if err := p.Start(); err != nil {
@@ -72,12 +77,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-//
-//type msgLoopback struct {
-//	program *tea.Program
-//}
-//
-//func (m *msgLoopback) Send(msg tea.Msg) {
-//	m.program.Send(msg)
-//}
