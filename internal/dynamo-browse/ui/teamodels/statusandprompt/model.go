@@ -6,8 +6,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
-	"log"
 )
 
 // StatusAndPrompt is a resizing model which displays a submodel and a status bar.  When the start prompt
@@ -47,36 +45,23 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.textInput.Focus()
 		s.textInput.SetValue("")
 		s.pendingInput = &msg
-		log.Println("pending input == ", s.pendingInput)
 		return s, nil
 	case tea.KeyMsg:
 		if s.pendingInput != nil {
 			switch msg.String() {
 			case "ctrl+c", "esc":
 				s.pendingInput = nil
-				log.Println("pending input == ", s.pendingInput)
 			case "enter":
 				pendingInput := s.pendingInput
 				s.pendingInput = nil
-				log.Println("pending input == ", s.pendingInput)
 
 				return s, pendingInput.OnDone(s.textInput.Value())
+			default:
+				newTextInput, cmd := s.textInput.Update(msg)
+				s.textInput = newTextInput
+				return s, cmd
 			}
 		}
-	}
-
-	if s.pendingInput != nil {
-		var cc utils.CmdCollector
-
-		newTextInput, cmd := s.textInput.Update(msg)
-		cc.Add(cmd)
-		s.textInput = newTextInput
-
-		if _, isKey := msg.(tea.Key); !isKey {
-			s.model = cc.Collect(s.model.Update(msg)).(layout.ResizingModel)
-		}
-
-		return s, cc.Cmd()
 	}
 
 	newModel, cmd := s.model.Update(msg)

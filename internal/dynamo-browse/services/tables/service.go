@@ -3,6 +3,7 @@ package tables
 import (
 	"context"
 	"sort"
+	"strings"
 
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
@@ -67,11 +68,13 @@ func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*model
 
 	models.Sort(results, tableInfo)
 
-	return &models.ResultSet{
+	resultSet := &models.ResultSet{
 		TableInfo: tableInfo,
 		Columns:   columns,
-		Items:     results,
-	}, nil
+	}
+	resultSet.SetItems(results)
+
+	return resultSet, nil
 }
 
 func (s *Service) Put(ctx context.Context, tableInfo *models.TableInfo, item models.Item) error {
@@ -85,4 +88,31 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 		}
 	}
 	return nil
+}
+
+// TODO: move into a new service
+func (s *Service) Filter(resultSet *models.ResultSet, filter string) *models.ResultSet {
+	for i, item := range resultSet.Items() {
+		if filter == "" {
+			resultSet.SetHidden(i, false)
+			continue
+		}
+
+		var shouldHide = true
+		for k := range item {
+			str, ok := item.AttributeValueAsString(k)
+			if !ok {
+				continue
+			}
+
+			if strings.Contains(str, filter) {
+				shouldHide = false
+				break
+			}
+		}
+
+		resultSet.SetHidden(i, shouldHide)
+	}
+
+	return resultSet
 }

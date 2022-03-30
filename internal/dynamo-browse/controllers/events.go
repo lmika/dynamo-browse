@@ -12,7 +12,7 @@ type NewResultSet struct {
 }
 
 func (rs NewResultSet) StatusMessage() string {
-	return fmt.Sprintf("%d items returned", len(rs.ResultSet.Items))
+	return fmt.Sprintf("%d items returned", len(rs.ResultSet.Items()))
 }
 
 type SetReadWrite struct {

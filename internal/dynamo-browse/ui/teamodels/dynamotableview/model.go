@@ -17,6 +17,7 @@ type Model struct {
 	w, h       int
 
 	// model state
+	rows      []table.Row
 	resultSet *models.ResultSet
 }
 
@@ -52,6 +53,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "k", "down":
 			m.table.GoDown()
 			return m, m.postSelectedItemChanged
+		case "I", "pgup":
+			m.table.GoPageUp()
+			return m, m.postSelectedItemChanged
+		case "K", "pgdn":
+			m.table.GoPageDown()
+			return m, m.postSelectedItemChanged
 		}
 	}
 
@@ -76,22 +83,32 @@ func (m *Model) updateTable() {
 	m.frameTitle.SetTitle("Table: " + resultSet.TableInfo.Name)
 
 	newTbl := table.New(resultSet.Columns, m.w, m.h-m.frameTitle.HeaderHeight())
-	newRows := make([]table.Row, len(resultSet.Items))
-	for i, r := range resultSet.Items {
-		newRows[i] = itemTableRow{resultSet, r}
+	newRows := make([]table.Row, 0)
+	for i, r := range resultSet.Items() {
+		if resultSet.Hidden(i) {
+			continue
+		}
+
+		newRows = append(newRows, itemTableRow{resultSet: resultSet, itemIndex: i, item: r})
 	}
+
+	m.rows = newRows
 	newTbl.SetRows(newRows)
 
 	m.table = newTbl
 }
 
 func (m *Model) SelectedItemIndex() int {
-	return m.table.Cursor()
+	selectedItem, ok := m.selectedItem()
+	if !ok {
+		return -1
+	}
+	return selectedItem.itemIndex
 }
 
 func (m *Model) selectedItem() (itemTableRow, bool) {
 	resultSet := m.resultSet
-	if resultSet != nil && len(resultSet.Items) > 0 {
+	if resultSet != nil && len(m.rows) > 0 {
 		selectedItem, ok := m.table.SelectedRow().(itemTableRow)
 		if ok {
 			return selectedItem, true
@@ -111,6 +128,5 @@ func (m *Model) postSelectedItemChanged() tea.Msg {
 }
 
 func (m *Model) Refresh() {
-	m.table.GoDown()
-	m.table.GoUp()
+	m.table.SetRows(m.rows)
 }

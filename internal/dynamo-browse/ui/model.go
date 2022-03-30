@@ -38,6 +38,7 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 					return rc.ScanTable(args[0])
 				}
 			},
+			"unmark": commandctrl.NoArgCommand(rc.Unmark()),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked()),
 		},
 	})
@@ -67,9 +68,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() {
 			switch msg.String() {
 			case "m":
-				return m, m.tableWriteController.ToggleMark(m.tableView.SelectedItemIndex())
+				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
+					return m, m.tableWriteController.ToggleMark(idx)
+				}
 			case "s":
 				return m, m.tableReadController.Rescan()
+			case "/":
+				return m, m.tableReadController.Filter()
 			case ":":
 				return m, m.commandController.Prompt()
 			case "ctrl+c", "esc":

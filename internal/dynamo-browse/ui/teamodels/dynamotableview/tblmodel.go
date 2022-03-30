@@ -18,11 +18,12 @@ var (
 
 type itemTableRow struct {
 	resultSet *models.ResultSet
+	itemIndex int
 	item      models.Item
 }
 
 func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
-	isMarked := mtr.resultSet.Marked(index)
+	isMarked := mtr.resultSet.Marked(mtr.itemIndex)
 
 	sb := strings.Builder{}
 	for i, colName := range mtr.resultSet.Columns {
