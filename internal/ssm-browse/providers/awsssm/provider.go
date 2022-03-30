@@ -19,33 +19,32 @@ func NewProvider(client *ssm.Client) *Provider {
 	}
 }
 
-func (p *Provider) List(ctx context.Context, prefix string, nextToken string) (*models.SSMParameters, error) {
+func (p *Provider) List(ctx context.Context, prefix string, maxCount int) (*models.SSMParameters, error) {
 	log.Printf("new prefix: %v", prefix)
 
-	var nextTokenStr *string = nil
-	if nextToken != "" {
-		nextTokenStr = aws.String(nextToken)
-	}
-	pars, err := p.client.GetParametersByPath(ctx, &ssm.GetParametersByPathInput{
+	pager := ssm.NewGetParametersByPathPaginator(p.client, &ssm.GetParametersByPathInput{
 		Path:       aws.String(prefix),
-		NextToken:  nextTokenStr,
-		MaxResults: 10,
 		Recursive:  true,
+		WithDecryption: true,
 	})
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get parameters from path")
-	}
 
-	res := &models.SSMParameters{
-		Items: make([]models.SSMParameter, len(pars.Parameters)),
-		NextToken: aws.ToString(pars.NextToken),
-	}
-	for i, p := range pars.Parameters {
-		res.Items[i] = models.SSMParameter{
-			Name:  aws.ToString(p.Name),
-			Value: aws.ToString(p.Value),
+	items := make([]models.SSMParameter, 0)
+	outer: for pager.HasMorePages() {
+		out, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot get parameters from path")
+		}
+
+		for _, p := range out.Parameters {
+			items = append(items, models.SSMParameter{
+				Name:  aws.ToString(p.Name),
+				Value: aws.ToString(p.Value),
+			})
+			if len(items) >= maxCount {
+				break outer
+			}
 		}
 	}
 
-	return res, nil
+	return &models.SSMParameters{Items: items}, nil
 }

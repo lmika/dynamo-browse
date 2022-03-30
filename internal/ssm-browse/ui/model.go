@@ -6,6 +6,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/awstools/internal/ssm-browse/controllers"
+	"github.com/lmika/awstools/internal/ssm-browse/ui/ssmdetails"
 	"github.com/lmika/awstools/internal/ssm-browse/ui/ssmlist"
 )
 
@@ -14,13 +15,17 @@ type Model struct {
 	controller      *controllers.SSMController
 	statusAndPrompt *statusandprompt.StatusAndPrompt
 
-	root    tea.Model
-	ssmList *ssmlist.Model
+	root       tea.Model
+	ssmList    *ssmlist.Model
+	ssmDetails *ssmdetails.Model
 }
 
 func NewModel(controller *controllers.SSMController, cmdController *commandctrl.CommandController) Model {
 	ssmList := ssmlist.New()
-	statusAndPrompt := statusandprompt.New(ssmList, "Hello SSM")
+	ssmdDetails := ssmdetails.New()
+	statusAndPrompt := statusandprompt.New(
+		layout.NewVBox(layout.LastChildFixedAt(17), ssmList, ssmdDetails),
+		"")
 
 	root := layout.FullScreen(statusAndPrompt)
 
@@ -30,6 +35,7 @@ func NewModel(controller *controllers.SSMController, cmdController *commandctrl.
 		root:            root,
 		statusAndPrompt: statusAndPrompt,
 		ssmList:         ssmList,
+		ssmDetails:      ssmdDetails,
 	}
 }
 
@@ -42,6 +48,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case controllers.NewParameterListMsg:
 		m.ssmList.SetPrefix(msg.Prefix)
 		m.ssmList.SetParameters(msg.Parameters)
+	case ssmlist.NewSSMParameterSelected:
+		m.ssmDetails.SetSelectedItem(msg)
 	case tea.KeyMsg:
 		if !m.statusAndPrompt.InPrompt() {
 			switch msg.String() {

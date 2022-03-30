@@ -51,13 +51,31 @@ func (m *Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	//var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		m.table, cmd = m.table.Update(msg)
-		return m, cmd
+		switch msg.String() {
+		case "i", "up":
+			m.table.GoUp()
+			return m, m.emitNewSelectedParameter()
+		case "k", "down":
+			m.table.GoDown()
+			return m, m.emitNewSelectedParameter()
+		}
+		//m.table, cmd = m.table.Update(msg)
+		//return m, cmd
 	}
 	return m, nil
+}
+
+func (m *Model) emitNewSelectedParameter() tea.Cmd {
+	return func() tea.Msg {
+		if row, ok := m.table.SelectedRow().(itemTableRow); ok {
+			return NewSSMParameterSelected(&(row.item))
+		}
+
+		return nil
+	}
 }
 
 func (m *Model) View() string {
