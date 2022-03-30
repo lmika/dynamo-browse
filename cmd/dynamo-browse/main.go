@@ -44,24 +44,10 @@ func main() {
 	tableService := tables.NewService(dynamoProvider)
 
 	tableReadController := controllers.NewTableReadController(tableService, *flagTable)
-	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController, *flagTable)
-	_ = tableWriteController
+	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController)
 
 	commandController := commandctrl.NewCommandController()
-	commandController.AddCommands(&commandctrl.CommandContext{
-		Commands: map[string]commandctrl.Command{
-			"q": commandctrl.NoArgCommand(tea.Quit),
-			"table": func(args []string) tea.Cmd {
-				if len(args) == 0 {
-					return tableReadController.ListTables()
-				} else {
-					return tableReadController.ScanTable(args[0])
-				}
-			},
-		},
-	})
-
-	model := ui.NewModel(tableReadController, commandController)
+	model := ui.NewModel(tableReadController, tableWriteController, commandController)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()

@@ -28,8 +28,8 @@ func New() *Model {
 	frameTitle := frame.NewFrameTitle("No table", true)
 
 	return &Model{
-		frameTitle:           frameTitle,
-		table:                tbl,
+		frameTitle: frameTitle,
+		table:      tbl,
 	}
 }
 
@@ -85,6 +85,10 @@ func (m *Model) updateTable() {
 	m.table = newTbl
 }
 
+func (m *Model) SelectedItemIndex() int {
+	return m.table.Cursor()
+}
+
 func (m *Model) selectedItem() (itemTableRow, bool) {
 	resultSet := m.resultSet
 	if resultSet != nil && len(resultSet.Items) > 0 {
@@ -104,4 +108,9 @@ func (m *Model) postSelectedItemChanged() tea.Msg {
 	}
 
 	return dynamoitemview.NewItemSelected{ResultSet: item.resultSet, Item: item.item}
+}
+
+func (m *Model) Refresh() {
+	m.table.GoDown()
+	m.table.GoUp()
 }

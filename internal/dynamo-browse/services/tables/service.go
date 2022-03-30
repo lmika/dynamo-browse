@@ -78,6 +78,11 @@ func (s *Service) Put(ctx context.Context, tableInfo *models.TableInfo, item mod
 	return s.provider.PutItem(ctx, tableInfo.Name, item)
 }
 
-func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, item models.Item) error {
-	return s.provider.DeleteItem(ctx, tableInfo.Name, item.KeyValue(tableInfo))
+func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items []models.Item) error {
+	for _, item := range items {
+		if err := s.provider.DeleteItem(ctx, tableInfo.Name, item.KeyValue(tableInfo)); err != nil {
+			return errors.Wrapf(err, "cannot delete item")
+		}
+	}
+	return nil
 }

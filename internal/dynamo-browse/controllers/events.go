@@ -23,3 +23,5 @@ type PromptForTableMsg struct {
 	Tables     []string
 	OnSelected func(tableName string) tea.Cmd
 }
+
+type ResultSetUpdated struct{}

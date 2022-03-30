@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
+	"log"
 )
 
 // StatusAndPrompt is a resizing model which displays a submodel and a status bar.  When the start prompt
@@ -33,7 +34,7 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.ErrorMsg:
 		s.statusMessage = "Error: " + msg.Error()
 	case events.StatusMsg:
-		s.statusMessage = string(s.statusMessage)
+		s.statusMessage = string(msg)
 	case events.MessageWithStatus:
 		s.statusMessage = msg.StatusMessage()
 	case events.PromptForInputMsg:
@@ -46,15 +47,18 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.textInput.Focus()
 		s.textInput.SetValue("")
 		s.pendingInput = &msg
+		log.Println("pending input == ", s.pendingInput)
 		return s, nil
 	case tea.KeyMsg:
 		if s.pendingInput != nil {
 			switch msg.String() {
 			case "ctrl+c", "esc":
 				s.pendingInput = nil
+				log.Println("pending input == ", s.pendingInput)
 			case "enter":
 				pendingInput := s.pendingInput
 				s.pendingInput = nil
+				log.Println("pending input == ", s.pendingInput)
 
 				return s, pendingInput.OnDone(s.textInput.Value())
 			}

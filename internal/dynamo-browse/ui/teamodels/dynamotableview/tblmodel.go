@@ -2,6 +2,7 @@ package dynamotableview
 
 import (
 	"fmt"
+	"github.com/charmbracelet/lipgloss"
 	"io"
 	"strings"
 
@@ -10,12 +11,19 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 )
 
+var (
+	markedRowStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color("#e1e1e1"))
+)
+
 type itemTableRow struct {
 	resultSet *models.ResultSet
 	item      models.Item
 }
 
 func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
+	isMarked := mtr.resultSet.Marked(index)
+
 	sb := strings.Builder{}
 	for i, colName := range mtr.resultSet.Columns {
 		if i > 0 {
@@ -34,7 +42,13 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 		}
 	}
 	if index == model.Cursor() {
-		fmt.Fprintln(w, model.Styles.SelectedRow.Render(sb.String()))
+		style := model.Styles.SelectedRow
+		if isMarked {
+			style = style.Copy().Inherit(markedRowStyle)
+		}
+		fmt.Fprintln(w, style.Render(sb.String()))
+	} else if isMarked {
+		fmt.Fprintln(w, markedRowStyle.Render(sb.String()))
 	} else {
 		fmt.Fprintln(w, sb.String())
 	}
