@@ -10,6 +10,13 @@ import (
 	"path/filepath"
 )
 
+var (
+	activeHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(lipgloss.Color("#9c9c9c"))
+)
+
 type Model struct {
 	frameTitle frame.FrameTitle
 	table      table.Model
@@ -20,12 +27,12 @@ type Model struct {
 }
 
 func New() *Model {
-	frameTitle := frame.NewFrameTitle("File: ", true)
+	frameTitle := frame.NewFrameTitle("File: ", true, activeHeaderStyle)
 	table := table.New([]string{"level", "error", "message"}, 0, 0)
 
 	return &Model{
 		frameTitle: frameTitle,
-		table: table,
+		table:      table,
 	}
 }
 
@@ -92,7 +99,6 @@ func (m *Model) View() string {
 func (m *Model) Resize(w, h int) layout.ResizingModel {
 	m.w, m.h = w, h
 	m.frameTitle.Resize(w, h)
-	m.table.SetSize(w, h - m.frameTitle.HeaderHeight())
+	m.table.SetSize(w, h-m.frameTitle.HeaderHeight())
 	return m
 }
-

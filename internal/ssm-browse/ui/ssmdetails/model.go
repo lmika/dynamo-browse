@@ -11,6 +11,13 @@ import (
 	"strings"
 )
 
+var (
+	activeHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(lipgloss.Color("#c144ff"))
+)
+
 type Model struct {
 	frameTitle frame.FrameTitle
 	viewport   viewport.Model
@@ -25,7 +32,7 @@ func New() *Model {
 	viewport := viewport.New(0, 0)
 	viewport.SetContent("")
 	return &Model{
-		frameTitle: frame.NewFrameTitle("Item", false),
+		frameTitle: frame.NewFrameTitle("Item", false, activeHeaderStyle),
 		viewport:   viewport,
 	}
 }

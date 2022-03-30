@@ -9,6 +9,13 @@ import (
 	"github.com/lmika/awstools/internal/ssm-browse/models"
 )
 
+var (
+	activeHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(lipgloss.Color("#c144ff"))
+)
+
 type Model struct {
 	frameTitle frame.FrameTitle
 	table      table.Model
@@ -19,12 +26,12 @@ type Model struct {
 }
 
 func New() *Model {
-	frameTitle := frame.NewFrameTitle("SSM: /", true)
+	frameTitle := frame.NewFrameTitle("SSM: /", true, activeHeaderStyle)
 	table := table.New([]string{"name", "type", "value"}, 0, 0)
 
 	return &Model{
 		frameTitle: frameTitle,
-		table: table,
+		table:      table,
 	}
 }
 
@@ -85,7 +92,6 @@ func (m *Model) View() string {
 func (m *Model) Resize(w, h int) layout.ResizingModel {
 	m.w, m.h = w, h
 	m.frameTitle.Resize(w, h)
-	m.table.SetSize(w, h - m.frameTitle.HeaderHeight())
+	m.table.SetSize(w, h-m.frameTitle.HeaderHeight())
 	return m
 }
-

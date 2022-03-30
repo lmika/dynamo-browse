@@ -14,6 +14,13 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 )
 
+var (
+	activeHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(lipgloss.Color("#4479ff"))
+)
+
 type Model struct {
 	ready      bool
 	frameTitle frame.FrameTitle
@@ -27,7 +34,7 @@ type Model struct {
 
 func New() *Model {
 	return &Model{
-		frameTitle: frame.NewFrameTitle("Item", false),
+		frameTitle: frame.NewFrameTitle("Item", false, activeHeaderStyle),
 		viewport:   viewport.New(100, 100),
 	}
 }

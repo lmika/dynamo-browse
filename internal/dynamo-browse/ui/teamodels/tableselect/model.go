@@ -10,6 +10,13 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
 )
 
+var (
+	activeHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(lipgloss.Color("#4479ff"))
+)
+
 type Model struct {
 	frameTitle       frame.FrameTitle
 	listController   listController
@@ -20,7 +27,7 @@ type Model struct {
 }
 
 func New(submodel tea.Model) *Model {
-	frameTitle := frame.NewFrameTitle("Select table", false)
+	frameTitle := frame.NewFrameTitle("Select table", false, activeHeaderStyle)
 	return &Model{frameTitle: frameTitle, submodel: submodel}
 }
 

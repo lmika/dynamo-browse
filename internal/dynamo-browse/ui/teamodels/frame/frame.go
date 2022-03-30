@@ -8,25 +8,21 @@ import (
 )
 
 var (
-	activeHeaderStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("#ffffff")).
-				Background(lipgloss.Color("#4479ff"))
-
 	inactiveHeaderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#000000")).
-				Background(lipgloss.Color("#d1d1d1"))
+		Foreground(lipgloss.Color("#000000")).
+		Background(lipgloss.Color("#d1d1d1"))
 )
 
 // Frame is a frame that appears in the
 type FrameTitle struct {
-	header string
-	active bool
-	width  int
+	header      string
+	active      bool
+	activeStyle lipgloss.Style
+	width       int
 }
 
-func NewFrameTitle(header string, active bool) FrameTitle {
-	return FrameTitle{header, active, 0}
+func NewFrameTitle(header string, active bool, activeStyle lipgloss.Style) FrameTitle {
+	return FrameTitle{header, active, activeStyle, 0}
 }
 
 func (f *FrameTitle) SetTitle(title string) {
@@ -48,7 +44,7 @@ func (f FrameTitle) HeaderHeight() int {
 func (f FrameTitle) headerView() string {
 	style := inactiveHeaderStyle
 	if f.active {
-		style = activeHeaderStyle
+		style = f.activeStyle
 	}
 
 	titleText := f.header
