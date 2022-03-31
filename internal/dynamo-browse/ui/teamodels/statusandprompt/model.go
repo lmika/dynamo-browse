@@ -61,6 +61,8 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.textInput = newTextInput
 				return s, cmd
 			}
+		} else {
+			s.statusMessage = ""
 		}
 	}
 
