@@ -10,7 +10,7 @@ import (
 
 func TestCommandController_Prompt(t *testing.T) {
 	t.Run("prompt user for a command", func(t *testing.T) {
-		cmd := commandctrl.NewCommandController(nil)
+		cmd := commandctrl.NewCommandController()
 
 		res := cmd.Prompt()()
 

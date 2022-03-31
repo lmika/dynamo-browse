@@ -30,7 +30,7 @@ func (s *Service) Open(filename string) (*models.LogFile, error) {
 
 		var data interface{}
 		if err := json.Unmarshal([]byte(line), &data); err != nil {
-			log.Println("invalid json line: %v", err)
+			log.Printf("invalid json line: %v", err)
 			continue
 		}
 
