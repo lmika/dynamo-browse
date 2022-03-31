@@ -14,6 +14,13 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 )
 
+var (
+	activeHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(lipgloss.Color("#4479ff"))
+)
+
 type Model struct {
 	ready      bool
 	frameTitle frame.FrameTitle
@@ -25,18 +32,18 @@ type Model struct {
 	selectedItem     models.Item
 }
 
-func New() Model {
-	return Model{
-		frameTitle: frame.NewFrameTitle("Item", false),
+func New() *Model {
+	return &Model{
+		frameTitle: frame.NewFrameTitle("Item", false, activeHeaderStyle),
 		viewport:   viewport.New(100, 100),
 	}
 }
 
-func (Model) Init() tea.Cmd {
+func (*Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case NewItemSelected:
 		m.currentResultSet = msg.ResultSet
@@ -47,14 +54,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	if !m.ready {
 		return ""
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, m.frameTitle.View(), m.viewport.View())
 }
 
-func (m Model) Resize(w, h int) layout.ResizingModel {
+func (m *Model) Resize(w, h int) layout.ResizingModel {
 	m.w, m.h = w, h
 	if !m.ready {
 		m.viewport = viewport.New(w, h-m.frameTitle.HeaderHeight())

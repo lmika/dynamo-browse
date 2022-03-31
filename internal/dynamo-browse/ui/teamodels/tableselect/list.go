@@ -25,6 +25,11 @@ func newListController(tableNames []string, w, h int) listController {
 
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = false
+	delegate.Styles.SelectedTitle = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, false, true).
+		BorderForeground(lipgloss.Color("#2c5fb7")).
+		Foreground(lipgloss.Color("#2c5fb7")).
+		Padding(0, 0, 0, 1)
 
 	list := list.New(items, delegate, w, h)
 	list.SetShowTitle(false)

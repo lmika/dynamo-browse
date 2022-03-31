@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
+	"github.com/lmika/awstools/internal/common/ui/logging"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
@@ -43,28 +44,18 @@ func main() {
 	tableService := tables.NewService(dynamoProvider)
 
 	tableReadController := controllers.NewTableReadController(tableService, *flagTable)
-	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController, *flagTable)
-	_ = tableWriteController
+	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController)
 
-	commandController := commandctrl.NewCommandController(map[string]commandctrl.Command{
-		"q": commandctrl.NoArgCommand(tea.Quit),
-		//"rw":  tableWriteController.ToggleReadWrite(),
-		//"dup": tableWriteController.Duplicate(),
-	})
-
-	model := ui.NewModel(tableReadController, commandController)
+	commandController := commandctrl.NewCommandController()
+	model := ui.NewModel(tableReadController, tableWriteController, commandController)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		fmt.Println("fatal:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
+	closeFn := logging.EnableLogging()
+	defer closeFn()
 
 	log.Println("launching")
 	if err := p.Start(); err != nil {
@@ -72,12 +63,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-//
-//type msgLoopback struct {
-//	program *tea.Program
-//}
-//
-//func (m *msgLoopback) Send(msg tea.Msg) {
-//	m.program.Send(msg)
-//}

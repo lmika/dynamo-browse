@@ -9,13 +9,18 @@ import (
 )
 
 type CommandController struct {
-	commands map[string]Command
+	commandList *CommandContext
 }
 
-func NewCommandController(commands map[string]Command) *CommandController {
+func NewCommandController() *CommandController {
 	return &CommandController{
-		commands: commands,
+		commandList: nil,
 	}
+}
+
+func (c *CommandController) AddCommands(ctx *CommandContext) {
+	ctx.parent = c.commandList
+	c.commandList = ctx
 }
 
 func (c *CommandController) Prompt() tea.Cmd {
@@ -36,10 +41,19 @@ func (c *CommandController) Execute(commandInput string) tea.Cmd {
 	}
 
 	tokens := shellwords.Split(input)
-	command, ok := c.commands[tokens[0]]
-	if !ok {
+	command := c.lookupCommand(tokens[0])
+	if command == nil {
 		return events.SetStatus("no such command: " + tokens[0])
 	}
 
-	return command(tokens)
+	return command(tokens[1:])
+}
+
+func (c *CommandController) lookupCommand(name string) Command {
+	for ctx := c.commandList; ctx != nil; ctx = ctx.parent {
+		if cmd, ok := ctx.Commands[name]; ok {
+			return cmd
+		}
+	}
+	return nil
 }

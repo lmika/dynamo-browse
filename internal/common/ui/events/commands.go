@@ -1,8 +1,12 @@
 package events
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"log"
+)
 
 func Error(err error) tea.Msg {
+	log.Println(err)
 	return ErrorMsg(err)
 }
 
