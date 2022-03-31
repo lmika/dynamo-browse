@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
@@ -15,6 +16,7 @@ type Model struct {
 	tableReadController  *controllers.TableReadController
 	tableWriteController *controllers.TableWriteController
 	commandController    *commandctrl.CommandController
+	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
 
@@ -25,7 +27,10 @@ type Model struct {
 func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteController, cc *commandctrl.CommandController) Model {
 	dtv := dynamotableview.New()
 	div := dynamoitemview.New()
-	statusAndPrompt := statusandprompt.New(layout.NewVBox(layout.LastChildFixedAt(17), dtv, div), "")
+	mainView := layout.NewVBox(layout.LastChildFixedAt(17), dtv, div)
+
+	itemEdit := dynamoitemedit.NewModel(mainView)
+	statusAndPrompt := statusandprompt.New(itemEdit, "")
 	tableSelect := tableselect.New(statusAndPrompt)
 
 	cc.AddCommands(&commandctrl.CommandContext{
@@ -49,6 +54,7 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 		tableReadController:  rc,
 		tableWriteController: wc,
 		commandController:    cc,
+		itemEdit:             itemEdit,
 		statusAndPrompt:      statusAndPrompt,
 		tableSelect:          tableSelect,
 		root:                 root,
@@ -75,6 +81,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.tableReadController.Rescan()
 			case "/":
 				return m, m.tableReadController.Filter()
+			case "e":
+				m.itemEdit.Visible()
+				return m, nil
 			case ":":
 				return m, m.commandController.Prompt()
 			case "ctrl+c", "esc":
