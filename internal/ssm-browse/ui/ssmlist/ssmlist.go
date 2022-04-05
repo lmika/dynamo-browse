@@ -85,6 +85,14 @@ func (m *Model) emitNewSelectedParameter() tea.Cmd {
 	}
 }
 
+func (m *Model) CurrentParameter() *models.SSMParameter {
+	if row, ok := m.table.SelectedRow().(itemTableRow); ok {
+		return &(row.item)
+	}
+
+	return nil
+}
+
 func (m *Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top, m.frameTitle.View(), m.table.View())
 }

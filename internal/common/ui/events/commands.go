@@ -10,6 +10,12 @@ func Error(err error) tea.Msg {
 	return ErrorMsg(err)
 }
 
+func SetError(err error) tea.Cmd {
+	return func() tea.Msg {
+		return Error(err)
+	}
+}
+
 func SetStatus(msg string) tea.Cmd {
 	return func() tea.Msg {
 		return StatusMsg(msg)

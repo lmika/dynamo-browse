@@ -3,11 +3,13 @@ package ui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
+	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/awstools/internal/ssm-browse/controllers"
 	"github.com/lmika/awstools/internal/ssm-browse/ui/ssmdetails"
 	"github.com/lmika/awstools/internal/ssm-browse/ui/ssmlist"
+	"github.com/pkg/errors"
 )
 
 type Model struct {
@@ -26,6 +28,17 @@ func NewModel(controller *controllers.SSMController, cmdController *commandctrl.
 	statusAndPrompt := statusandprompt.New(
 		layout.NewVBox(layout.LastChildFixedAt(17), ssmList, ssmdDetails),
 		"")
+
+	cmdController.AddCommands(&commandctrl.CommandContext{
+		Commands: map[string]commandctrl.Command{
+			"clone": func(args []string) tea.Cmd {
+				if currentParam := ssmList.CurrentParameter(); currentParam != nil {
+					return controller.Clone(*currentParam)
+				}
+				return events.SetError(errors.New("no parameter selected"))
+			},
+		},
+	})
 
 	root := layout.FullScreen(statusAndPrompt)
 
