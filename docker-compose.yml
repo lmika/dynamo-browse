@@ -1,6 +1,12 @@
 version: '3'
 services:
-  dynamo:
-    image: amazon/dynamodb-local:latest
+  localstack:
+    image: localstack/localstack
     ports:
-      - 8000:8000
+      - "4566:4566"
+    environment:
+      - SERVICES=ssm,dynamodb
+#  dynamo:
+#    image: amazon/dynamodb-local:latest
+#    ports:
+#      - 8000:8000

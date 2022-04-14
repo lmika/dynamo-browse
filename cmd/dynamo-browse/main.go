@@ -34,7 +34,7 @@ func main() {
 	var dynamoClient *dynamodb.Client
 	if *flagLocal {
 		dynamoClient = dynamodb.NewFromConfig(cfg,
-			dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:8000")))
+			dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:4566")))
 	} else {
 		dynamoClient = dynamodb.NewFromConfig(cfg)
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -18,6 +19,9 @@ import (
 )
 
 func main() {
+	var flagLocal = flag.Bool("local", false, "local endpoint")
+	flag.Parse()
+
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()
 
@@ -28,7 +32,14 @@ func main() {
 	if err != nil {
 		cli.Fatalf("cannot load AWS config: %v", err)
 	}
-	ssmClient := ssm.NewFromConfig(cfg)
+
+	var ssmClient *ssm.Client
+	if *flagLocal {
+		ssmClient = ssm.NewFromConfig(cfg,
+			ssm.WithEndpointResolver(ssm.EndpointResolverFromURL("http://localhost:4566")))
+	} else {
+		ssmClient = ssm.NewFromConfig(cfg)
+	}
 
 	provider := awsssm.NewProvider(ssmClient)
 	service := ssmparameters.NewService(provider)
