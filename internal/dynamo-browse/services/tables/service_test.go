@@ -11,9 +11,9 @@ import (
 )
 
 func TestService_Describe(t *testing.T) {
-	tableName := "service-describe-table"
+	tableName := "service-test-data"
 
-	client, cleanupFn := testdynamo.SetupTestTable(t, tableName, testData)
+	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
 	defer cleanupFn()
 	provider := dynamo.NewProvider(client)
 
@@ -33,9 +33,9 @@ func TestService_Describe(t *testing.T) {
 }
 
 func TestService_Scan(t *testing.T) {
-	tableName := "service-scan-test-table"
+	tableName := "service-test-data"
 
-	client, cleanupFn := testdynamo.SetupTestTable(t, tableName, testData)
+	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
 	defer cleanupFn()
 	provider := dynamo.NewProvider(client)
 
@@ -58,22 +58,27 @@ func TestService_Scan(t *testing.T) {
 	})
 }
 
-var testData = testdynamo.TestData{
+var testData = []testdynamo.TestData{
 	{
-		"pk":    "abc",
-		"sk":    "222",
-		"alpha": "This is another some value",
-		"beta":  1231,
-	},
-	{
-		"pk":    "abc",
-		"sk":    "111",
-		"alpha": "This is some value",
-	},
-	{
-		"pk":    "bbb",
-		"sk":    "131",
-		"beta":  2468,
-		"gamma": "foobar",
+		TableName: "service-test-data",
+		Data: []map[string]interface{}{
+			{
+				"pk":    "abc",
+				"sk":    "222",
+				"alpha": "This is another some value",
+				"beta":  1231,
+			},
+			{
+				"pk":    "abc",
+				"sk":    "111",
+				"alpha": "This is some value",
+			},
+			{
+				"pk":    "bbb",
+				"sk":    "131",
+				"beta":  2468,
+				"gamma": "foobar",
+			},
+		},
 	},
 }

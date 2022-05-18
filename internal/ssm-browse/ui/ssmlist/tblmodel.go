@@ -14,7 +14,7 @@ type itemTableRow struct {
 
 func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 	firstLine := strings.SplitN(mtr.item.Value, "\n", 2)[0]
-	line := fmt.Sprintf("%s\t%s\t%s", mtr.item.Name, "String", firstLine)
+	line := fmt.Sprintf("%s\t%s\t%s", mtr.item.Name, mtr.item.Type, firstLine)
 
 	if index == model.Cursor() {
 		fmt.Fprintln(w, model.Styles.SelectedRow.Render(line))

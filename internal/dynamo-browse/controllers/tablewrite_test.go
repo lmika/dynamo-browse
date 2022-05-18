@@ -2,11 +2,6 @@ package controllers_test
 
 import (
 	"testing"
-
-	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
-	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
-	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
-	"github.com/lmika/awstools/test/testdynamo"
 )
 
 func TestTableWriteController_ToggleReadWrite(t *testing.T) {
@@ -159,6 +154,7 @@ func TestTableWriteController_Delete(t *testing.T) {
 	*/
 }
 
+/*
 type controller struct {
 	tableName    string
 	tableService *tables.Service
@@ -197,3 +193,4 @@ var testData = testdynamo.TestData{
 		"gamma": "foobar",
 	},
 }
+*/

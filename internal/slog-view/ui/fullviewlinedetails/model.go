@@ -8,7 +8,7 @@ import (
 )
 
 type Model struct {
-	submodel tea.Model
+	submodel    tea.Model
 	lineDetails *linedetails.Model
 
 	visible bool
@@ -16,7 +16,7 @@ type Model struct {
 
 func NewModel(submodel tea.Model) *Model {
 	return &Model{
-		submodel: submodel,
+		submodel:    submodel,
 		lineDetails: linedetails.New(),
 	}
 }
@@ -49,6 +49,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) ViewItem(item *models.LogLine) {
 	m.visible = true
 	m.lineDetails.SetSelectedItem(item)
+	m.lineDetails.SetFocused(true)
 }
 
 func (m *Model) View() string {

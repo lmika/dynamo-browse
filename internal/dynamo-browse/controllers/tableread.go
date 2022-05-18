@@ -5,13 +5,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
-	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/pkg/errors"
 	"sync"
 )
 
 type TableReadController struct {
-	tableService *tables.Service
+	tableService TableReadService
 	tableName    string
 
 	// state
@@ -20,7 +19,7 @@ type TableReadController struct {
 	filter    string
 }
 
-func NewTableReadController(tableService *tables.Service, tableName string) *TableReadController {
+func NewTableReadController(tableService TableReadService, tableName string) *TableReadController {
 	return &TableReadController{
 		tableService: tableService,
 		tableName:    tableName,
