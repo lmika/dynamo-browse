@@ -28,7 +28,7 @@ func SetupTestTable(t *testing.T, testData []TestData) (*dynamodb.Client, func()
 	assert.NoError(t, err)
 
 	dynamoClient := dynamodb.NewFromConfig(cfg,
-		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:8000")))
+		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:18000")))
 
 	for _, table := range testData {
 		_, err = dynamoClient.CreateTable(ctx, &dynamodb.CreateTableInput{

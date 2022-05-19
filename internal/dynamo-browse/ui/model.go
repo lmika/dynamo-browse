@@ -3,12 +3,14 @@ package ui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
+	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/tableselect"
+	"github.com/pkg/errors"
 )
 
 type Model struct {
@@ -37,6 +39,12 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 				} else {
 					return rc.ScanTable(args[0])
 				}
+			},
+			"export": func(args []string) tea.Cmd {
+				if len(args) == 0 {
+					return events.SetError(errors.New("expected filename"))
+				}
+				return rc.ExportCSV(args[1])
 			},
 			"unmark": commandctrl.NoArgCommand(rc.Unmark()),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked()),

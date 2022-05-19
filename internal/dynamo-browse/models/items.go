@@ -25,6 +25,6 @@ func (i Item) KeyValue(info *TableInfo) map[string]types.AttributeValue {
 	return itemKey
 }
 
-func (i Item) AttributeValueAsString(k string) (string, bool) {
-	return attributeToString(i[k])
+func (i Item) AttributeValueAsString(key string) (string, bool) {
+	return attributeToString(i[key])
 }

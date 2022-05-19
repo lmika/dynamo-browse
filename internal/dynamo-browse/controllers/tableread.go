@@ -2,10 +2,12 @@ package controllers
 
 import (
 	"context"
+	"encoding/csv"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
+	"os"
 	"sync"
 )
 
@@ -73,6 +75,41 @@ func (c *TableReadController) ScanTable(name string) tea.Cmd {
 func (c *TableReadController) Rescan() tea.Cmd {
 	return func() tea.Msg {
 		return c.doScan(context.Background(), c.resultSet)
+	}
+}
+
+func (c *TableReadController) ExportCSV(filename string) tea.Cmd {
+	return func() tea.Msg {
+		resultSet := c.resultSet
+		if resultSet == nil {
+			return events.Error(errors.New("no result set"))
+		}
+
+		f, err := os.Create(filename)
+		if err != nil {
+			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+		}
+		defer f.Close()
+
+		cw := csv.NewWriter(f)
+		defer cw.Flush()
+
+		columns := resultSet.Columns
+		if err := cw.Write(columns); err != nil {
+			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+		}
+
+		row := make([]string, len(resultSet.Columns))
+		for _, item := range resultSet.Items() {
+			for i, col := range columns {
+				row[i], _ = item.AttributeValueAsString(col)
+			}
+			if err := cw.Write(row); err != nil {
+				return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+			}
+		}
+
+		return nil
 	}
 }
 
