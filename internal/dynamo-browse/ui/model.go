@@ -44,7 +44,7 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 				if len(args) == 0 {
 					return events.SetError(errors.New("expected filename"))
 				}
-				return rc.ExportCSV(args[1])
+				return rc.ExportCSV(args[0])
 			},
 			"unmark": commandctrl.NoArgCommand(rc.Unmark()),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked()),
