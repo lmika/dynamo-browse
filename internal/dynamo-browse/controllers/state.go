@@ -1,28 +1,46 @@
 package controllers
 
 import (
-	"context"
+	"sync"
 
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 )
 
 type State struct {
-	ResultSet    *models.ResultSet
-	SelectedItem models.Item
-
-	// InReadWriteMode indicates whether modifications can be made to the table
-	InReadWriteMode bool
+	mutex     *sync.Mutex
+	resultSet *models.ResultSet
+	filter    string
 }
 
-type stateContextKeyType struct{}
-
-var stateContextKey = stateContextKeyType{}
-
-func CurrentState(ctx context.Context) State {
-	state, _ := ctx.Value(stateContextKey).(State)
-	return state
+func NewState() *State {
+	return &State{
+		mutex: new(sync.Mutex),
+	}
 }
 
-func ContextWithState(ctx context.Context, state State) context.Context {
-	return context.WithValue(ctx, stateContextKey, state)
+func (s *State) ResultSet() *models.ResultSet {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.resultSet
+}
+
+func (s *State) Filter() string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.filter
+}
+
+func (s *State) withResultSet(rs func(*models.ResultSet)) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	rs(s.resultSet)
+}
+
+func (s *State) setResultSetAndFilter(resultSet *models.ResultSet, filter string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.resultSet = resultSet
+	s.filter = filter
 }

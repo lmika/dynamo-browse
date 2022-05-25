@@ -135,5 +135,6 @@ func (m *Model) postSelectedItemChanged() tea.Msg {
 }
 
 func (m *Model) Refresh() {
+
 	m.table.SetRows(m.rows)
 }

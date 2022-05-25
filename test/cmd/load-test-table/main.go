@@ -19,7 +19,7 @@ import (
 func main() {
 	ctx := context.Background()
 	tableName := "awstools-test"
-	totalItems := 300
+	totalItems := 10
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -27,7 +27,7 @@ func main() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg,
-		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:8000")))
+		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:18000")))
 
 	if _, err = dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
 		TableName: aws.String(tableName),

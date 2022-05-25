@@ -3,18 +3,22 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/events"
+	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 )
 
 type TableWriteController struct {
+	state                *State
 	tableService         *tables.Service
 	tableReadControllers *TableReadController
 }
 
-func NewTableWriteController(tableService *tables.Service, tableReadControllers *TableReadController) *TableWriteController {
+func NewTableWriteController(state *State, tableService *tables.Service, tableReadControllers *TableReadController) *TableWriteController {
 	return &TableWriteController{
+		state:                state,
 		tableService:         tableService,
 		tableReadControllers: tableReadControllers,
 	}
@@ -22,16 +26,46 @@ func NewTableWriteController(tableService *tables.Service, tableReadControllers 
 
 func (twc *TableWriteController) ToggleMark(idx int) tea.Cmd {
 	return func() tea.Msg {
-		resultSet := twc.tableReadControllers.ResultSet()
-		resultSet.SetMark(idx, !resultSet.Marked(idx))
+		twc.state.withResultSet(func(resultSet *models.ResultSet) {
+			resultSet.SetMark(idx, !resultSet.Marked(idx))
+		})
 
 		return ResultSetUpdated{}
 	}
 }
 
+func (twc *TableWriteController) NewItem() tea.Cmd {
+	return func() tea.Msg {
+		twc.state.withResultSet(func(set *models.ResultSet) {
+			set.AddNewItem(models.Item{}, models.ItemAttribute{
+				New:   true,
+				Dirty: true,
+			})
+		})
+		return NewResultSet{twc.state.ResultSet()}
+	}
+}
+
+func (twc *TableWriteController) SetItemValue(idx int, key string) tea.Cmd {
+	return func() tea.Msg {
+		return events.PromptForInputMsg{
+			Prompt: "string value: ",
+			OnDone: func(value string) tea.Cmd {
+				return func() tea.Msg {
+					twc.state.withResultSet(func(set *models.ResultSet) {
+						set.Items()[idx][key] = &types.AttributeValueMemberS{Value: value}
+						set.SetDirty(idx, true)
+					})
+					return ResultSetUpdated{}
+				}
+			},
+		}
+	}
+}
+
 func (twc *TableWriteController) DeleteMarked() tea.Cmd {
 	return func() tea.Msg {
-		resultSet := twc.tableReadControllers.ResultSet()
+		resultSet := twc.state.ResultSet()
 		markedItems := resultSet.MarkedItems()
 
 		if len(markedItems) == 0 {

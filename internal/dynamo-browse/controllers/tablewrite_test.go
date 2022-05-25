@@ -1,6 +1,11 @@
 package controllers_test
 
 import (
+	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
+	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
+	"github.com/lmika/awstools/test/testdynamo"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -173,24 +178,53 @@ func setupController(t *testing.T) (*controllers.TableWriteController, controlle
 		tableService: tableService,
 	}, cleanupFn
 }
-
-var testData = testdynamo.TestData{
-	{
-		"pk":    "abc",
-		"sk":    "222",
-		"alpha": "This is another some value",
-		"beta":  1231,
-	},
-	{
-		"pk":    "abc",
-		"sk":    "111",
-		"alpha": "This is some value",
-	},
-	{
-		"pk":    "bbb",
-		"sk":    "131",
-		"beta":  2468,
-		"gamma": "foobar",
-	},
-}
 */
+
+func TestTableWriteController_NewItem(t *testing.T) {
+	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+	defer cleanupFn()
+
+	provider := dynamo.NewProvider(client)
+	service := tables.NewService(provider)
+
+	t.Run("should add a new empty item at the end of the result set", func(t *testing.T) {
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+		assert.Len(t, state.ResultSet().Items(), 3)
+
+		invokeCommand(t, writeController.NewItem())
+		newResultSet := state.ResultSet()
+		assert.Len(t, newResultSet.Items(), 4)
+		assert.Len(t, newResultSet.Items()[3], 0)
+		assert.True(t, newResultSet.IsNew(3))
+		assert.True(t, newResultSet.IsDirty(3))
+	})
+}
+
+func TestTableWriteController_SetItemValue(t *testing.T) {
+	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+	defer cleanupFn()
+
+	provider := dynamo.NewProvider(client)
+	service := tables.NewService(provider)
+
+	t.Run("should add a new empty item at the end of the result set", func(t *testing.T) {
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		invokeCommandWithPrompt(t, writeController.SetItemValue(0, "alpha"), "a new value")
+
+		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "a new value", after)
+		assert.True(t, state.ResultSet().IsDirty(0))
+	})
+}
