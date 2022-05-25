@@ -5,6 +5,7 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
@@ -28,7 +29,8 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 	dtv := dynamotableview.New()
 	div := dynamoitemview.New()
 	statusAndPrompt := statusandprompt.New(layout.NewVBox(layout.LastChildFixedAt(17), dtv, div), "")
-	tableSelect := tableselect.New(statusAndPrompt)
+	dialogPrompt := dialogprompt.New(statusAndPrompt)
+	tableSelect := tableselect.New(dialogPrompt)
 
 	cc.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
@@ -51,7 +53,8 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 		},
 	})
 
-	root := layout.FullScreen(tableSelect)
+	//root := layout.FullScreen(tableSelect)
+	root := layout.FullScreen(dialogPrompt)
 
 	return Model{
 		tableReadController:  rc,
