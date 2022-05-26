@@ -313,5 +313,106 @@ func TestTableWriteController_PutItem(t *testing.T) {
 
 		invokeCommandExpectingError(t, writeController.PutItem(0))
 	})
+}
 
+func TestTableWriteController_TouchItem(t *testing.T) {
+	t.Run("should put the selected item if unmodified", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		defer cleanupFn()
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.TouchItem(0), "y")
+
+		// Rescan the table
+		invokeCommand(t, readController.Rescan())
+		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", after)
+		assert.False(t, state.ResultSet().IsDirty(0))
+	})
+
+	t.Run("should not put the selected item if modified", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		defer cleanupFn()
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
+		invokeCommandExpectingError(t, writeController.TouchItem(0))
+	})
+}
+
+func TestTableWriteController_NoisyTouchItem(t *testing.T) {
+	t.Run("should delete and put the selected item if unmodified", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		defer cleanupFn()
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.NoisyTouchItem(0), "y")
+
+		// Rescan the table
+		invokeCommand(t, readController.Rescan())
+		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", after)
+		assert.False(t, state.ResultSet().IsDirty(0))
+	})
+
+	t.Run("should not put the selected item if modified", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		defer cleanupFn()
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
+		invokeCommandExpectingError(t, writeController.NoisyTouchItem(0))
+	})
 }

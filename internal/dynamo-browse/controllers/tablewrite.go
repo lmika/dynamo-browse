@@ -89,6 +89,64 @@ func (twc *TableWriteController) PutItem(idx int) tea.Cmd {
 	}
 }
 
+func (twc *TableWriteController) TouchItem(idx int) tea.Cmd {
+	return func() tea.Msg {
+		resultSet := twc.state.ResultSet()
+		if resultSet.IsDirty(idx) {
+			return events.Error(errors.New("cannot touch dirty items"))
+		}
+
+		return events.PromptForInputMsg{
+			Prompt: "touch item? ",
+			OnDone: func(value string) tea.Cmd {
+				return func() tea.Msg {
+					if value != "y" {
+						return nil
+					}
+
+					if err := twc.tableService.PutItemAt(context.Background(), resultSet, idx); err != nil {
+						return events.Error(err)
+					}
+					return ResultSetUpdated{}
+				}
+			},
+		}
+	}
+}
+
+func (twc *TableWriteController) NoisyTouchItem(idx int) tea.Cmd {
+	return func() tea.Msg {
+		resultSet := twc.state.ResultSet()
+		if resultSet.IsDirty(idx) {
+			return events.Error(errors.New("cannot noisy touch dirty items"))
+		}
+
+		return events.PromptForInputMsg{
+			Prompt: "noisy touch item? ",
+			OnDone: func(value string) tea.Cmd {
+				return func() tea.Msg {
+					ctx := context.Background()
+
+					if value != "y" {
+						return nil
+					}
+
+					item := resultSet.Items()[0]
+					if err := twc.tableService.Delete(ctx, resultSet.TableInfo, []models.Item{item}); err != nil {
+						return events.Error(err)
+					}
+
+					if err := twc.tableService.Put(ctx, resultSet.TableInfo, item); err != nil {
+						return events.Error(err)
+					}
+
+					return twc.tableReadControllers.doScan(ctx, resultSet)
+				}
+			},
+		}
+	}
+}
+
 func (twc *TableWriteController) DeleteMarked() tea.Cmd {
 	return func() tea.Msg {
 		resultSet := twc.state.ResultSet()

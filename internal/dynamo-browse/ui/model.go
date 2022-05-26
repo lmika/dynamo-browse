@@ -60,6 +60,12 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 			"put": func(args []string) tea.Cmd {
 				return wc.PutItem(dtv.SelectedItemIndex())
 			},
+			"touch": func(args []string) tea.Cmd {
+				return wc.TouchItem(dtv.SelectedItemIndex())
+			},
+			"noisy-touch": func(args []string) tea.Cmd {
+				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
+			},
 		},
 	})
 
