@@ -51,11 +51,14 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 
 			// TEMP
 			"new-item": commandctrl.NoArgCommand(wc.NewItem()),
-			"set": func(args []string) tea.Cmd {
+			"set-string": func(args []string) tea.Cmd {
 				if len(args) != 1 {
 					return events.SetError(errors.New("expected attribute key"))
 				}
-				return wc.SetItemValue(dtv.SelectedItemIndex(), args[0])
+				return wc.SetStringValue(dtv.SelectedItemIndex(), args[0])
+			},
+			"put": func(args []string) tea.Cmd {
+				return wc.PutItem(dtv.SelectedItemIndex())
 			},
 		},
 	})

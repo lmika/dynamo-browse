@@ -8,6 +8,7 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
+	"github.com/pkg/errors"
 )
 
 type TableWriteController struct {
@@ -46,7 +47,7 @@ func (twc *TableWriteController) NewItem() tea.Cmd {
 	}
 }
 
-func (twc *TableWriteController) SetItemValue(idx int, key string) tea.Cmd {
+func (twc *TableWriteController) SetStringValue(idx int, key string) tea.Cmd {
 	return func() tea.Msg {
 		return events.PromptForInputMsg{
 			Prompt: "string value: ",
@@ -56,6 +57,31 @@ func (twc *TableWriteController) SetItemValue(idx int, key string) tea.Cmd {
 						set.Items()[idx][key] = &types.AttributeValueMemberS{Value: value}
 						set.SetDirty(idx, true)
 					})
+					return ResultSetUpdated{}
+				}
+			},
+		}
+	}
+}
+
+func (twc *TableWriteController) PutItem(idx int) tea.Cmd {
+	return func() tea.Msg {
+		resultSet := twc.state.ResultSet()
+		if !resultSet.IsDirty(idx) {
+			return events.Error(errors.New("item is not dirty"))
+		}
+
+		return events.PromptForInputMsg{
+			Prompt: "put item? ",
+			OnDone: func(value string) tea.Cmd {
+				return func() tea.Msg {
+					if value != "y" {
+						return nil
+					}
+
+					if err := twc.tableService.PutItemAt(context.Background(), resultSet, idx); err != nil {
+						return events.Error(err)
+					}
 					return ResultSetUpdated{}
 				}
 			},

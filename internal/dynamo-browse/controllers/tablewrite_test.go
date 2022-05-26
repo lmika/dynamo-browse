@@ -204,7 +204,7 @@ func TestTableWriteController_NewItem(t *testing.T) {
 	})
 }
 
-func TestTableWriteController_SetItemValue(t *testing.T) {
+func TestTableWriteController_SetStringValue(t *testing.T) {
 	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
 	defer cleanupFn()
 
@@ -221,10 +221,97 @@ func TestTableWriteController_SetItemValue(t *testing.T) {
 		assert.Equal(t, "This is some value", before)
 		assert.False(t, state.ResultSet().IsDirty(0))
 
-		invokeCommandWithPrompt(t, writeController.SetItemValue(0, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
 
 		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
 		assert.Equal(t, "a new value", after)
 		assert.True(t, state.ResultSet().IsDirty(0))
 	})
+
+	t.Run("should prevent duplicate partition,sort keys", func(t *testing.T) {
+		t.Skip("TODO")
+	})
+}
+
+func TestTableWriteController_PutItem(t *testing.T) {
+	t.Run("should put the selected item if dirty", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		defer cleanupFn()
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.PutItem(0), "y")
+
+		// Rescan the table
+		invokeCommand(t, readController.Rescan())
+		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "a new value", after)
+		assert.False(t, state.ResultSet().IsDirty(0))
+	})
+
+	t.Run("should not put the selected item if user does not confirm", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		defer cleanupFn()
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item but do not put it
+		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.PutItem(0), "n")
+
+		current, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "a new value", current)
+		assert.True(t, state.ResultSet().IsDirty(0))
+
+		// Rescan the table to confirm item is not modified
+		invokeCommand(t, readController.Rescan())
+		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", after)
+		assert.False(t, state.ResultSet().IsDirty(0))
+	})
+
+	t.Run("should not put the selected item if not dirty", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		defer cleanupFn()
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		invokeCommandExpectingError(t, writeController.PutItem(0))
+	})
+
 }
