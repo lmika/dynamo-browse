@@ -1,6 +1,9 @@
 package models
 
-import "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/lmika/awstools/internal/dynamo-browse/models/itemrender"
+)
 
 type Item map[string]types.AttributeValue
 
@@ -27,4 +30,8 @@ func (i Item) KeyValue(info *TableInfo) map[string]types.AttributeValue {
 
 func (i Item) AttributeValueAsString(key string) (string, bool) {
 	return attributeToString(i[key])
+}
+
+func (i Item) Renderer(key string) itemrender.Renderer {
+	return itemrender.ToRenderer(i[key])
 }

@@ -6,18 +6,17 @@ import (
 	"io"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	table "github.com/calyptia/go-bubble-table"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 )
 
 var (
 	markedRowStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("#e1e1e1"))
+			Background(lipgloss.Color("#e1e1e1"))
 	dirtyRowStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#e13131"))
+			Foreground(lipgloss.Color("#e13131"))
 	newRowStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#31e131"))
+			Foreground(lipgloss.Color("#31e131"))
 )
 
 type itemTableRow struct {
@@ -37,15 +36,8 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 			sb.WriteString("\t")
 		}
 
-		switch colVal := mtr.item[colName].(type) {
-		case nil:
-			sb.WriteString("(nil)")
-		case *types.AttributeValueMemberS:
-			sb.WriteString(colVal.Value)
-		case *types.AttributeValueMemberN:
-			sb.WriteString(colVal.Value)
-		default:
-			sb.WriteString("(other)")
+		if r := mtr.item.Renderer(colName); r != nil {
+			sb.WriteString(r.StringValue())
 		}
 	}
 
