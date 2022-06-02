@@ -17,11 +17,15 @@ var (
 			Foreground(lipgloss.Color("#e13131"))
 	newRowStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#31e131"))
+
+	metaInfoStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888"))
 )
 
 type itemTableRow struct {
 	resultSet *models.ResultSet
 	itemIndex int
+	colOffset int
 	item      models.Item
 }
 
@@ -29,17 +33,6 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 	isMarked := mtr.resultSet.Marked(mtr.itemIndex)
 	isDirty := mtr.resultSet.IsDirty(mtr.itemIndex)
 	isNew := mtr.resultSet.IsNew(mtr.itemIndex)
-
-	sb := strings.Builder{}
-	for i, colName := range mtr.resultSet.Columns {
-		if i > 0 {
-			sb.WriteString("\t")
-		}
-
-		if r := mtr.item.Renderer(colName); r != nil {
-			sb.WriteString(r.StringValue())
-		}
-	}
 
 	var style lipgloss.Style
 
@@ -54,6 +47,21 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 	} else if isDirty {
 		style = style.Copy().Inherit(dirtyRowStyle)
 	}
+	metaInfoStyle := style.Copy().Inherit(metaInfoStyle)
 
-	fmt.Fprintln(w, style.Render(sb.String()))
+	sb := strings.Builder{}
+	for i, colName := range mtr.resultSet.Columns[mtr.colOffset:] {
+		if i > 0 {
+			sb.WriteString(style.Render("\t"))
+		}
+
+		if r := mtr.item.Renderer(colName); r != nil {
+			sb.WriteString(style.Render(r.StringValue()))
+			if mi := r.MetaInfo(); mi != "" {
+				sb.WriteString(metaInfoStyle.Render(mi))
+			}
+		}
+	}
+
+	fmt.Fprintln(w, sb.String())
 }

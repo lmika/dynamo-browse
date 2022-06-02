@@ -13,6 +13,10 @@ func (sr *ListRenderer) TypeName() string {
 }
 
 func (sr *ListRenderer) StringValue() string {
+	return ""
+}
+
+func (sr *ListRenderer) MetaInfo() string {
 	if len(sr.Value) == 1 {
 		return fmt.Sprintf("(1 item)")
 	}
@@ -34,6 +38,10 @@ func (sr *MapRenderer) TypeName() string {
 }
 
 func (sr *MapRenderer) StringValue() string {
+	return ""
+}
+
+func (sr *MapRenderer) MetaInfo() string {
 	if len(sr.Value) == 1 {
 		return fmt.Sprintf("(1 item)")
 	}

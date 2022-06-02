@@ -5,6 +5,7 @@ import "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 type Renderer interface {
 	TypeName() string
 	StringValue() string
+	MetaInfo() string
 	SubItems() []SubItem
 }
 

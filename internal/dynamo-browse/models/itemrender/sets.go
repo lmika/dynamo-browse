@@ -15,6 +15,10 @@ func (sr *GenericRenderer) TypeName() string {
 }
 
 func (sr *GenericRenderer) StringValue() string {
+	return ""
+}
+
+func (sr *GenericRenderer) MetaInfo() string {
 	return cardinality(len(sr.subitemValue), "item", "items")
 }
 

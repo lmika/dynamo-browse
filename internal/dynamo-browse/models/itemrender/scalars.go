@@ -1,7 +1,6 @@
 package itemrender
 
 import (
-	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
@@ -13,6 +12,10 @@ func (sr *StringRenderer) TypeName() string {
 
 func (sr *StringRenderer) StringValue() string {
 	return sr.Value
+}
+
+func (sr *StringRenderer) MetaInfo() string {
+	return ""
 }
 
 func (sr *StringRenderer) SubItems() []SubItem {
@@ -27,6 +30,10 @@ func (sr *NumberRenderer) TypeName() string {
 
 func (sr *NumberRenderer) StringValue() string {
 	return sr.Value
+}
+
+func (sr *NumberRenderer) MetaInfo() string {
+	return ""
 }
 
 func (sr *NumberRenderer) SubItems() []SubItem {
@@ -46,6 +53,10 @@ func (sr *BoolRenderer) StringValue() string {
 	return "False"
 }
 
+func (sr *BoolRenderer) MetaInfo() string {
+	return ""
+}
+
 func (sr *BoolRenderer) SubItems() []SubItem {
 	return nil
 }
@@ -57,10 +68,11 @@ func (sr *BinaryRenderer) TypeName() string {
 }
 
 func (sr *BinaryRenderer) StringValue() string {
-	if len(sr.Value) == 1 {
-		return fmt.Sprintf("(1 byte)")
-	}
-	return fmt.Sprintf("(%d bytes)", len(sr.Value))
+	return ""
+}
+
+func (sr *BinaryRenderer) MetaInfo() string {
+	return cardinality(len(sr.Value), "byte", "bytes")
 }
 
 func (sr *BinaryRenderer) SubItems() []SubItem {
@@ -71,6 +83,10 @@ type NullRenderer types.AttributeValueMemberNULL
 
 func (sr *NullRenderer) TypeName() string {
 	return "NULL"
+}
+
+func (sr *NullRenderer) MetaInfo() string {
+	return ""
 }
 
 func (sr *NullRenderer) StringValue() string {

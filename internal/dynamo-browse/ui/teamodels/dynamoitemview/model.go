@@ -17,9 +17,14 @@ import (
 
 var (
 	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#4479ff"))
+				Bold(true).
+				Foreground(lipgloss.Color("#ffffff")).
+				Background(lipgloss.Color("#4479ff"))
+
+	fieldTypeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#31e131"))
+	metaInfoStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888"))
 )
 
 type Model struct {
@@ -96,7 +101,8 @@ func (m *Model) updateViewportToSelectedMessage() {
 }
 
 func (m *Model) renderItem(w io.Writer, prefix string, name string, r itemrender.Renderer) {
-	fmt.Fprintf(w, "%s%v\t%s\t%s\n", prefix, name, r.TypeName(), r.StringValue())
+	fmt.Fprintf(w, "%s%v\t%s\t%s%s\n",
+		prefix, name, fieldTypeStyle.Render(r.TypeName()), r.StringValue(), metaInfoStyle.Render(r.MetaInfo()))
 	if subitems := r.SubItems(); len(subitems) > 0 {
 		for _, si := range subitems {
 			m.renderItem(w, prefix+"  ", si.Key, si.Value)

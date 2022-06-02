@@ -24,6 +24,7 @@ type Model struct {
 	w, h       int
 
 	// model state
+	colOffset int
 	rows      []table.Row
 	resultSet *models.ResultSet
 }
@@ -60,6 +61,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "k", "down":
 			m.table.GoDown()
 			return m, m.postSelectedItemChanged
+		case "j":
+			m.setLeftmostDisplayedColumn(m.colOffset - 1)
+			return m, nil
+		case "l":
+			m.setLeftmostDisplayedColumn(m.colOffset + 1)
+			return m, nil
 		case "I", "pgup":
 			m.table.GoPageUp()
 			return m, m.postSelectedItemChanged
@@ -70,6 +77,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *Model) setLeftmostDisplayedColumn(newCol int) {
+	if newCol < 0 {
+		m.colOffset = 0
+	} else if newCol >= len(m.resultSet.Columns) {
+		m.colOffset = len(m.resultSet.Columns) - 1
+	} else {
+		m.colOffset = newCol
+	}
+	m.rebuildTable()
 }
 
 func (m *Model) View() string {
@@ -85,23 +103,39 @@ func (m *Model) Resize(w, h int) layout.ResizingModel {
 }
 
 func (m *Model) updateTable() {
+	m.colOffset = 0
+
+	m.frameTitle.SetTitle("Table: " + m.resultSet.TableInfo.Name)
+	m.rebuildTable()
+}
+
+func (m *Model) rebuildTable() {
 	resultSet := m.resultSet
 
-	m.frameTitle.SetTitle("Table: " + resultSet.TableInfo.Name)
-
-	newTbl := table.New(resultSet.Columns, m.w, m.h-m.frameTitle.HeaderHeight())
+	newTbl := table.New(resultSet.Columns[m.colOffset:], m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, 0)
 	for i, r := range resultSet.Items() {
 		if resultSet.Hidden(i) {
 			continue
 		}
 
-		newRows = append(newRows, itemTableRow{resultSet: resultSet, itemIndex: i, item: r})
+		newRows = append(newRows, itemTableRow{
+			resultSet: resultSet,
+			itemIndex: i,
+			colOffset: m.colOffset,
+			item:      r,
+		})
 	}
 
 	m.rows = newRows
 	newTbl.SetRows(newRows)
-
+	for newTbl.Cursor() != m.table.Cursor() {
+		if newTbl.Cursor() < m.table.Cursor() {
+			newTbl.GoDown()
+		} else if newTbl.Cursor() > m.table.Cursor() {
+			newTbl.GoUp()
+		}
+	}
 	m.table = newTbl
 }
 
