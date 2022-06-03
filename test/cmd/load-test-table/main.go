@@ -77,7 +77,7 @@ func main() {
 			"inOffice": &types.AttributeValueMemberBOOL{Value: gofakeit.Bool()},
 			"ratings": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 				&types.AttributeValueMemberS{Value: gofakeit.Adverb()},
-				&types.AttributeValueMemberN{Value: strconv.Itoa(int(gofakeit.Int32()))},
+				&types.AttributeValueMemberN{Value: "12.34"},
 			}},
 			"values": &types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
 				"adverb": &types.AttributeValueMemberS{Value: gofakeit.Adverb()},
