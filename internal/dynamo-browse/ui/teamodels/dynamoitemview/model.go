@@ -22,7 +22,7 @@ var (
 				Background(lipgloss.Color("#4479ff"))
 
 	fieldTypeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#31e131"))
+			Foreground(lipgloss.AdaptiveColor{Light: "#2B800C", Dark: "#73C653"})
 	metaInfoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888888"))
 )
