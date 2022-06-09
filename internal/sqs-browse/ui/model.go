@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	table "github.com/calyptia/go-bubble-table"
+	table "github.com/lmika/go-bubble-table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"

@@ -1,7 +1,6 @@
 package dynamotableview
 
 import (
-	table "github.com/calyptia/go-bubble-table"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -10,6 +9,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
+	table "github.com/lmika/go-bubble-table"
 )
 
 var (
@@ -42,8 +42,20 @@ type Model struct {
 	resultSet *models.ResultSet
 }
 
+type columnModel struct {
+	m *Model
+}
+
+func (cm columnModel) Len() int {
+	return len(cm.m.resultSet.Columns[cm.m.colOffset:])
+}
+
+func (cm columnModel) Header(index int) string {
+	return cm.m.resultSet.Columns[cm.m.colOffset+index]
+}
+
 func New() *Model {
-	tbl := table.New([]string{"pk", "sk"}, 100, 100)
+	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
 
@@ -116,7 +128,9 @@ func (m *Model) setLeftmostDisplayedColumn(newCol int) {
 	} else {
 		m.colOffset = newCol
 	}
-	m.rebuildTable()
+	// TEMP
+	m.table.GoDown()
+	m.table.GoUp()
 }
 
 func (m *Model) View() string {
@@ -141,7 +155,7 @@ func (m *Model) updateTable() {
 func (m *Model) rebuildTable() {
 	resultSet := m.resultSet
 
-	newTbl := table.New(resultSet.Columns[m.colOffset:], m.w, m.h-m.frameTitle.HeaderHeight())
+	newTbl := table.New(columnModel{m}, m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, 0)
 	for i, r := range resultSet.Items() {
 		if resultSet.Hidden(i) {
@@ -149,22 +163,24 @@ func (m *Model) rebuildTable() {
 		}
 
 		newRows = append(newRows, itemTableRow{
+			model:     m,
 			resultSet: resultSet,
 			itemIndex: i,
-			colOffset: m.colOffset,
 			item:      r,
 		})
 	}
 
 	m.rows = newRows
 	newTbl.SetRows(newRows)
-	for newTbl.Cursor() != m.table.Cursor() {
-		if newTbl.Cursor() < m.table.Cursor() {
-			newTbl.GoDown()
-		} else if newTbl.Cursor() > m.table.Cursor() {
-			newTbl.GoUp()
+	/*
+		for newTbl.Cursor() != m.table.Cursor() {
+			if newTbl.Cursor() < m.table.Cursor() {
+				newTbl.GoDown()
+			} else if newTbl.Cursor() > m.table.Cursor() {
+				newTbl.GoUp()
+			}
 		}
-	}
+	*/
 	m.table = newTbl
 }
 

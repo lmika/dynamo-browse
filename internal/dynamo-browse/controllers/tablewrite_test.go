@@ -181,13 +181,13 @@ func setupController(t *testing.T) (*controllers.TableWriteController, controlle
 */
 
 func TestTableWriteController_NewItem(t *testing.T) {
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
+	t.Run("should add an item with pk and sk set at the end of the result set", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		defer cleanupFn()
 
-	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
 
-	t.Run("should add a new empty item at the end of the result set", func(t *testing.T) {
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
@@ -195,10 +195,17 @@ func TestTableWriteController_NewItem(t *testing.T) {
 		invokeCommand(t, readController.Init())
 		assert.Len(t, state.ResultSet().Items(), 3)
 
-		invokeCommand(t, writeController.NewItem())
+		// Prompt for keys
+		invokeCommandWithPrompts(t, writeController.NewItem(), "pk-value", "sk-value")
+
 		newResultSet := state.ResultSet()
 		assert.Len(t, newResultSet.Items(), 4)
-		assert.Len(t, newResultSet.Items()[3], 0)
+		assert.Len(t, newResultSet.Items()[3], 2)
+
+		pk, _ := newResultSet.Items()[3].AttributeValueAsString("pk")
+		sk, _ := newResultSet.Items()[3].AttributeValueAsString("sk")
+		assert.Equal(t, "pk-value", pk)
+		assert.Equal(t, "sk-value", sk)
 		assert.True(t, newResultSet.IsNew(3))
 		assert.True(t, newResultSet.IsDirty(3))
 	})

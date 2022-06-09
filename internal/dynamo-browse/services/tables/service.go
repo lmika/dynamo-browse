@@ -28,7 +28,7 @@ func (s *Service) Describe(ctx context.Context, table string) (*models.TableInfo
 }
 
 func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*models.ResultSet, error) {
-	results, err := s.provider.ScanItems(ctx, tableInfo.Name)
+	results, err := s.provider.ScanItems(ctx, tableInfo.Name, 1000)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}

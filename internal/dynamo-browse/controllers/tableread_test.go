@@ -114,13 +114,14 @@ func tempFile(t *testing.T) string {
 	return tempFile.Name()
 }
 
-func invokeCommand(t *testing.T, cmd tea.Cmd) {
+func invokeCommand(t *testing.T, cmd tea.Cmd) tea.Msg {
 	msg := cmd()
 
 	err, isErr := msg.(events.ErrorMsg)
 	if isErr {
 		assert.Fail(t, fmt.Sprintf("expected no error but got one: %v", err))
 	}
+	return msg
 }
 
 func invokeCommandWithPrompt(t *testing.T, cmd tea.Cmd, promptValue string) {
@@ -132,6 +133,35 @@ func invokeCommandWithPrompt(t *testing.T, cmd tea.Cmd, promptValue string) {
 	}
 
 	invokeCommand(t, pi.OnDone(promptValue))
+}
+
+func invokeCommandWithPrompts(t *testing.T, cmd tea.Cmd, promptValues ...string) {
+	msg := cmd()
+
+	for _, promptValue := range promptValues {
+		pi, isPi := msg.(events.PromptForInputMsg)
+		if !isPi {
+			assert.Fail(t, fmt.Sprintf("expected prompt for input but didn't get one"))
+		}
+
+		msg = invokeCommand(t, pi.OnDone(promptValue))
+	}
+}
+
+func invokeCommandWithPromptsExpectingError(t *testing.T, cmd tea.Cmd, promptValues ...string) {
+	msg := cmd()
+
+	for _, promptValue := range promptValues {
+		pi, isPi := msg.(events.PromptForInputMsg)
+		if !isPi {
+			assert.Fail(t, fmt.Sprintf("expected prompt for input but didn't get one"))
+		}
+
+		msg = invokeCommand(t, pi.OnDone(promptValue))
+	}
+
+	_, isErr := msg.(events.ErrorMsg)
+	assert.True(t, isErr)
 }
 
 func invokeCommandExpectingError(t *testing.T, cmd tea.Cmd) {

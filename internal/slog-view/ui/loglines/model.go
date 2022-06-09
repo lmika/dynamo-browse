@@ -1,7 +1,7 @@
 package loglines
 
 import (
-	table "github.com/calyptia/go-bubble-table"
+	table "github.com/lmika/go-bubble-table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"

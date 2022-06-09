@@ -37,13 +37,34 @@ func (twc *TableWriteController) ToggleMark(idx int) tea.Cmd {
 
 func (twc *TableWriteController) NewItem() tea.Cmd {
 	return func() tea.Msg {
-		twc.state.withResultSet(func(set *models.ResultSet) {
-			set.AddNewItem(models.Item{}, models.ItemAttribute{
-				New:   true,
-				Dirty: true,
+		// Work out which keys we need to prompt for
+		rs := twc.state.ResultSet()
+
+		keyPrompts := &promptSequence{
+			prompts: []string{rs.TableInfo.Keys.PartitionKey + ": "},
+		}
+		if rs.TableInfo.Keys.SortKey != "" {
+			keyPrompts.prompts = append(keyPrompts.prompts, rs.TableInfo.Keys.SortKey+": ")
+		}
+		keyPrompts.onAllDone = func(values []string) tea.Msg {
+			twc.state.withResultSet(func(set *models.ResultSet) {
+				newItem := models.Item{}
+
+				// TODO: deal with keys of different type
+				newItem[rs.TableInfo.Keys.PartitionKey] = &types.AttributeValueMemberS{Value: values[0]}
+				if len(values) == 2 {
+					newItem[rs.TableInfo.Keys.SortKey] = &types.AttributeValueMemberS{Value: values[1]}
+				}
+
+				set.AddNewItem(newItem, models.ItemAttribute{
+					New:   true,
+					Dirty: true,
+				})
 			})
-		})
-		return NewResultSet{twc.state.ResultSet()}
+			return NewResultSet{twc.state.ResultSet()}
+		}
+
+		return keyPrompts.next()
 	}
 }
 

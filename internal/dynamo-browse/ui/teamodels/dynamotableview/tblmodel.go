@@ -6,13 +6,13 @@ import (
 	"io"
 	"strings"
 
-	table "github.com/calyptia/go-bubble-table"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	table "github.com/lmika/go-bubble-table"
 )
 
 var (
 	markedRowStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("#e1e1e1"))
+			Background(lipgloss.AdaptiveColor{Dark: "#e1e1e1", Light: "#414141"})
 	dirtyRowStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#e13131"))
 	newRowStyle = lipgloss.NewStyle().
@@ -23,9 +23,9 @@ var (
 )
 
 type itemTableRow struct {
+	model     *Model
 	resultSet *models.ResultSet
 	itemIndex int
-	colOffset int
 	item      models.Item
 }
 
@@ -50,7 +50,7 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 	metaInfoStyle := style.Copy().Inherit(metaInfoStyle)
 
 	sb := strings.Builder{}
-	for i, colName := range mtr.resultSet.Columns[mtr.colOffset:] {
+	for i, colName := range mtr.resultSet.Columns[mtr.model.colOffset:] {
 		if i > 0 {
 			sb.WriteString(style.Render("\t"))
 		}

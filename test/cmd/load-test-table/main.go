@@ -20,7 +20,7 @@ import (
 func main() {
 	ctx := context.Background()
 	tableName := "awstools-test"
-	totalItems := 10
+	totalItems := 5000
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
