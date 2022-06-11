@@ -33,6 +33,15 @@ nfpms:
       - deb
       - rpm
     bindir: /usr/local/bin
+brews:
+  - name: awstools
+    tap:
+      owner: lmika
+      name: awstools
+    folder: Formula
+    homepage:  https://awstools.lmika.dev
+    description: TUI tools for AWS administration
+    license: MIT
 checksum:
   name_template: 'checksums.txt'
 snapshot:
