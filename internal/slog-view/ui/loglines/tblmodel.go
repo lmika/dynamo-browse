@@ -2,7 +2,7 @@ package loglines
 
 import (
 	"fmt"
-	table "github.com/calyptia/go-bubble-table"
+	table "github.com/lmika/go-bubble-table"
 	"github.com/lmika/awstools/internal/slog-view/models"
 	"io"
 	"strings"

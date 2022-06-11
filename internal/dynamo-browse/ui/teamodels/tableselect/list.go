@@ -1,6 +1,7 @@
 package tableselect
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -32,6 +33,22 @@ func newListController(tableNames []string, w, h int) listController {
 		Padding(0, 0, 0, 1)
 
 	list := list.New(items, delegate, w, h)
+	list.KeyMap.CursorUp = key.NewBinding(
+		key.WithKeys("up", "i"),
+		key.WithHelp("↑/i", "up"),
+	)
+	list.KeyMap.CursorDown = key.NewBinding(
+		key.WithKeys("down", "k"),
+		key.WithHelp("↓/k", "down"),
+	)
+	list.KeyMap.PrevPage = key.NewBinding(
+		key.WithKeys("left", "j", "pgup", "b", "u"),
+		key.WithHelp("←/j/pgup", "prev page"),
+	)
+	list.KeyMap.NextPage = key.NewBinding(
+		key.WithKeys("right", "l", "pgdown", "f", "d"),
+		key.WithHelp("→/l/pgdn", "next page"),
+	)
 	list.SetShowTitle(false)
 
 	return listController{list: list}

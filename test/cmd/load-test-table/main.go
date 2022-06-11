@@ -5,6 +5,7 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/uuid"
 	"log"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -19,7 +20,7 @@ import (
 func main() {
 	ctx := context.Background()
 	tableName := "awstools-test"
-	totalItems := 300
+	totalItems := 5000
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -27,7 +28,7 @@ func main() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg,
-		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:8000")))
+		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:18000")))
 
 	if _, err = dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
 		TableName: aws.String(tableName),
@@ -66,13 +67,22 @@ func main() {
 	for i := 0; i < totalItems; i++ {
 		key := uuid.New().String()
 		if err := tableService.Put(ctx, tableInfo, models.Item{
-			"pk":      &types.AttributeValueMemberS{Value: key},
-			"sk":      &types.AttributeValueMemberS{Value: key},
-			"name":    &types.AttributeValueMemberS{Value: gofakeit.Name()},
-			"address": &types.AttributeValueMemberS{Value: gofakeit.Address().Address},
-			"city":    &types.AttributeValueMemberS{Value: gofakeit.Address().City},
-			"phone":   &types.AttributeValueMemberS{Value: gofakeit.Phone()},
-			"web":     &types.AttributeValueMemberS{Value: gofakeit.URL()},
+			"pk":       &types.AttributeValueMemberS{Value: key},
+			"sk":       &types.AttributeValueMemberS{Value: key},
+			"name":     &types.AttributeValueMemberS{Value: gofakeit.Name()},
+			"address":  &types.AttributeValueMemberS{Value: gofakeit.Address().Address},
+			"city":     &types.AttributeValueMemberS{Value: gofakeit.Address().City},
+			"phone":    &types.AttributeValueMemberN{Value: gofakeit.Phone()},
+			"web":      &types.AttributeValueMemberS{Value: gofakeit.URL()},
+			"inOffice": &types.AttributeValueMemberBOOL{Value: gofakeit.Bool()},
+			"ratings": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+				&types.AttributeValueMemberS{Value: gofakeit.Adverb()},
+				&types.AttributeValueMemberN{Value: "12.34"},
+			}},
+			"values": &types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
+				"adverb": &types.AttributeValueMemberS{Value: gofakeit.Adverb()},
+				"int":    &types.AttributeValueMemberN{Value: strconv.Itoa(int(gofakeit.Int32()))},
+			}},
 		}); err != nil {
 			log.Fatalln(err)
 		}

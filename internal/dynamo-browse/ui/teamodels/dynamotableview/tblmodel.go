@@ -6,17 +6,24 @@ import (
 	"io"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	table "github.com/calyptia/go-bubble-table"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	table "github.com/lmika/go-bubble-table"
 )
 
 var (
 	markedRowStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("#e1e1e1"))
+			Background(lipgloss.AdaptiveColor{Dark: "#e1e1e1", Light: "#414141"})
+	dirtyRowStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#e13131"))
+	newRowStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#31e131"))
+
+	metaInfoStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888"))
 )
 
 type itemTableRow struct {
+	model     *Model
 	resultSet *models.ResultSet
 	itemIndex int
 	item      models.Item
@@ -24,33 +31,37 @@ type itemTableRow struct {
 
 func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 	isMarked := mtr.resultSet.Marked(mtr.itemIndex)
+	isDirty := mtr.resultSet.IsDirty(mtr.itemIndex)
+	isNew := mtr.resultSet.IsNew(mtr.itemIndex)
+
+	var style lipgloss.Style
+
+	if index == model.Cursor() {
+		style = model.Styles.SelectedRow
+	}
+	if isMarked {
+		style = style.Copy().Inherit(markedRowStyle)
+	}
+	if isNew {
+		style = style.Copy().Inherit(newRowStyle)
+	} else if isDirty {
+		style = style.Copy().Inherit(dirtyRowStyle)
+	}
+	metaInfoStyle := style.Copy().Inherit(metaInfoStyle)
 
 	sb := strings.Builder{}
-	for i, colName := range mtr.resultSet.Columns {
+	for i, colName := range mtr.resultSet.Columns[mtr.model.colOffset:] {
 		if i > 0 {
-			sb.WriteString("\t")
+			sb.WriteString(style.Render("\t"))
 		}
 
-		switch colVal := mtr.item[colName].(type) {
-		case nil:
-			sb.WriteString("(nil)")
-		case *types.AttributeValueMemberS:
-			sb.WriteString(colVal.Value)
-		case *types.AttributeValueMemberN:
-			sb.WriteString(colVal.Value)
-		default:
-			sb.WriteString("(other)")
+		if r := mtr.item.Renderer(colName); r != nil {
+			sb.WriteString(style.Render(r.StringValue()))
+			if mi := r.MetaInfo(); mi != "" {
+				sb.WriteString(metaInfoStyle.Render(mi))
+			}
 		}
 	}
-	if index == model.Cursor() {
-		style := model.Styles.SelectedRow
-		if isMarked {
-			style = style.Copy().Inherit(markedRowStyle)
-		}
-		fmt.Fprintln(w, style.Render(sb.String()))
-	} else if isMarked {
-		fmt.Fprintln(w, markedRowStyle.Render(sb.String()))
-	} else {
-		fmt.Fprintln(w, sb.String())
-	}
+
+	fmt.Fprintln(w, sb.String())
 }

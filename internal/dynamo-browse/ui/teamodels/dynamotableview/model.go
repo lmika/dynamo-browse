@@ -1,7 +1,7 @@
 package dynamotableview
 
 import (
-	table "github.com/calyptia/go-bubble-table"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
@@ -9,6 +9,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
+	table "github.com/lmika/go-bubble-table"
 )
 
 var (
@@ -18,18 +19,43 @@ var (
 		Background(lipgloss.Color("#4479ff"))
 )
 
+type KeyBinding struct {
+	MoveUp   key.Binding
+	MoveDown key.Binding
+	PageUp   key.Binding
+	PageDown key.Binding
+	Home     key.Binding
+	End      key.Binding
+	ColLeft  key.Binding
+	ColRight key.Binding
+}
+
 type Model struct {
 	frameTitle frame.FrameTitle
 	table      table.Model
 	w, h       int
+	keyBinding KeyBinding
 
 	// model state
+	colOffset int
 	rows      []table.Row
 	resultSet *models.ResultSet
 }
 
+type columnModel struct {
+	m *Model
+}
+
+func (cm columnModel) Len() int {
+	return len(cm.m.resultSet.Columns[cm.m.colOffset:])
+}
+
+func (cm columnModel) Header(index int) string {
+	return cm.m.resultSet.Columns[cm.m.colOffset+index]
+}
+
 func New() *Model {
-	tbl := table.New([]string{"pk", "sk"}, 100, 100)
+	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
 
@@ -38,6 +64,16 @@ func New() *Model {
 	return &Model{
 		frameTitle: frameTitle,
 		table:      tbl,
+		keyBinding: KeyBinding{
+			MoveUp:   key.NewBinding(key.WithKeys("i", "up")),
+			MoveDown: key.NewBinding(key.WithKeys("k", "down")),
+			PageUp:   key.NewBinding(key.WithKeys("I", "pgup")),
+			PageDown: key.NewBinding(key.WithKeys("K", "pgdown")),
+			Home:     key.NewBinding(key.WithKeys("I", "home")),
+			End:      key.NewBinding(key.WithKeys("K", "end")),
+			ColLeft:  key.NewBinding(key.WithKeys("j", "left")),
+			ColRight: key.NewBinding(key.WithKeys("l", "right")),
+		},
 	}
 }
 
@@ -52,24 +88,49 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateTable()
 		return m, m.postSelectedItemChanged
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch {
 		// Table nav
-		case "i", "up":
+		case key.Matches(msg, m.keyBinding.MoveUp):
 			m.table.GoUp()
 			return m, m.postSelectedItemChanged
-		case "k", "down":
+		case key.Matches(msg, m.keyBinding.MoveDown):
 			m.table.GoDown()
 			return m, m.postSelectedItemChanged
-		case "I", "pgup":
+		case key.Matches(msg, m.keyBinding.PageUp):
 			m.table.GoPageUp()
 			return m, m.postSelectedItemChanged
-		case "K", "pgdn":
+		case key.Matches(msg, m.keyBinding.PageDown):
 			m.table.GoPageDown()
 			return m, m.postSelectedItemChanged
+		case key.Matches(msg, m.keyBinding.Home):
+			m.table.GoTop()
+			return m, m.postSelectedItemChanged
+		case key.Matches(msg, m.keyBinding.End):
+			m.table.GoBottom()
+			return m, m.postSelectedItemChanged
+		case key.Matches(msg, m.keyBinding.ColLeft):
+			m.setLeftmostDisplayedColumn(m.colOffset - 1)
+			return m, nil
+		case key.Matches(msg, m.keyBinding.ColRight):
+			m.setLeftmostDisplayedColumn(m.colOffset + 1)
+			return m, nil
 		}
 	}
 
 	return m, nil
+}
+
+func (m *Model) setLeftmostDisplayedColumn(newCol int) {
+	if newCol < 0 {
+		m.colOffset = 0
+	} else if newCol >= len(m.resultSet.Columns) {
+		m.colOffset = len(m.resultSet.Columns) - 1
+	} else {
+		m.colOffset = newCol
+	}
+	// TEMP
+	m.table.GoDown()
+	m.table.GoUp()
 }
 
 func (m *Model) View() string {
@@ -85,23 +146,41 @@ func (m *Model) Resize(w, h int) layout.ResizingModel {
 }
 
 func (m *Model) updateTable() {
+	m.colOffset = 0
+
+	m.frameTitle.SetTitle("Table: " + m.resultSet.TableInfo.Name)
+	m.rebuildTable()
+}
+
+func (m *Model) rebuildTable() {
 	resultSet := m.resultSet
 
-	m.frameTitle.SetTitle("Table: " + resultSet.TableInfo.Name)
-
-	newTbl := table.New(resultSet.Columns, m.w, m.h-m.frameTitle.HeaderHeight())
+	newTbl := table.New(columnModel{m}, m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, 0)
 	for i, r := range resultSet.Items() {
 		if resultSet.Hidden(i) {
 			continue
 		}
 
-		newRows = append(newRows, itemTableRow{resultSet: resultSet, itemIndex: i, item: r})
+		newRows = append(newRows, itemTableRow{
+			model:     m,
+			resultSet: resultSet,
+			itemIndex: i,
+			item:      r,
+		})
 	}
 
 	m.rows = newRows
 	newTbl.SetRows(newRows)
-
+	/*
+		for newTbl.Cursor() != m.table.Cursor() {
+			if newTbl.Cursor() < m.table.Cursor() {
+				newTbl.GoDown()
+			} else if newTbl.Cursor() > m.table.Cursor() {
+				newTbl.GoUp()
+			}
+		}
+	*/
 	m.table = newTbl
 }
 
@@ -135,5 +214,6 @@ func (m *Model) postSelectedItemChanged() tea.Msg {
 }
 
 func (m *Model) Refresh() {
+
 	m.table.SetRows(m.rows)
 }

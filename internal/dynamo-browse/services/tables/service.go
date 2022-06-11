@@ -28,7 +28,7 @@ func (s *Service) Describe(ctx context.Context, table string) (*models.TableInfo
 }
 
 func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*models.ResultSet, error) {
-	results, err := s.provider.ScanItems(ctx, tableInfo.Name)
+	results, err := s.provider.ScanItems(ctx, tableInfo.Name, 1000)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
@@ -79,6 +79,17 @@ func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*model
 
 func (s *Service) Put(ctx context.Context, tableInfo *models.TableInfo, item models.Item) error {
 	return s.provider.PutItem(ctx, tableInfo.Name, item)
+}
+
+func (s *Service) PutItemAt(ctx context.Context, resultSet *models.ResultSet, index int) error {
+	item := resultSet.Items()[index]
+	if err := s.provider.PutItem(ctx, resultSet.TableInfo.Name, item); err != nil {
+		return err
+	}
+
+	resultSet.SetDirty(index, false)
+	resultSet.SetNew(index, false)
+	return nil
 }
 
 func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items []models.Item) error {

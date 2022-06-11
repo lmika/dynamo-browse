@@ -1,12 +1,12 @@
 package ssmlist
 
 import (
-	table "github.com/calyptia/go-bubble-table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/ssm-browse/models"
+	table "github.com/lmika/go-bubble-table"
 )
 
 var (
@@ -27,7 +27,7 @@ type Model struct {
 
 func New() *Model {
 	frameTitle := frame.NewFrameTitle("SSM: /", true, activeHeaderStyle)
-	table := table.New([]string{"name", "type", "value"}, 0, 0)
+	table := table.New(table.SimpleColumns{"name", "type", "value"}, 0, 0)
 
 	return &Model{
 		frameTitle: frameTitle,
@@ -41,7 +41,7 @@ func (m *Model) SetPrefix(newPrefix string) {
 
 func (m *Model) SetParameters(parameters *models.SSMParameters) {
 	m.parameters = parameters
-	cols := []string{"name", "type", "value"}
+	cols := table.SimpleColumns{"name", "type", "value"}
 
 	newTbl := table.New(cols, m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, len(parameters.Items))

@@ -43,8 +43,9 @@ func main() {
 
 	tableService := tables.NewService(dynamoProvider)
 
-	tableReadController := controllers.NewTableReadController(tableService, *flagTable)
-	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController)
+	state := controllers.NewState()
+	tableReadController := controllers.NewTableReadController(state, tableService, *flagTable)
+	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
 
 	commandController := commandctrl.NewCommandController()
 	model := ui.NewModel(tableReadController, tableWriteController, commandController)

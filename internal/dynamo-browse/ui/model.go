@@ -48,6 +48,25 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 			},
 			"unmark": commandctrl.NoArgCommand(rc.Unmark()),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked()),
+
+			// TEMP
+			"new-item": commandctrl.NoArgCommand(wc.NewItem()),
+			"set-s": func(args []string) tea.Cmd {
+				if len(args) == 0 {
+					return events.SetError(errors.New("expected field"))
+				}
+				return wc.SetStringValue(dtv.SelectedItemIndex(), args[0])
+			},
+
+			"put": func(args []string) tea.Cmd {
+				return wc.PutItem(dtv.SelectedItemIndex())
+			},
+			"touch": func(args []string) tea.Cmd {
+				return wc.TouchItem(dtv.SelectedItemIndex())
+			},
+			"noisy-touch": func(args []string) tea.Cmd {
+				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
+			},
 		},
 	})
 

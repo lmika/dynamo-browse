@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	table "github.com/calyptia/go-bubble-table"
+	table "github.com/lmika/go-bubble-table"
 	"github.com/lmika/awstools/internal/sqs-browse/models"
 )
 

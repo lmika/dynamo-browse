@@ -64,17 +64,27 @@ func NewProvider(client *dynamodb.Client) *Provider {
 	return &Provider{client: client}
 }
 
-func (p *Provider) ScanItems(ctx context.Context, tableName string) ([]models.Item, error) {
-	res, err := p.client.Scan(ctx, &dynamodb.ScanInput{
+func (p *Provider) ScanItems(ctx context.Context, tableName string, maxItems int) ([]models.Item, error) {
+	paginator := dynamodb.NewScanPaginator(p.client, &dynamodb.ScanInput{
 		TableName: aws.String(tableName),
+		Limit:     aws.Int32(int32(maxItems)),
 	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot execute scan on table %v", tableName)
-	}
 
-	items := make([]models.Item, len(res.Items))
-	for i, itm := range res.Items {
-		items[i] = itm
+	items := make([]models.Item, 0)
+
+outer:
+	for paginator.HasMorePages() {
+		res, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot execute scan on table %v", tableName)
+		}
+
+		for _, itm := range res.Items {
+			items = append(items, itm)
+			if len(items) >= maxItems {
+				break outer
+			}
+		}
 	}
 
 	return items, nil

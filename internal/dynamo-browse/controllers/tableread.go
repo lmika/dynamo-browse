@@ -16,13 +16,15 @@ type TableReadController struct {
 	tableName    string
 
 	// state
-	mutex     *sync.Mutex
-	resultSet *models.ResultSet
-	filter    string
+	mutex *sync.Mutex
+	state *State
+	//resultSet *models.ResultSet
+	//filter    string
 }
 
-func NewTableReadController(tableService TableReadService, tableName string) *TableReadController {
+func NewTableReadController(state *State, tableService TableReadService, tableName string) *TableReadController {
 	return &TableReadController{
+		state:        state,
 		tableService: tableService,
 		tableName:    tableName,
 		mutex:        new(sync.Mutex),
@@ -68,19 +70,19 @@ func (c *TableReadController) ScanTable(name string) tea.Cmd {
 			return events.Error(err)
 		}
 
-		return c.setResultSetAndFilter(resultSet, c.filter)
+		return c.setResultSetAndFilter(resultSet, c.state.Filter())
 	}
 }
 
 func (c *TableReadController) Rescan() tea.Cmd {
 	return func() tea.Msg {
-		return c.doScan(context.Background(), c.resultSet)
+		return c.doScan(context.Background(), c.state.ResultSet())
 	}
 }
 
 func (c *TableReadController) ExportCSV(filename string) tea.Cmd {
 	return func() tea.Msg {
-		resultSet := c.resultSet
+		resultSet := c.state.ResultSet()
 		if resultSet == nil {
 			return events.Error(errors.New("no result set"))
 		}
@@ -119,39 +121,30 @@ func (c *TableReadController) doScan(ctx context.Context, resultSet *models.Resu
 		return events.Error(err)
 	}
 
-	newResultSet = c.tableService.Filter(newResultSet, c.filter)
+	newResultSet = c.tableService.Filter(newResultSet, c.state.Filter())
 
-	return c.setResultSetAndFilter(newResultSet, c.filter)
+	return c.setResultSetAndFilter(newResultSet, c.state.Filter())
 }
 
-func (c *TableReadController) ResultSet() *models.ResultSet {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	return c.resultSet
-}
+//func (c *TableReadController) ResultSet() *models.ResultSet {
+//	c.mutex.Lock()
+//	defer c.mutex.Unlock()
+//
+//	return c.resultSet
+//}
 
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string) tea.Msg {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	c.resultSet = resultSet
-	c.filter = filter
+	c.state.setResultSetAndFilter(resultSet, filter)
 	return NewResultSet{resultSet}
 }
 
 func (c *TableReadController) Unmark() tea.Cmd {
 	return func() tea.Msg {
-		resultSet := c.ResultSet()
-
-		for i := range resultSet.Items() {
-			resultSet.SetMark(i, false)
-		}
-
-		c.mutex.Lock()
-		defer c.mutex.Unlock()
-
-		c.resultSet = resultSet
+		c.state.withResultSet(func(resultSet *models.ResultSet) {
+			for i := range resultSet.Items() {
+				resultSet.SetMark(i, false)
+			}
+		})
 		return ResultSetUpdated{}
 	}
 }
@@ -162,7 +155,7 @@ func (c *TableReadController) Filter() tea.Cmd {
 			Prompt: "filter: ",
 			OnDone: func(value string) tea.Cmd {
 				return func() tea.Msg {
-					resultSet := c.ResultSet()
+					resultSet := c.state.ResultSet()
 					newResultSet := c.tableService.Filter(resultSet, value)
 
 					return c.setResultSetAndFilter(newResultSet, value)
