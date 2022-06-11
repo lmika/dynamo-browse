@@ -7,7 +7,6 @@ import (
 	"log"
 	"strings"
 
-	table "github.com/lmika/go-bubble-table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,6 +15,7 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/sqs-browse/controllers"
 	"github.com/lmika/awstools/internal/sqs-browse/models"
+	table "github.com/lmika/go-bubble-table"
 )
 
 var (
@@ -45,7 +45,7 @@ type uiModel struct {
 }
 
 func NewModel(dispatcher *dispatcher.Dispatcher, msgSendingHandlers *controllers.MessageSendingController) tea.Model {
-	tbl := table.New([]string{"seq", "message"}, 100, 20)
+	tbl := table.New(table.SimpleColumns{"seq", "message"}, 100, 20)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
 
