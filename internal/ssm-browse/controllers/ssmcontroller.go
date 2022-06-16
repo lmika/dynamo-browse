@@ -77,3 +77,24 @@ func (c *SSMController) Clone(param models.SSMParameter) tea.Cmd {
 		}
 	})
 }
+
+func (c *SSMController) DeleteParameter(param models.SSMParameter) tea.Cmd {
+	return events.Confirm("delete parameter? ", func() tea.Cmd {
+		return func() tea.Msg {
+			ctx := context.Background()
+			if err := c.service.Delete(ctx, param); err != nil {
+				return events.Error(err)
+			}
+
+			res, err := c.service.List(context.Background(), c.prefix)
+			if err != nil {
+				return events.Error(err)
+			}
+
+			return NewParameterListMsg{
+				Prefix:     c.prefix,
+				Parameters: res,
+			}
+		}
+	})
+}

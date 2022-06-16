@@ -56,9 +56,9 @@ outer:
 
 func (p *Provider) Put(ctx context.Context, param models.SSMParameter, override bool) error {
 	in := &ssm.PutParameterInput{
-		Name: aws.String(param.Name),
-		Type: param.Type,
-		Value: aws.String(param.Value),
+		Name:      aws.String(param.Name),
+		Type:      param.Type,
+		Value:     aws.String(param.Value),
 		Overwrite: override,
 	}
 	if param.Type == types.ParameterTypeSecureString {
@@ -70,5 +70,15 @@ func (p *Provider) Put(ctx context.Context, param models.SSMParameter, override 
 		return errors.Wrap(err, "unable to put new SSM parameter")
 	}
 
+	return nil
+}
+
+func (p *Provider) Delete(ctx context.Context, param models.SSMParameter) error {
+	_, err := p.client.DeleteParameter(ctx, &ssm.DeleteParameterInput{
+		Name: aws.String(param.Name),
+	})
+	if err != nil {
+		return errors.Wrap(err, "unable to delete SSM parameter")
+	}
 	return nil
 }

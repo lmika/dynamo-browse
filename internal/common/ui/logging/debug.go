@@ -6,15 +6,18 @@ import (
 	"os"
 )
 
-func EnableLogging() (closeFn func()) {
-	tempFile, err := os.CreateTemp("", "debug.log")
-	if err != nil {
-		fmt.Println("fatal:", err)
-		os.Exit(1)
+func EnableLogging(logFile string) (closeFn func()) {
+	if logFile == "" {
+		tempFile, err := os.CreateTemp("", "debug.log")
+		if err != nil {
+			fmt.Println("fatal:", err)
+			os.Exit(1)
+		}
+		tempFile.Close()
+		logFile = tempFile.Name()
 	}
-	tempFile.Close()
 
-	f, err := tea.LogToFile(tempFile.Name(), "debug")
+	f, err := tea.LogToFile(logFile, "debug")
 	if err != nil {
 		fmt.Println("fatal:", err)
 		os.Exit(1)

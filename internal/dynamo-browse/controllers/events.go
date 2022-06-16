@@ -1,18 +1,18 @@
 package controllers
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 )
 
 type NewResultSet struct {
-	ResultSet *models.ResultSet
+	ResultSet     *models.ResultSet
+	statusMessage string
 }
 
 func (rs NewResultSet) StatusMessage() string {
-	return fmt.Sprintf("%d items returned", len(rs.ResultSet.Items()))
+	//return fmt.Sprintf("%d items returned", len(rs.ResultSet.Items()))
+	return rs.statusMessage
 }
 
 type SetReadWrite struct {

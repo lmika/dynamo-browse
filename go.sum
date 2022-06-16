@@ -102,6 +102,8 @@ github.com/lmika/events v0.0.0-20200906102219-a2269cd4394e h1:0QkUe2ejnT/i+xbgGy
 github.com/lmika/events v0.0.0-20200906102219-a2269cd4394e/go.mod h1:qtkBmNC9OfD0STtOR9sF55pQchjIfNlC3gzm4n8CrqM=
 github.com/lmika/go-bubble-table v0.2.2-0.20220608033210-61eeb29a6239 h1:GGw5pZtEFnHtD7kKdWsiwgcIwZTnok60sShrHVYz4ok=
 github.com/lmika/go-bubble-table v0.2.2-0.20220608033210-61eeb29a6239/go.mod h1:0RT1upgKZ6qZ6B1SqseE3wWsPjSQRv/G/HjpYK8jNsg=
+github.com/lmika/go-bubble-table v0.2.2-0.20220616114432-6bbb2995e538 h1:dtMPRNoDqDnnP3HgOvYhswcJVSqdISkYlCtGOjTqg6Q=
+github.com/lmika/go-bubble-table v0.2.2-0.20220616114432-6bbb2995e538/go.mod h1:0RT1upgKZ6qZ6B1SqseE3wWsPjSQRv/G/HjpYK8jNsg=
 github.com/lmika/gopkgs v0.0.0-20211210041137-0dc91e939890 h1:mwl/exYV/WkBMeShqK7q+B2w2r+b0vP1TSA7clBn9kI=
 github.com/lmika/gopkgs v0.0.0-20211210041137-0dc91e939890/go.mod h1:FH6OJSvYcJ9xY8CGs9yGgR89kMCK1UimuUQ6kE5YuJQ=
 github.com/lmika/shellwords v0.0.0-20140714114018-ce258dd729fe h1:1UXS/6OFkbi6JrihPykmYO1VtsABB02QQ+YmYYzTY18=

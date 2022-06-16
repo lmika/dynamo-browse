@@ -12,7 +12,7 @@ import (
 
 var (
 	markedRowStyle = lipgloss.NewStyle().
-			Background(lipgloss.AdaptiveColor{Dark: "#e1e1e1", Light: "#414141"})
+			Background(lipgloss.AdaptiveColor{Light: "#e1e1e1", Dark: "#414141"})
 	dirtyRowStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#e13131"))
 	newRowStyle = lipgloss.NewStyle().
@@ -60,6 +60,8 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 			if mi := r.MetaInfo(); mi != "" {
 				sb.WriteString(metaInfoStyle.Render(mi))
 			}
+		} else {
+			sb.WriteString(metaInfoStyle.Render("~"))
 		}
 	}
 

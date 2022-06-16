@@ -37,6 +37,12 @@ func NewModel(controller *controllers.SSMController, cmdController *commandctrl.
 				}
 				return events.SetError(errors.New("no parameter selected"))
 			},
+			"delete": func(args []string) tea.Cmd {
+				if currentParam := ssmList.CurrentParameter(); currentParam != nil {
+					return controller.DeleteParameter(*currentParam)
+				}
+				return events.SetError(errors.New("no parameter selected"))
+			},
 		},
 	})
 

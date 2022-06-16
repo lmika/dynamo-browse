@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/csv"
+	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
@@ -126,16 +127,23 @@ func (c *TableReadController) doScan(ctx context.Context, resultSet *models.Resu
 	return c.setResultSetAndFilter(newResultSet, c.state.Filter())
 }
 
-//func (c *TableReadController) ResultSet() *models.ResultSet {
-//	c.mutex.Lock()
-//	defer c.mutex.Unlock()
-//
-//	return c.resultSet
-//}
-
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string) tea.Msg {
 	c.state.setResultSetAndFilter(resultSet, filter)
-	return NewResultSet{resultSet}
+
+	var statusMessage string
+	if filter != "" {
+		var filteredCount int
+		for i := range resultSet.Items() {
+			if !resultSet.Hidden(i) {
+				filteredCount += 1
+			}
+		}
+		statusMessage = fmt.Sprintf("%d of %d items returned", filteredCount, len(resultSet.Items()))
+	} else {
+		statusMessage = fmt.Sprintf("%d items returned", len(resultSet.Items()))
+	}
+
+	return NewResultSet{resultSet, statusMessage}
 }
 
 func (c *TableReadController) Unmark() tea.Cmd {

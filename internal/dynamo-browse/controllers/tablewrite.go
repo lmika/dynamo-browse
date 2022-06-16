@@ -61,7 +61,7 @@ func (twc *TableWriteController) NewItem() tea.Cmd {
 					Dirty: true,
 				})
 			})
-			return NewResultSet{twc.state.ResultSet()}
+			return NewResultSet{twc.state.ResultSet(), "New item added"}
 		}
 
 		return keyPrompts.next()

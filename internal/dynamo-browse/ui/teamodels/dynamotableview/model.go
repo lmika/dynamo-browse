@@ -128,9 +128,7 @@ func (m *Model) setLeftmostDisplayedColumn(newCol int) {
 	} else {
 		m.colOffset = newCol
 	}
-	// TEMP
-	m.table.GoDown()
-	m.table.GoUp()
+	m.table.UpdateView()
 }
 
 func (m *Model) View() string {
@@ -172,15 +170,6 @@ func (m *Model) rebuildTable() {
 
 	m.rows = newRows
 	newTbl.SetRows(newRows)
-	/*
-		for newTbl.Cursor() != m.table.Cursor() {
-			if newTbl.Cursor() < m.table.Cursor() {
-				newTbl.GoDown()
-			} else if newTbl.Cursor() > m.table.Cursor() {
-				newTbl.GoUp()
-			}
-		}
-	*/
 	m.table = newTbl
 }
 

@@ -41,7 +41,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/juju/ansiterm v0.0.0-20210929141451-8b71cc96ebdc // indirect
-	github.com/lmika/go-bubble-table v0.2.2-0.20220608033210-61eeb29a6239 // indirect
+	github.com/lmika/go-bubble-table v0.2.2-0.20220616114432-6bbb2995e538 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
