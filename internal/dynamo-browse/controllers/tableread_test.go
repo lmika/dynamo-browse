@@ -100,6 +100,40 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 	// Hidden items?
 }
 
+func TestTableReadController_Query(t *testing.T) {
+	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+	defer cleanupFn()
+
+	provider := dynamo.NewProvider(client)
+	service := tables.NewService(provider)
+	readController := controllers.NewTableReadController(controllers.NewState(), service, "alpha-table")
+
+	t.Run("should run scan with filter based on user query", func(t *testing.T) {
+		tempFile := tempFile(t)
+
+		invokeCommand(t, readController.Init())
+		invokeCommandWithPrompts(t, readController.PromptForQuery(), `pk ^= "abc"`)
+		invokeCommand(t, readController.ExportCSV(tempFile))
+
+		bts, err := os.ReadFile(tempFile)
+		assert.NoError(t, err)
+
+		assert.Equal(t, string(bts), strings.Join([]string{
+			"pk,sk,alpha,beta\n",
+			"abc,111,This is some value,\n",
+			"abc,222,This is another some value,1231\n",
+		}, ""))
+	})
+
+	t.Run("should return error if result set is not set", func(t *testing.T) {
+		tempFile := tempFile(t)
+		readController := controllers.NewTableReadController(controllers.NewState(), service, "non-existant-table")
+
+		invokeCommandExpectingError(t, readController.Init())
+		invokeCommandExpectingError(t, readController.ExportCSV(tempFile))
+	})
+}
+
 func tempFile(t *testing.T) string {
 	t.Helper()
 

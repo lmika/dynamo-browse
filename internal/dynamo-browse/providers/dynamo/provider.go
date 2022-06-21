@@ -2,8 +2,8 @@ package dynamo
 
 import (
 	"context"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
@@ -64,11 +64,18 @@ func NewProvider(client *dynamodb.Client) *Provider {
 	return &Provider{client: client}
 }
 
-func (p *Provider) ScanItems(ctx context.Context, tableName string, maxItems int) ([]models.Item, error) {
-	paginator := dynamodb.NewScanPaginator(p.client, &dynamodb.ScanInput{
+func (p *Provider) ScanItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error) {
+	input := &dynamodb.ScanInput{
 		TableName: aws.String(tableName),
 		Limit:     aws.Int32(int32(maxItems)),
-	})
+	}
+	if filterExpr != nil {
+		input.FilterExpression = filterExpr.Filter()
+		input.ExpressionAttributeNames = filterExpr.Names()
+		input.ExpressionAttributeValues = filterExpr.Values()
+	}
+
+	paginator := dynamodb.NewScanPaginator(p.client, input)
 
 	items := make([]models.Item, 0)
 

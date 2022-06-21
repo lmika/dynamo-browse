@@ -2,6 +2,8 @@ package tables
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/lmika/awstools/internal/dynamo-browse/models/queryexpr"
 	"sort"
 	"strings"
 
@@ -28,7 +30,11 @@ func (s *Service) Describe(ctx context.Context, table string) (*models.TableInfo
 }
 
 func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*models.ResultSet, error) {
-	results, err := s.provider.ScanItems(ctx, tableInfo.Name, 1000)
+	return s.doScan(ctx, tableInfo, nil)
+}
+
+func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, filterExpr *expression.Expression) (*models.ResultSet, error) {
+	results, err := s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, 1000)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
@@ -99,6 +105,25 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 		}
 	}
 	return nil
+}
+
+func (s *Service) ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, queryExpr string) (*models.ResultSet, error) {
+	expr, err := queryexpr.Parse(queryExpr)
+	if err != nil {
+		return nil, err
+	}
+
+	plan, err := expr.BuildQuery(tableInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	// TEMP
+	if plan.CanQuery {
+		return nil, errors.Errorf("queries not yet supported")
+	}
+
+	return s.doScan(ctx, tableInfo, &plan.Expression)
 }
 
 // TODO: move into a new service

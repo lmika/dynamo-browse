@@ -98,8 +98,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, m.tableWriteController.ToggleMark(idx)
 				}
-			case "r":
+			case "R":
 				return m, m.tableReadController.Rescan()
+			case "?":
+				return m, m.tableReadController.PromptForQuery()
 			case "/":
 				return m, m.tableReadController.Filter()
 			case ":":

@@ -75,6 +75,29 @@ func (c *TableReadController) ScanTable(name string) tea.Cmd {
 	}
 }
 
+func (c *TableReadController) PromptForQuery() tea.Cmd {
+	return func() tea.Msg {
+		return events.PromptForInputMsg{
+			Prompt: "query: ",
+			OnDone: func(value string) tea.Cmd {
+				if value == "" {
+					return c.Rescan()
+				}
+
+				return func() tea.Msg {
+					resultSet := c.state.ResultSet()
+					newResultSet, err := c.tableService.ScanOrQuery(context.Background(), resultSet.TableInfo, value)
+					if err != nil {
+						return events.Error(err)
+					}
+
+					return c.setResultSetAndFilter(newResultSet, "")
+				}
+			},
+		}
+	}
+}
+
 func (c *TableReadController) Rescan() tea.Cmd {
 	return func() tea.Msg {
 		return c.doScan(context.Background(), c.state.ResultSet())
