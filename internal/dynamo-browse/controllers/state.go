@@ -44,3 +44,19 @@ func (s *State) setResultSetAndFilter(resultSet *models.ResultSet, filter string
 	s.resultSet = resultSet
 	s.filter = filter
 }
+
+func (s *State) buildNewResultSetMessage(statusMessage string) NewResultSet {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	var filteredCount int = 0
+	if s.filter != "" {
+		for i := range s.resultSet.Items() {
+			if !s.resultSet.Hidden(i) {
+				filteredCount += 1
+			}
+		}
+	}
+
+	return NewResultSet{s.resultSet, s.filter, filteredCount, statusMessage}
+}

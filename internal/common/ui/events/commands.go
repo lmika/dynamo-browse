@@ -43,3 +43,8 @@ func Confirm(prompt string, onYes func() tea.Cmd) tea.Cmd {
 type MessageWithStatus interface {
 	StatusMessage() string
 }
+
+type MessageWithMode interface {
+	MessageWithStatus
+	ModeMessage() string
+}

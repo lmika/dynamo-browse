@@ -3,7 +3,6 @@ package tables
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/lmika/awstools/internal/dynamo-browse/models/queryexpr"
 	"sort"
 	"strings"
 
@@ -33,7 +32,23 @@ func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*model
 	return s.doScan(ctx, tableInfo, nil)
 }
 
-func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, filterExpr *expression.Expression) (*models.ResultSet, error) {
+func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable) (*models.ResultSet, error) {
+	var filterExpr *expression.Expression
+
+	if expr != nil {
+		plan, err := expr.Plan(tableInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		// TEMP
+		if plan.CanQuery {
+			return nil, errors.Errorf("queries not yet supported")
+		}
+
+		filterExpr = &plan.Expression
+	}
+
 	results, err := s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, 1000)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
@@ -76,6 +91,7 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, filte
 
 	resultSet := &models.ResultSet{
 		TableInfo: tableInfo,
+		Query:     expr,
 		Columns:   columns,
 	}
 	resultSet.SetItems(results)
@@ -107,23 +123,8 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 	return nil
 }
 
-func (s *Service) ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, queryExpr string) (*models.ResultSet, error) {
-	expr, err := queryexpr.Parse(queryExpr)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err := expr.BuildQuery(tableInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	// TEMP
-	if plan.CanQuery {
-		return nil, errors.Errorf("queries not yet supported")
-	}
-
-	return s.doScan(ctx, tableInfo, &plan.Expression)
+func (s *Service) ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable) (*models.ResultSet, error) {
+	return s.doScan(ctx, tableInfo, expr)
 }
 
 // TODO: move into a new service

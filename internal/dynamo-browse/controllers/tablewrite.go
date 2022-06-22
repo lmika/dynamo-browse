@@ -61,7 +61,7 @@ func (twc *TableWriteController) NewItem() tea.Cmd {
 					Dirty: true,
 				})
 			})
-			return NewResultSet{twc.state.ResultSet(), "New item added"}
+			return twc.state.buildNewResultSetMessage("New item added")
 		}
 
 		return keyPrompts.next()
@@ -161,7 +161,7 @@ func (twc *TableWriteController) NoisyTouchItem(idx int) tea.Cmd {
 						return events.Error(err)
 					}
 
-					return twc.tableReadControllers.doScan(ctx, resultSet)
+					return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query)
 				}
 			},
 		}
@@ -190,7 +190,7 @@ func (twc *TableWriteController) DeleteMarked() tea.Cmd {
 						return events.Error(err)
 					}
 
-					return twc.tableReadControllers.doScan(ctx, resultSet)
+					return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query)
 				}
 			},
 		}

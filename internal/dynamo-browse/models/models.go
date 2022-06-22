@@ -2,9 +2,15 @@ package models
 
 type ResultSet struct {
 	TableInfo  *TableInfo
+	Query      Queryable
 	Columns    []string
 	items      []Item
 	attributes []ItemAttribute
+}
+
+type Queryable interface {
+	String() string
+	Plan(tableInfo *TableInfo) (*QueryExecutionPlan, error)
 }
 
 type ItemAttribute struct {

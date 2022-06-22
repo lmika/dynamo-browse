@@ -16,7 +16,7 @@ type astBinOp struct {
 }
 
 type astLiteralValue struct {
-	String string `parser:"@String"`
+	StringVal string `parser:"@String"`
 }
 
 var parser = participle.MustBuild(&astExpr{})

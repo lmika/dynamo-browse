@@ -3,10 +3,10 @@ package controllers
 import (
 	"context"
 	"encoding/csv"
-	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	"github.com/lmika/awstools/internal/dynamo-browse/models/queryexpr"
 	"github.com/pkg/errors"
 	"os"
 	"sync"
@@ -81,12 +81,20 @@ func (c *TableReadController) PromptForQuery() tea.Cmd {
 			Prompt: "query: ",
 			OnDone: func(value string) tea.Cmd {
 				if value == "" {
-					return c.Rescan()
+					return func() tea.Msg {
+						resultSet := c.state.ResultSet()
+						return c.doScan(context.Background(), resultSet, nil)
+					}
+				}
+
+				expr, err := queryexpr.Parse(value)
+				if err != nil {
+					return events.SetError(err)
 				}
 
 				return func() tea.Msg {
 					resultSet := c.state.ResultSet()
-					newResultSet, err := c.tableService.ScanOrQuery(context.Background(), resultSet.TableInfo, value)
+					newResultSet, err := c.tableService.ScanOrQuery(context.Background(), resultSet.TableInfo, expr)
 					if err != nil {
 						return events.Error(err)
 					}
@@ -100,7 +108,8 @@ func (c *TableReadController) PromptForQuery() tea.Cmd {
 
 func (c *TableReadController) Rescan() tea.Cmd {
 	return func() tea.Msg {
-		return c.doScan(context.Background(), c.state.ResultSet())
+		resultSet := c.state.ResultSet()
+		return c.doScan(context.Background(), resultSet, resultSet.Query)
 	}
 }
 
@@ -139,8 +148,8 @@ func (c *TableReadController) ExportCSV(filename string) tea.Cmd {
 	}
 }
 
-func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet) tea.Msg {
-	newResultSet, err := c.tableService.Scan(ctx, resultSet.TableInfo)
+func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable) tea.Msg {
+	newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
 	if err != nil {
 		return events.Error(err)
 	}
@@ -152,21 +161,7 @@ func (c *TableReadController) doScan(ctx context.Context, resultSet *models.Resu
 
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string) tea.Msg {
 	c.state.setResultSetAndFilter(resultSet, filter)
-
-	var statusMessage string
-	if filter != "" {
-		var filteredCount int
-		for i := range resultSet.Items() {
-			if !resultSet.Hidden(i) {
-				filteredCount += 1
-			}
-		}
-		statusMessage = fmt.Sprintf("%d of %d items returned", filteredCount, len(resultSet.Items()))
-	} else {
-		statusMessage = fmt.Sprintf("%d items returned", len(resultSet.Items()))
-	}
-
-	return NewResultSet{resultSet, statusMessage}
+	return c.state.buildNewResultSetMessage("")
 }
 
 func (c *TableReadController) Unmark() tea.Cmd {

@@ -3,6 +3,7 @@ package dynamoitemview
 import (
 	"fmt"
 	"github.com/lmika/awstools/internal/dynamo-browse/models/itemrender"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
 	"io"
 	"strings"
 	"text/tabwriter"
@@ -38,9 +39,9 @@ type Model struct {
 	selectedItem     models.Item
 }
 
-func New() *Model {
+func New(uiStyles styles.Styles) *Model {
 	return &Model{
-		frameTitle: frame.NewFrameTitle("Item", false, activeHeaderStyle),
+		frameTitle: frame.NewFrameTitle("Item", false, uiStyles.Frames),
 		viewport:   viewport.New(100, 100),
 	}
 }

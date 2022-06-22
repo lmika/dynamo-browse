@@ -9,6 +9,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
 	table "github.com/lmika/go-bubble-table"
 )
 
@@ -54,12 +55,12 @@ func (cm columnModel) Header(index int) string {
 	return cm.m.resultSet.Columns[cm.m.colOffset+index]
 }
 
-func New() *Model {
+func New(uiStyles styles.Styles) *Model {
 	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
 
-	frameTitle := frame.NewFrameTitle("No table", true, activeHeaderStyle)
+	frameTitle := frame.NewFrameTitle("No table", true, uiStyles.Frames)
 
 	return &Model{
 		frameTitle: frameTitle,

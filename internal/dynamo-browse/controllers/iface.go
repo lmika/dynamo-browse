@@ -10,5 +10,5 @@ type TableReadService interface {
 	Describe(ctx context.Context, table string) (*models.TableInfo, error)
 	Scan(ctx context.Context, tableInfo *models.TableInfo) (*models.ResultSet, error)
 	Filter(resultSet *models.ResultSet, filter string) *models.ResultSet
-	ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, queryExpr string) (*models.ResultSet, error)
+	ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, query models.Queryable) (*models.ResultSet, error)
 }

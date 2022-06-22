@@ -9,6 +9,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/pkg/errors"
 )
@@ -25,10 +26,12 @@ type Model struct {
 }
 
 func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteController, cc *commandctrl.CommandController) Model {
-	dtv := dynamotableview.New()
-	div := dynamoitemview.New()
-	statusAndPrompt := statusandprompt.New(layout.NewVBox(layout.LastChildFixedAt(17), dtv, div), "")
-	tableSelect := tableselect.New(statusAndPrompt)
+	uiStyles := styles.DefaultStyles
+
+	dtv := dynamotableview.New(uiStyles)
+	div := dynamoitemview.New(uiStyles)
+	statusAndPrompt := statusandprompt.New(layout.NewVBox(layout.LastChildFixedAt(17), dtv, div), "", uiStyles.StatusAndPrompt)
+	tableSelect := tableselect.New(statusAndPrompt, uiStyles)
 
 	cc.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
