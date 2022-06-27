@@ -9,13 +9,6 @@ import (
 	table "github.com/lmika/go-bubble-table"
 )
 
-var (
-	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#c144ff"))
-)
-
 type Model struct {
 	frameTitle frame.FrameTitle
 	table      table.Model
@@ -25,8 +18,8 @@ type Model struct {
 	w, h int
 }
 
-func New() *Model {
-	frameTitle := frame.NewFrameTitle("SSM: /", true, activeHeaderStyle)
+func New(style frame.Style) *Model {
+	frameTitle := frame.NewFrameTitle("SSM: /", true, style)
 	table := table.New(table.SimpleColumns{"name", "type", "value"}, 0, 0)
 
 	return &Model{

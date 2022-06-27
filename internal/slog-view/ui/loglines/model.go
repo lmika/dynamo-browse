@@ -10,13 +10,6 @@ import (
 	"path/filepath"
 )
 
-var (
-	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#9c9c9c"))
-)
-
 type Model struct {
 	frameTitle frame.FrameTitle
 	table      table.Model
@@ -26,8 +19,8 @@ type Model struct {
 	w, h int
 }
 
-func New() *Model {
-	frameTitle := frame.NewFrameTitle("File: ", true, activeHeaderStyle)
+func New(style frame.Style) *Model {
+	frameTitle := frame.NewFrameTitle("File: ", true, style)
 	table := table.New(table.SimpleColumns{"level", "error", "message"}, 0, 0)
 
 	return &Model{

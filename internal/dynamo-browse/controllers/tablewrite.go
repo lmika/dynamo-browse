@@ -77,6 +77,7 @@ func (twc *TableWriteController) SetStringValue(idx int, key string) tea.Cmd {
 					twc.state.withResultSet(func(set *models.ResultSet) {
 						set.Items()[idx][key] = &types.AttributeValueMemberS{Value: value}
 						set.SetDirty(idx, true)
+						set.RefreshColumns()
 					})
 					return ResultSetUpdated{}
 				}

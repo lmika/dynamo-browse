@@ -1,11 +1,15 @@
 package models
 
+import "sort"
+
 type ResultSet struct {
-	TableInfo  *TableInfo
-	Query      Queryable
-	Columns    []string
+	TableInfo *TableInfo
+	Query     Queryable
+	//Columns    []string
 	items      []Item
 	attributes []ItemAttribute
+
+	columns []string
 }
 
 type Queryable interface {
@@ -74,4 +78,47 @@ func (rs *ResultSet) MarkedItems() []Item {
 		}
 	}
 	return items
+}
+
+func (rs *ResultSet) Columns() []string {
+	if rs.columns == nil {
+		rs.RefreshColumns()
+	}
+	return rs.columns
+}
+
+func (rs *ResultSet) RefreshColumns() {
+	seenColumns := make(map[string]int)
+	seenColumns[rs.TableInfo.Keys.PartitionKey] = 0
+	if rs.TableInfo.Keys.SortKey != "" {
+		seenColumns[rs.TableInfo.Keys.SortKey] = 1
+	}
+
+	for _, definedAttribute := range rs.TableInfo.DefinedAttributes {
+		if _, seen := seenColumns[definedAttribute]; !seen {
+			seenColumns[definedAttribute] = len(seenColumns)
+		}
+	}
+
+	otherColsRank := len(seenColumns)
+	for _, result := range rs.items {
+		for k := range result {
+			if _, isSeen := seenColumns[k]; !isSeen {
+				seenColumns[k] = otherColsRank
+			}
+		}
+	}
+
+	columns := make([]string, 0, len(seenColumns))
+	for k := range seenColumns {
+		columns = append(columns, k)
+	}
+	sort.Slice(columns, func(i, j int) bool {
+		if seenColumns[columns[i]] == seenColumns[columns[j]] {
+			return columns[i] < columns[j]
+		}
+		return seenColumns[columns[i]] < seenColumns[columns[j]]
+	})
+
+	rs.columns = columns
 }

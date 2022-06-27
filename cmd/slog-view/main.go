@@ -7,14 +7,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/logging"
-	"github.com/lmika/awstools/internal/slog-view/services/logreader"
 	"github.com/lmika/awstools/internal/slog-view/controllers"
+	"github.com/lmika/awstools/internal/slog-view/services/logreader"
 	"github.com/lmika/awstools/internal/slog-view/ui"
 	"github.com/lmika/gopkgs/cli"
 	"os"
 )
 
 func main() {
+	var flagDebug = flag.String("debug", "", "file to log debug messages")
 	flag.Parse()
 
 	if flag.NArg() == 0 {
@@ -24,7 +25,7 @@ func main() {
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()
 
-	closeFn := logging.EnableLogging()
+	closeFn := logging.EnableLogging(*flagDebug)
 	defer closeFn()
 
 	service := logreader.NewService()

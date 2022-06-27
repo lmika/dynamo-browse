@@ -50,7 +50,7 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 	metaInfoStyle := style.Copy().Inherit(metaInfoStyle)
 
 	sb := strings.Builder{}
-	for i, colName := range mtr.resultSet.Columns[mtr.model.colOffset:] {
+	for i, colName := range mtr.resultSet.Columns()[mtr.model.colOffset:] {
 		if i > 0 {
 			sb.WriteString(style.Render("\t"))
 		}

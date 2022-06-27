@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -18,10 +19,13 @@ import (
 )
 
 func main() {
+	var flagDebug = flag.String("debug", "", "file to log debug messages")
+	flag.Parse()
+
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()
 
-	closeFn := logging.EnableLogging()
+	closeFn := logging.EnableLogging(*flagDebug)
 	defer closeFn()
 
 	cfg, err := config.LoadDefaultConfig(context.Background())

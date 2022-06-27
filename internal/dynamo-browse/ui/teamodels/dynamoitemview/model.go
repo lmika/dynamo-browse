@@ -89,9 +89,19 @@ func (m *Model) updateViewportToSelectedMessage() {
 
 	viewportContent := &strings.Builder{}
 	tabWriter := tabwriter.NewWriter(viewportContent, 0, 1, 1, ' ', 0)
-	for _, colName := range m.currentResultSet.Columns {
+
+	seenColumns := make(map[string]struct{})
+	for _, colName := range m.currentResultSet.Columns() {
+		seenColumns[colName] = struct{}{}
 		if r := m.selectedItem.Renderer(colName); r != nil {
 			m.renderItem(tabWriter, "", colName, r)
+		}
+	}
+	for k, _ := range m.selectedItem {
+		if _, seen := seenColumns[k]; !seen {
+			if r := m.selectedItem.Renderer(k); r != nil {
+				m.renderItem(tabWriter, "", k, r)
+			}
 		}
 	}
 

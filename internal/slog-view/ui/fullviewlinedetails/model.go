@@ -2,6 +2,7 @@ package fullviewlinedetails
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/slog-view/models"
 	"github.com/lmika/awstools/internal/slog-view/ui/linedetails"
@@ -14,10 +15,10 @@ type Model struct {
 	visible bool
 }
 
-func NewModel(submodel tea.Model) *Model {
+func NewModel(submodel tea.Model, style frame.Style) *Model {
 	return &Model{
 		submodel:    submodel,
-		lineDetails: linedetails.New(),
+		lineDetails: linedetails.New(style),
 	}
 }
 

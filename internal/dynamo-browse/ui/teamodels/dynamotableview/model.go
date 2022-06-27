@@ -48,11 +48,11 @@ type columnModel struct {
 }
 
 func (cm columnModel) Len() int {
-	return len(cm.m.resultSet.Columns[cm.m.colOffset:])
+	return len(cm.m.resultSet.Columns()[cm.m.colOffset:])
 }
 
 func (cm columnModel) Header(index int) string {
-	return cm.m.resultSet.Columns[cm.m.colOffset+index]
+	return cm.m.resultSet.Columns()[cm.m.colOffset+index]
 }
 
 func New(uiStyles styles.Styles) *Model {
@@ -124,8 +124,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) setLeftmostDisplayedColumn(newCol int) {
 	if newCol < 0 {
 		m.colOffset = 0
-	} else if newCol >= len(m.resultSet.Columns) {
-		m.colOffset = len(m.resultSet.Columns) - 1
+	} else if newCol >= len(m.resultSet.Columns()) {
+		m.colOffset = len(m.resultSet.Columns()) - 1
 	} else {
 		m.colOffset = newCol
 	}

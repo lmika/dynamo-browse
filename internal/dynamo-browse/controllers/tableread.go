@@ -129,12 +129,12 @@ func (c *TableReadController) ExportCSV(filename string) tea.Cmd {
 		cw := csv.NewWriter(f)
 		defer cw.Flush()
 
-		columns := resultSet.Columns
+		columns := resultSet.Columns()
 		if err := cw.Write(columns); err != nil {
 			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
 		}
 
-		row := make([]string, len(resultSet.Columns))
+		row := make([]string, len(columns))
 		for _, item := range resultSet.Items() {
 			for i, col := range columns {
 				row[i], _ = item.AttributeValueAsString(col)
