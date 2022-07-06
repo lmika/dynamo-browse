@@ -60,11 +60,13 @@ func SetupTestTable(t *testing.T, testData []TestData) (*dynamodb.Client, func()
 		}
 	}
 
-	return dynamoClient, func() {
+	t.Cleanup(func() {
 		for _, table := range testData {
 			dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
 				TableName: aws.String(table.TableName),
 			})
 		}
-	}
+	})
+
+	return dynamoClient, func() {}
 }

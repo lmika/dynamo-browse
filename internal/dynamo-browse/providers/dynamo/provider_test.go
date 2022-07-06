@@ -20,7 +20,7 @@ func TestProvider_ScanItems(t *testing.T) {
 	t.Run("should return scanned items from the table", func(t *testing.T) {
 		ctx := context.Background()
 
-		items, err := provider.ScanItems(ctx, tableName, 100)
+		items, err := provider.ScanItems(ctx, tableName, nil, 100)
 		assert.NoError(t, err)
 		assert.Len(t, items, 3)
 
@@ -32,7 +32,7 @@ func TestProvider_ScanItems(t *testing.T) {
 	t.Run("should return error if table name does not exist", func(t *testing.T) {
 		ctx := context.Background()
 
-		items, err := provider.ScanItems(ctx, "does-not-exist", 100)
+		items, err := provider.ScanItems(ctx, "does-not-exist", nil, 100)
 		assert.Error(t, err)
 		assert.Nil(t, items)
 	})
@@ -53,7 +53,7 @@ func TestProvider_DeleteItem(t *testing.T) {
 			"sk": &types.AttributeValueMemberS{Value: "222"},
 		})
 
-		items, err := provider.ScanItems(ctx, tableName, 100)
+		items, err := provider.ScanItems(ctx, tableName, nil, 100)
 		assert.NoError(t, err)
 		assert.Len(t, items, 2)
 
@@ -75,7 +75,7 @@ func TestProvider_DeleteItem(t *testing.T) {
 			"sk": &types.AttributeValueMemberS{Value: "999"},
 		})
 
-		items, err := provider.ScanItems(ctx, tableName, 100)
+		items, err := provider.ScanItems(ctx, tableName, nil, 100)
 		assert.NoError(t, err)
 		assert.Len(t, items, 3)
 
@@ -91,7 +91,7 @@ func TestProvider_DeleteItem(t *testing.T) {
 
 		ctx := context.Background()
 
-		items, err := provider.ScanItems(ctx, "does-not-exist", 100)
+		items, err := provider.ScanItems(ctx, "does-not-exist", nil, 100)
 		assert.Error(t, err)
 		assert.Nil(t, items)
 	})

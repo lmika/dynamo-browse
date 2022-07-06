@@ -23,7 +23,7 @@ func TestModExpr_Query(t *testing.T) {
 		modExpr, err := queryexpr.Parse(`pk="prefix"`)
 		assert.NoError(t, err)
 
-		plan, err := modExpr.BuildQuery(tableInfo)
+		plan, err := modExpr.Plan(tableInfo)
 		assert.NoError(t, err)
 
 		assert.False(t, plan.CanQuery)
@@ -36,7 +36,7 @@ func TestModExpr_Query(t *testing.T) {
 		modExpr, err := queryexpr.Parse(`pk^="prefix"`) // TODO: fix this so that '^ =' is invalid
 		assert.NoError(t, err)
 
-		plan, err := modExpr.BuildQuery(tableInfo)
+		plan, err := modExpr.Plan(tableInfo)
 		assert.NoError(t, err)
 
 		assert.False(t, plan.CanQuery)

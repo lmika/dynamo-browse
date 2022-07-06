@@ -37,6 +37,13 @@ func (s *State) withResultSet(rs func(*models.ResultSet)) {
 	rs(s.resultSet)
 }
 
+func (s *State) withResultSetReturningError(rs func(*models.ResultSet) error) (err error) {
+	s.withResultSet(func(set *models.ResultSet) {
+		err = rs(set)
+	})
+	return err
+}
+
 func (s *State) setResultSetAndFilter(resultSet *models.ResultSet, filter string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

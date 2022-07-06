@@ -70,15 +70,67 @@ func (twc *TableWriteController) NewItem() tea.Cmd {
 
 func (twc *TableWriteController) SetStringValue(idx int, key string) tea.Cmd {
 	return func() tea.Msg {
+		// Verify that the expression is valid
+		apPath := newAttrPath(key)
+
+		if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+			_, err := apPath.follow(set.Items()[idx])
+			return err
+		}); err != nil {
+			return events.Error(err)
+		}
+
 		return events.PromptForInputMsg{
 			Prompt: "string value: ",
 			OnDone: func(value string) tea.Cmd {
 				return func() tea.Msg {
-					twc.state.withResultSet(func(set *models.ResultSet) {
-						set.Items()[idx][key] = &types.AttributeValueMemberS{Value: value}
+					if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+						err := apPath.setAt(set.Items()[idx], &types.AttributeValueMemberS{Value: value})
+						if err != nil {
+							return err
+						}
+
 						set.SetDirty(idx, true)
 						set.RefreshColumns()
-					})
+						return nil
+					}); err != nil {
+						return events.Error(err)
+					}
+					return ResultSetUpdated{}
+				}
+			},
+		}
+	}
+}
+
+func (twc *TableWriteController) SetNumberValue(idx int, key string) tea.Cmd {
+	return func() tea.Msg {
+		// Verify that the expression is valid
+		apPath := newAttrPath(key)
+
+		if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+			_, err := apPath.follow(set.Items()[idx])
+			return err
+		}); err != nil {
+			return events.Error(err)
+		}
+
+		return events.PromptForInputMsg{
+			Prompt: "number value: ",
+			OnDone: func(value string) tea.Cmd {
+				return func() tea.Msg {
+					if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+						err := apPath.setAt(set.Items()[idx], &types.AttributeValueMemberN{Value: value})
+						if err != nil {
+							return err
+						}
+
+						set.SetDirty(idx, true)
+						set.RefreshColumns()
+						return nil
+					}); err != nil {
+						return events.Error(err)
+					}
 					return ResultSetUpdated{}
 				}
 			},

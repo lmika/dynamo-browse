@@ -1,6 +1,7 @@
 package controllers_test
 
 import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
@@ -8,177 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
-
-func TestTableWriteController_ToggleReadWrite(t *testing.T) {
-	t.Skip("needs to be updated")
-
-	/*
-		twc, _, closeFn := setupController(t)
-		t.Cleanup(closeFn)
-
-		t.Run("should enabling read write if disabled", func(t *testing.T) {
-			ctx, uiCtx := testuictx.New(context.Background())
-			ctx = controllers.ContextWithState(ctx, controllers.State{
-				InReadWriteMode: false,
-			})
-
-			err := twc.ToggleReadWrite().Execute(ctx)
-			assert.NoError(t, err)
-
-			assert.Contains(t, uiCtx.Messages, controllers.SetReadWrite{NewValue: true})
-		})
-
-		t.Run("should disable read write if enabled", func(t *testing.T) {
-			ctx, uiCtx := testuictx.New(context.Background())
-			ctx = controllers.ContextWithState(ctx, controllers.State{
-				InReadWriteMode: true,
-			})
-
-			err := twc.ToggleReadWrite().Execute(ctx)
-			assert.NoError(t, err)
-
-			assert.Contains(t, uiCtx.Messages, controllers.SetReadWrite{NewValue: false})
-		})
-	*/
-}
-
-func TestTableWriteController_Delete(t *testing.T) {
-	/*
-		t.Run("should delete selected item if in read/write mode is inactive", func(t *testing.T) {
-			twc, ctrls, closeFn := setupController(t)
-			t.Cleanup(closeFn)
-
-			ti, err := ctrls.tableService.Describe(context.Background(), ctrls.tableName)
-			assert.NoError(t, err)
-
-			resultSet, err := ctrls.tableService.Scan(context.Background(), ti)
-			assert.NoError(t, err)
-			assert.Len(t, resultSet.Items, 3)
-
-			ctx, uiCtx := testuictx.New(context.Background())
-			ctx = controllers.ContextWithState(ctx, controllers.State{
-				ResultSet:       resultSet,
-				SelectedItem:    resultSet.Items[1],
-				InReadWriteMode: true,
-			})
-
-			op := twc.Delete()
-
-			// Should prompt first
-			err = op.Execute(ctx)
-			assert.NoError(t, err)
-
-			_ = uiCtx
-
-	*/
-	/*
-		promptRequest, ok := uiCtx.Messages[0].(events.PromptForInput)
-		assert.True(t, ok)
-
-		// After prompt, continue to delete
-		err = promptRequest.OnDone.Execute(uimodels.WithPromptValue(ctx, "y"))
-		assert.NoError(t, err)
-
-		afterResultSet, err := ctrls.tableService.Scan(context.Background(), ti)
-		assert.NoError(t, err)
-		assert.Len(t, afterResultSet.Items, 2)
-		assert.Contains(t, afterResultSet.Items, resultSet.Items[0])
-		assert.NotContains(t, afterResultSet.Items, resultSet.Items[1])
-		assert.Contains(t, afterResultSet.Items, resultSet.Items[2])
-	*/
-	/*
-		})
-
-		t.Run("should not delete selected item if prompt is not y", func(t *testing.T) {
-			twc, ctrls, closeFn := setupController(t)
-			t.Cleanup(closeFn)
-
-			ti, err := ctrls.tableService.Describe(context.Background(), ctrls.tableName)
-			assert.NoError(t, err)
-
-			resultSet, err := ctrls.tableService.Scan(context.Background(), ti)
-			assert.NoError(t, err)
-			assert.Len(t, resultSet.Items, 3)
-
-			ctx, uiCtx := testuictx.New(context.Background())
-			ctx = controllers.ContextWithState(ctx, controllers.State{
-				ResultSet:       resultSet,
-				SelectedItem:    resultSet.Items[1],
-				InReadWriteMode: true,
-			})
-
-			op := twc.Delete()
-
-			// Should prompt first
-			err = op.Execute(ctx)
-			assert.NoError(t, err)
-			_ = uiCtx
-	*/
-	/*
-		promptRequest, ok := uiCtx.Messages[0].(events.PromptForInput)
-		assert.True(t, ok)
-
-		// After prompt, continue to delete
-		err = promptRequest.OnDone.Execute(uimodels.WithPromptValue(ctx, "n"))
-		assert.Error(t, err)
-
-		afterResultSet, err := ctrls.tableService.Scan(context.Background(), ti)
-		assert.NoError(t, err)
-		assert.Len(t, afterResultSet.Items, 3)
-		assert.Contains(t, afterResultSet.Items, resultSet.Items[0])
-		assert.Contains(t, afterResultSet.Items, resultSet.Items[1])
-		assert.Contains(t, afterResultSet.Items, resultSet.Items[2])
-	*/
-	/*
-		})
-
-		t.Run("should not delete if read/write mode is inactive", func(t *testing.T) {
-			tableWriteController, ctrls, closeFn := setupController(t)
-			t.Cleanup(closeFn)
-
-			ti, err := ctrls.tableService.Describe(context.Background(), ctrls.tableName)
-			assert.NoError(t, err)
-
-			resultSet, err := ctrls.tableService.Scan(context.Background(), ti)
-			assert.NoError(t, err)
-			assert.Len(t, resultSet.Items, 3)
-
-			ctx, _ := testuictx.New(context.Background())
-			ctx = controllers.ContextWithState(ctx, controllers.State{
-				ResultSet:       resultSet,
-				SelectedItem:    resultSet.Items[1],
-				InReadWriteMode: false,
-			})
-
-			op := tableWriteController.Delete()
-
-			err = op.Execute(ctx)
-			assert.Error(t, err)
-		})
-
-	*/
-}
-
-/*
-type controller struct {
-	tableName    string
-	tableService *tables.Service
-}
-
-func setupController(t *testing.T) (*controllers.TableWriteController, controller, func()) {
-	tableName := "table-write-controller-table"
-
-	client, cleanupFn := testdynamo.SetupTestTable(t, tableName, testData)
-	provider := dynamo.NewProvider(client)
-	tableService := tables.NewService(provider)
-	tableReadController := controllers.NewTableReadController(tableService, tableName)
-	tableWriteController := controllers.NewTableWriteController(tableService, tableReadController)
-	return tableWriteController, controller{
-		tableName:    tableName,
-		tableService: tableService,
-	}, cleanupFn
-}
-*/
 
 func TestTableWriteController_NewItem(t *testing.T) {
 	t.Run("should add an item with pk and sk set at the end of the result set", func(t *testing.T) {
@@ -218,7 +48,7 @@ func TestTableWriteController_SetStringValue(t *testing.T) {
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
 
-	t.Run("should add a new empty item at the end of the result set", func(t *testing.T) {
+	t.Run("should change the value of a string field if already present", func(t *testing.T) {
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
@@ -235,8 +65,73 @@ func TestTableWriteController_SetStringValue(t *testing.T) {
 		assert.True(t, state.ResultSet().IsDirty(0))
 	})
 
-	t.Run("should prevent duplicate partition,sort keys", func(t *testing.T) {
-		t.Skip("TODO")
+	t.Run("should change the value of a string field within a map if already present", func(t *testing.T) {
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+
+		beforeAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
+		beforeStreet := beforeAddress.Value["street"].(*types.AttributeValueMemberS).Value
+
+		assert.Equal(t, "Fake st.", beforeStreet)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "address.street"), "Fiction rd.")
+
+		afterAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
+		afterStreet := afterAddress.Value["street"].(*types.AttributeValueMemberS).Value
+
+		assert.Equal(t, "Fiction rd.", afterStreet)
+		assert.True(t, state.ResultSet().IsDirty(0))
+	})
+}
+
+func TestTableWriteController_SetNumberValue(t *testing.T) {
+	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+	defer cleanupFn()
+
+	provider := dynamo.NewProvider(client)
+	service := tables.NewService(provider)
+
+	t.Run("should change the value of a number field if already present", func(t *testing.T) {
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("age")
+		assert.Equal(t, "23", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		invokeCommandWithPrompt(t, writeController.SetNumberValue(0, "age"), "46")
+
+		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("age")
+		assert.Equal(t, "46", after)
+		assert.True(t, state.ResultSet().IsDirty(0))
+	})
+
+	t.Run("should change the value of a number field within a map if already present", func(t *testing.T) {
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+
+		beforeAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
+		beforeStreet := beforeAddress.Value["no"].(*types.AttributeValueMemberN).Value
+
+		assert.Equal(t, "123", beforeStreet)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		invokeCommandWithPrompt(t, writeController.SetNumberValue(0, "address.no"), "456")
+
+		afterAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
+		afterStreet := afterAddress.Value["no"].(*types.AttributeValueMemberN).Value
+
+		assert.Equal(t, "456", afterStreet)
+		assert.True(t, state.ResultSet().IsDirty(0))
 	})
 }
 

@@ -51,7 +51,7 @@ func TestService_Scan(t *testing.T) {
 
 		// Hash first, then range, then columns in alphabetic order
 		assert.Equal(t, rs.TableInfo, ti)
-		assert.Equal(t, rs.Columns, []string{"pk", "sk", "alpha", "beta", "gamma"})
+		assert.Equal(t, rs.Columns(), []string{"pk", "sk", "alpha", "beta", "gamma"})
 		//assert.Equal(t, rs.Items[0], testdynamo.TestRecordAsItem(t, testData[1]))
 		//assert.Equal(t, rs.Items[1], testdynamo.TestRecordAsItem(t, testData[0]))
 		//assert.Equal(t, rs.Items[2], testdynamo.TestRecordAsItem(t, testData[2]))

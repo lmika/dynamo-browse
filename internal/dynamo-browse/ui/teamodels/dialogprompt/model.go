@@ -14,7 +14,7 @@ func New(model layout.ResizingModel) *Model {
 		compositor: layout.NewCompositor(model),
 	}
 	// TEMP
-	m.compositor.SetOverlay(&dialogModel{}, 5, 5, 30, 12)
+	//m.compositor.SetOverlay(&dialogModel{}, 5, 5, 30, 12)
 	return m
 }
 
