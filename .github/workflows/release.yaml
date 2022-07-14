@@ -1,0 +1,52 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: amazon/dynamodb-local:latest
+        ports:
+          - 18000:8000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - name: Configure
+        run: |
+          git config --global url."https://${{ secrets.GO_MODULES_TOKEN }}:x-oauth-basic@github.com/lmika".insteadOf "https://github.com/lmika"
+      - name: Test
+        run: |
+          set -xue
+          go get ./...
+          go test -p 1 ./...
+        env:
+          GOPRIVATE: "github:com/lmika/*"
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - name: Configure
+        run: |
+          git config --global url."https://${{ secrets.GO_MODULES_TOKEN }}:x-oauth-basic@github.com/lmika".insteadOf "https://github.com/lmika"
+      - name: Release
+        uses: goreleaser/goreleaser-action@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          version: latest
+          args: release --skip-validate --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,28 +1,69 @@
 package controllers
 
 import (
-	"context"
+	"sync"
 
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 )
 
 type State struct {
-	ResultSet    *models.ResultSet
-	SelectedItem models.Item
-
-	// InReadWriteMode indicates whether modifications can be made to the table
-	InReadWriteMode bool
+	mutex     *sync.Mutex
+	resultSet *models.ResultSet
+	filter    string
 }
 
-type stateContextKeyType struct{}
-
-var stateContextKey = stateContextKeyType{}
-
-func CurrentState(ctx context.Context) State {
-	state, _ := ctx.Value(stateContextKey).(State)
-	return state
+func NewState() *State {
+	return &State{
+		mutex: new(sync.Mutex),
+	}
 }
 
-func ContextWithState(ctx context.Context, state State) context.Context {
-	return context.WithValue(ctx, stateContextKey, state)
+func (s *State) ResultSet() *models.ResultSet {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.resultSet
+}
+
+func (s *State) Filter() string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.filter
+}
+
+func (s *State) withResultSet(rs func(*models.ResultSet)) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	rs(s.resultSet)
+}
+
+func (s *State) withResultSetReturningError(rs func(*models.ResultSet) error) (err error) {
+	s.withResultSet(func(set *models.ResultSet) {
+		err = rs(set)
+	})
+	return err
+}
+
+func (s *State) setResultSetAndFilter(resultSet *models.ResultSet, filter string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.resultSet = resultSet
+	s.filter = filter
+}
+
+func (s *State) buildNewResultSetMessage(statusMessage string) NewResultSet {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	var filteredCount int = 0
+	if s.filter != "" {
+		for i := range s.resultSet.Items() {
+			if !s.resultSet.Hidden(i) {
+				filteredCount += 1
+			}
+		}
+	}
+
+	return NewResultSet{s.resultSet, s.filter, filteredCount, statusMessage}
 }

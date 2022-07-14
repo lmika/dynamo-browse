@@ -2,10 +2,12 @@ package dynamoitemview
 
 import (
 	"fmt"
+	"github.com/lmika/awstools/internal/dynamo-browse/models/itemrender"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
+	"io"
 	"strings"
 	"text/tabwriter"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -16,9 +18,14 @@ import (
 
 var (
 	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#4479ff"))
+				Bold(true).
+				Foreground(lipgloss.Color("#ffffff")).
+				Background(lipgloss.Color("#4479ff"))
+
+	fieldTypeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#2B800C", Dark: "#73C653"})
+	metaInfoStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888"))
 )
 
 type Model struct {
@@ -32,9 +39,9 @@ type Model struct {
 	selectedItem     models.Item
 }
 
-func New() *Model {
+func New(uiStyles styles.Styles) *Model {
 	return &Model{
-		frameTitle: frame.NewFrameTitle("Item", false, activeHeaderStyle),
+		frameTitle: frame.NewFrameTitle("Item", false, uiStyles.Frames),
 		viewport:   viewport.New(100, 100),
 	}
 }
@@ -82,16 +89,19 @@ func (m *Model) updateViewportToSelectedMessage() {
 
 	viewportContent := &strings.Builder{}
 	tabWriter := tabwriter.NewWriter(viewportContent, 0, 1, 1, ' ', 0)
-	for _, colName := range m.currentResultSet.Columns {
-		switch colVal := m.selectedItem[colName].(type) {
-		case nil:
-			break
-		case *types.AttributeValueMemberS:
-			fmt.Fprintf(tabWriter, "%v\tS\t%s\n", colName, colVal.Value)
-		case *types.AttributeValueMemberN:
-			fmt.Fprintf(tabWriter, "%v\tN\t%s\n", colName, colVal.Value)
-		default:
-			fmt.Fprintf(tabWriter, "%v\t?\t%s\n", colName, "(other)")
+
+	seenColumns := make(map[string]struct{})
+	for _, colName := range m.currentResultSet.Columns() {
+		seenColumns[colName] = struct{}{}
+		if r := m.selectedItem.Renderer(colName); r != nil {
+			m.renderItem(tabWriter, "", colName, r)
+		}
+	}
+	for k, _ := range m.selectedItem {
+		if _, seen := seenColumns[k]; !seen {
+			if r := m.selectedItem.Renderer(k); r != nil {
+				m.renderItem(tabWriter, "", k, r)
+			}
 		}
 	}
 
@@ -99,4 +109,14 @@ func (m *Model) updateViewportToSelectedMessage() {
 	m.viewport.Width = m.w
 	m.viewport.Height = m.h - m.frameTitle.HeaderHeight()
 	m.viewport.SetContent(viewportContent.String())
+}
+
+func (m *Model) renderItem(w io.Writer, prefix string, name string, r itemrender.Renderer) {
+	fmt.Fprintf(w, "%s%v\t%s\t%s%s\n",
+		prefix, name, fieldTypeStyle.Render(r.TypeName()), r.StringValue(), metaInfoStyle.Render(r.MetaInfo()))
+	if subitems := r.SubItems(); len(subitems) > 0 {
+		for _, si := range subitems {
+			m.renderItem(w, prefix+"  ", si.Key, si.Value)
+		}
+	}
 }

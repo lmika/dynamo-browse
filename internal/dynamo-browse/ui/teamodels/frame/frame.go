@@ -15,14 +15,19 @@ var (
 
 // Frame is a frame that appears in the
 type FrameTitle struct {
-	header      string
-	active      bool
-	activeStyle lipgloss.Style
-	width       int
+	header string
+	active bool
+	style  Style
+	width  int
 }
 
-func NewFrameTitle(header string, active bool, activeStyle lipgloss.Style) FrameTitle {
-	return FrameTitle{header, active, activeStyle, 0}
+type Style struct {
+	ActiveTitle   lipgloss.Style
+	InactiveTitle lipgloss.Style
+}
+
+func NewFrameTitle(header string, active bool, style Style) FrameTitle {
+	return FrameTitle{header, active, style, 0}
 }
 
 func (f *FrameTitle) SetTitle(title string) {
@@ -42,9 +47,9 @@ func (f FrameTitle) HeaderHeight() int {
 }
 
 func (f FrameTitle) headerView() string {
-	style := inactiveHeaderStyle
+	style := f.style.InactiveTitle
 	if f.active {
-		style = f.activeStyle
+		style = f.style.ActiveTitle
 	}
 
 	titleText := f.header

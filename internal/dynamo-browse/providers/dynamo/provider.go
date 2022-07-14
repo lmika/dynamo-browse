@@ -2,8 +2,8 @@ package dynamo
 
 import (
 	"context"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
@@ -64,17 +64,34 @@ func NewProvider(client *dynamodb.Client) *Provider {
 	return &Provider{client: client}
 }
 
-func (p *Provider) ScanItems(ctx context.Context, tableName string) ([]models.Item, error) {
-	res, err := p.client.Scan(ctx, &dynamodb.ScanInput{
+func (p *Provider) ScanItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error) {
+	input := &dynamodb.ScanInput{
 		TableName: aws.String(tableName),
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot execute scan on table %v", tableName)
+		Limit:     aws.Int32(int32(maxItems)),
+	}
+	if filterExpr != nil {
+		input.FilterExpression = filterExpr.Filter()
+		input.ExpressionAttributeNames = filterExpr.Names()
+		input.ExpressionAttributeValues = filterExpr.Values()
 	}
 
-	items := make([]models.Item, len(res.Items))
-	for i, itm := range res.Items {
-		items[i] = itm
+	paginator := dynamodb.NewScanPaginator(p.client, input)
+
+	items := make([]models.Item, 0)
+
+outer:
+	for paginator.HasMorePages() {
+		res, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot execute scan on table %v", tableName)
+		}
+
+		for _, itm := range res.Items {
+			items = append(items, itm)
+			if len(items) >= maxItems {
+				break outer
+			}
+		}
 	}
 
 	return items, nil

@@ -12,15 +12,21 @@ import (
 // event is received, focus will be torn away and the user will be given a prompt the enter text.
 type StatusAndPrompt struct {
 	model         layout.ResizingModel
+	style         Style
+	modeLine      string
 	statusMessage string
 	pendingInput  *events.PromptForInputMsg
 	textInput     textinput.Model
 	width         int
 }
 
-func New(model layout.ResizingModel, initialMsg string) *StatusAndPrompt {
+type Style struct {
+	ModeLine lipgloss.Style
+}
+
+func New(model layout.ResizingModel, initialMsg string, style Style) *StatusAndPrompt {
 	textInput := textinput.New()
-	return &StatusAndPrompt{model: model, statusMessage: initialMsg, textInput: textInput}
+	return &StatusAndPrompt{model: model, style: style, statusMessage: initialMsg, modeLine: "", textInput: textInput}
 }
 
 func (s *StatusAndPrompt) Init() tea.Cmd {
@@ -33,7 +39,12 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.statusMessage = "Error: " + msg.Error()
 	case events.StatusMsg:
 		s.statusMessage = string(msg)
+	case events.ModeMessage:
+		s.modeLine = string(msg)
 	case events.MessageWithStatus:
+		if hasModeMessage, ok := msg.(events.MessageWithMode); ok {
+			s.modeLine = hasModeMessage.ModeMessage()
+		}
 		s.statusMessage = msg.StatusMessage()
 	case events.PromptForInputMsg:
 		if s.pendingInput != nil {
@@ -61,6 +72,8 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.textInput = newTextInput
 				return s, cmd
 			}
+		} else {
+			s.statusMessage = ""
 		}
 	}
 
@@ -85,8 +98,14 @@ func (s *StatusAndPrompt) Resize(w, h int) layout.ResizingModel {
 }
 
 func (s *StatusAndPrompt) viewStatus() string {
+	modeLine := s.style.ModeLine.Render(lipgloss.PlaceHorizontal(s.width, lipgloss.Left, s.modeLine, lipgloss.WithWhitespaceChars(" ")))
+
+	var statusLine string
 	if s.pendingInput != nil {
-		return s.textInput.View()
+		statusLine = s.textInput.View()
+	} else {
+		statusLine = s.statusMessage
 	}
-	return s.statusMessage
+
+	return lipgloss.JoinVertical(lipgloss.Top, modeLine, statusLine)
 }

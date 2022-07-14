@@ -6,38 +6,40 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/awstools/internal/slog-view/controllers"
+	"github.com/lmika/awstools/internal/slog-view/styles"
 	"github.com/lmika/awstools/internal/slog-view/ui/fullviewlinedetails"
 	"github.com/lmika/awstools/internal/slog-view/ui/linedetails"
 	"github.com/lmika/awstools/internal/slog-view/ui/loglines"
 )
 
 type Model struct {
-	controller      *controllers.LogFileController
-	cmdController   *commandctrl.CommandController
+	controller    *controllers.LogFileController
+	cmdController *commandctrl.CommandController
 
-	root       tea.Model
-	logLines    *loglines.Model
-	lineDetails *linedetails.Model
-	statusAndPrompt *statusandprompt.StatusAndPrompt
+	root                tea.Model
+	logLines            *loglines.Model
+	lineDetails         *linedetails.Model
+	statusAndPrompt     *statusandprompt.StatusAndPrompt
 	fullViewLineDetails *fullviewlinedetails.Model
 }
 
 func NewModel(controller *controllers.LogFileController, cmdController *commandctrl.CommandController) Model {
-	logLines := loglines.New()
-	lineDetails := linedetails.New()
+	defaultStyles := styles.DefaultStyles
+	logLines := loglines.New(defaultStyles.Frames)
+	lineDetails := linedetails.New(defaultStyles.Frames)
 	box := layout.NewVBox(layout.LastChildFixedAt(17), logLines, lineDetails)
-	fullViewLineDetails := fullviewlinedetails.NewModel(box)
-	statusAndPrompt := statusandprompt.New(fullViewLineDetails, "")
+	fullViewLineDetails := fullviewlinedetails.NewModel(box, defaultStyles.Frames)
+	statusAndPrompt := statusandprompt.New(fullViewLineDetails, "", defaultStyles.StatusAndPrompt)
 
 	root := layout.FullScreen(statusAndPrompt)
 
 	return Model{
-		controller:      controller,
-		cmdController:   cmdController,
-		root:            root,
-		statusAndPrompt: statusAndPrompt,
-		logLines:         logLines,
-		lineDetails:      lineDetails,
+		controller:          controller,
+		cmdController:       cmdController,
+		root:                root,
+		statusAndPrompt:     statusAndPrompt,
+		logLines:            logLines,
+		lineDetails:         lineDetails,
 		fullViewLineDetails: fullViewLineDetails,
 	}
 }

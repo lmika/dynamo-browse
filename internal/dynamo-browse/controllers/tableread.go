@@ -2,26 +2,30 @@ package controllers
 
 import (
 	"context"
+	"encoding/csv"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
-	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
+	"github.com/lmika/awstools/internal/dynamo-browse/models/queryexpr"
 	"github.com/pkg/errors"
+	"os"
 	"sync"
 )
 
 type TableReadController struct {
-	tableService *tables.Service
+	tableService TableReadService
 	tableName    string
 
 	// state
-	mutex     *sync.Mutex
-	resultSet *models.ResultSet
-	filter    string
+	mutex *sync.Mutex
+	state *State
+	//resultSet *models.ResultSet
+	//filter    string
 }
 
-func NewTableReadController(tableService *tables.Service, tableName string) *TableReadController {
+func NewTableReadController(state *State, tableService TableReadService, tableName string) *TableReadController {
 	return &TableReadController{
+		state:        state,
 		tableService: tableService,
 		tableName:    tableName,
 		mutex:        new(sync.Mutex),
@@ -67,55 +71,106 @@ func (c *TableReadController) ScanTable(name string) tea.Cmd {
 			return events.Error(err)
 		}
 
-		return c.setResultSetAndFilter(resultSet, c.filter)
+		return c.setResultSetAndFilter(resultSet, c.state.Filter())
+	}
+}
+
+func (c *TableReadController) PromptForQuery() tea.Cmd {
+	return func() tea.Msg {
+		return events.PromptForInputMsg{
+			Prompt: "query: ",
+			OnDone: func(value string) tea.Cmd {
+				if value == "" {
+					return func() tea.Msg {
+						resultSet := c.state.ResultSet()
+						return c.doScan(context.Background(), resultSet, nil)
+					}
+				}
+
+				expr, err := queryexpr.Parse(value)
+				if err != nil {
+					return events.SetError(err)
+				}
+
+				return func() tea.Msg {
+					resultSet := c.state.ResultSet()
+					newResultSet, err := c.tableService.ScanOrQuery(context.Background(), resultSet.TableInfo, expr)
+					if err != nil {
+						return events.Error(err)
+					}
+
+					return c.setResultSetAndFilter(newResultSet, "")
+				}
+			},
+		}
 	}
 }
 
 func (c *TableReadController) Rescan() tea.Cmd {
 	return func() tea.Msg {
-		return c.doScan(context.Background(), c.resultSet)
+		resultSet := c.state.ResultSet()
+		return c.doScan(context.Background(), resultSet, resultSet.Query)
 	}
 }
 
-func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet) tea.Msg {
-	newResultSet, err := c.tableService.Scan(ctx, resultSet.TableInfo)
+func (c *TableReadController) ExportCSV(filename string) tea.Cmd {
+	return func() tea.Msg {
+		resultSet := c.state.ResultSet()
+		if resultSet == nil {
+			return events.Error(errors.New("no result set"))
+		}
+
+		f, err := os.Create(filename)
+		if err != nil {
+			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+		}
+		defer f.Close()
+
+		cw := csv.NewWriter(f)
+		defer cw.Flush()
+
+		columns := resultSet.Columns()
+		if err := cw.Write(columns); err != nil {
+			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+		}
+
+		row := make([]string, len(columns))
+		for _, item := range resultSet.Items() {
+			for i, col := range columns {
+				row[i], _ = item.AttributeValueAsString(col)
+			}
+			if err := cw.Write(row); err != nil {
+				return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+			}
+		}
+
+		return nil
+	}
+}
+
+func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable) tea.Msg {
+	newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
 	if err != nil {
 		return events.Error(err)
 	}
 
-	newResultSet = c.tableService.Filter(newResultSet, c.filter)
+	newResultSet = c.tableService.Filter(newResultSet, c.state.Filter())
 
-	return c.setResultSetAndFilter(newResultSet, c.filter)
-}
-
-func (c *TableReadController) ResultSet() *models.ResultSet {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	return c.resultSet
+	return c.setResultSetAndFilter(newResultSet, c.state.Filter())
 }
 
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string) tea.Msg {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	c.resultSet = resultSet
-	c.filter = filter
-	return NewResultSet{resultSet}
+	c.state.setResultSetAndFilter(resultSet, filter)
+	return c.state.buildNewResultSetMessage("")
 }
 
 func (c *TableReadController) Unmark() tea.Cmd {
 	return func() tea.Msg {
-		resultSet := c.ResultSet()
-
-		for i := range resultSet.Items() {
-			resultSet.SetMark(i, false)
-		}
-
-		c.mutex.Lock()
-		defer c.mutex.Unlock()
-
-		c.resultSet = resultSet
+		c.state.withResultSet(func(resultSet *models.ResultSet) {
+			for i := range resultSet.Items() {
+				resultSet.SetMark(i, false)
+			}
+		})
 		return ResultSetUpdated{}
 	}
 }
@@ -126,7 +181,7 @@ func (c *TableReadController) Filter() tea.Cmd {
 			Prompt: "filter: ",
 			OnDone: func(value string) tea.Cmd {
 				return func() tea.Msg {
-					resultSet := c.ResultSet()
+					resultSet := c.state.ResultSet()
 					newResultSet := c.tableService.Filter(resultSet, value)
 
 					return c.setResultSetAndFilter(newResultSet, value)

@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
 )
 
@@ -26,8 +27,8 @@ type Model struct {
 	w, h             int
 }
 
-func New(submodel tea.Model) *Model {
-	frameTitle := frame.NewFrameTitle("Select table", false, activeHeaderStyle)
+func New(submodel tea.Model, uiStyles styles.Styles) *Model {
+	frameTitle := frame.NewFrameTitle("Select table", false, uiStyles.Frames)
 	return &Model{frameTitle: frameTitle, submodel: submodel}
 }
 

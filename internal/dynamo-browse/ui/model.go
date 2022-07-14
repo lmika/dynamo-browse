@@ -3,13 +3,17 @@ package ui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
+	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/tableselect"
+	"github.com/pkg/errors"
 )
 
 type Model struct {
@@ -25,13 +29,16 @@ type Model struct {
 }
 
 func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteController, cc *commandctrl.CommandController) Model {
-	dtv := dynamotableview.New()
-	div := dynamoitemview.New()
+	uiStyles := styles.DefaultStyles
+
+	dtv := dynamotableview.New(uiStyles)
+	div := dynamoitemview.New(uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(17), dtv, div)
 
 	itemEdit := dynamoitemedit.NewModel(mainView)
-	statusAndPrompt := statusandprompt.New(itemEdit, "")
-	tableSelect := tableselect.New(statusAndPrompt)
+	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
+	dialogPrompt := dialogprompt.New(statusAndPrompt)
+	tableSelect := tableselect.New(dialogPrompt, uiStyles)
 
 	cc.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
@@ -43,8 +50,45 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 					return rc.ScanTable(args[0])
 				}
 			},
+			"export": func(args []string) tea.Cmd {
+				if len(args) == 0 {
+					return events.SetError(errors.New("expected filename"))
+				}
+				return rc.ExportCSV(args[0])
+			},
 			"unmark": commandctrl.NoArgCommand(rc.Unmark()),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked()),
+
+			// TEMP
+			"new-item": commandctrl.NoArgCommand(wc.NewItem()),
+			"set-s": func(args []string) tea.Cmd {
+				if len(args) == 0 {
+					return events.SetError(errors.New("expected field"))
+				}
+				return wc.SetStringValue(dtv.SelectedItemIndex(), args[0])
+			},
+			"set-n": func(args []string) tea.Cmd {
+				if len(args) == 0 {
+					return events.SetError(errors.New("expected field"))
+				}
+				return wc.SetNumberValue(dtv.SelectedItemIndex(), args[0])
+			},
+			"del-attr": func(args []string) tea.Cmd {
+				if len(args) == 0 {
+					return events.SetError(errors.New("expected field"))
+				}
+				return wc.DeleteAttribute(dtv.SelectedItemIndex(), args[0])
+			},
+
+			"put": func(args []string) tea.Cmd {
+				return wc.PutItem(dtv.SelectedItemIndex())
+			},
+			"touch": func(args []string) tea.Cmd {
+				return wc.TouchItem(dtv.SelectedItemIndex())
+			},
+			"noisy-touch": func(args []string) tea.Cmd {
+				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
+			},
 		},
 	})
 
@@ -77,8 +121,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, m.tableWriteController.ToggleMark(idx)
 				}
-			case "s":
+			case "R":
 				return m, m.tableReadController.Rescan()
+			case "?":
+				return m, m.tableReadController.PromptForQuery()
 			case "/":
 				return m, m.tableReadController.Filter()
 			case "e":

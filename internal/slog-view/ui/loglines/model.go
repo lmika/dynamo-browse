@@ -1,20 +1,13 @@
 package loglines
 
 import (
-	table "github.com/calyptia/go-bubble-table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/slog-view/models"
+	table "github.com/lmika/go-bubble-table"
 	"path/filepath"
-)
-
-var (
-	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#9c9c9c"))
 )
 
 type Model struct {
@@ -26,9 +19,9 @@ type Model struct {
 	w, h int
 }
 
-func New() *Model {
-	frameTitle := frame.NewFrameTitle("File: ", true, activeHeaderStyle)
-	table := table.New([]string{"level", "error", "message"}, 0, 0)
+func New(style frame.Style) *Model {
+	frameTitle := frame.NewFrameTitle("File: ", true, style)
+	table := table.New(table.SimpleColumns{"level", "error", "message"}, 0, 0)
 
 	return &Model{
 		frameTitle: frameTitle,
@@ -40,7 +33,7 @@ func (m *Model) SetLogFile(newLogFile *models.LogFile) {
 	m.logFile = newLogFile
 	m.frameTitle.SetTitle("File: " + filepath.Base(newLogFile.Filename))
 
-	cols := []string{"level", "error", "message"}
+	cols := table.SimpleColumns{"level", "error", "message"}
 
 	newTbl := table.New(cols, m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, len(newLogFile.Lines))

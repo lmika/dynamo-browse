@@ -1,19 +1,12 @@
 package ssmlist
 
 import (
-	table "github.com/calyptia/go-bubble-table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/ssm-browse/models"
-)
-
-var (
-	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#c144ff"))
+	table "github.com/lmika/go-bubble-table"
 )
 
 type Model struct {
@@ -25,9 +18,9 @@ type Model struct {
 	w, h int
 }
 
-func New() *Model {
-	frameTitle := frame.NewFrameTitle("SSM: /", true, activeHeaderStyle)
-	table := table.New([]string{"name", "type", "value"}, 0, 0)
+func New(style frame.Style) *Model {
+	frameTitle := frame.NewFrameTitle("SSM: /", true, style)
+	table := table.New(table.SimpleColumns{"name", "type", "value"}, 0, 0)
 
 	return &Model{
 		frameTitle: frameTitle,
@@ -41,7 +34,7 @@ func (m *Model) SetPrefix(newPrefix string) {
 
 func (m *Model) SetParameters(parameters *models.SSMParameters) {
 	m.parameters = parameters
-	cols := []string{"name", "type", "value"}
+	cols := table.SimpleColumns{"name", "type", "value"}
 
 	newTbl := table.New(cols, m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, len(parameters.Items))
@@ -83,6 +76,14 @@ func (m *Model) emitNewSelectedParameter() tea.Cmd {
 
 		return nil
 	}
+}
+
+func (m *Model) CurrentParameter() *models.SSMParameter {
+	if row, ok := m.table.SelectedRow().(itemTableRow); ok {
+		return &(row.item)
+	}
+
+	return nil
 }
 
 func (m *Model) View() string {

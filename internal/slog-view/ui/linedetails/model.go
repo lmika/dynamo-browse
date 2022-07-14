@@ -10,13 +10,6 @@ import (
 	"github.com/lmika/awstools/internal/slog-view/models"
 )
 
-var (
-	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#9c9c9c"))
-)
-
 type Model struct {
 	frameTitle frame.FrameTitle
 	viewport   viewport.Model
@@ -27,11 +20,11 @@ type Model struct {
 	selectedItem *models.LogLine
 }
 
-func New() *Model {
+func New(style frame.Style) *Model {
 	viewport := viewport.New(0, 0)
 	viewport.SetContent("")
 	return &Model{
-		frameTitle: frame.NewFrameTitle("Item", false, activeHeaderStyle),
+		frameTitle: frame.NewFrameTitle("Item", false, style),
 		viewport:   viewport,
 	}
 }

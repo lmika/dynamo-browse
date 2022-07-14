@@ -2,22 +2,23 @@ package fullviewlinedetails
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/slog-view/models"
 	"github.com/lmika/awstools/internal/slog-view/ui/linedetails"
 )
 
 type Model struct {
-	submodel tea.Model
+	submodel    tea.Model
 	lineDetails *linedetails.Model
 
 	visible bool
 }
 
-func NewModel(submodel tea.Model) *Model {
+func NewModel(submodel tea.Model, style frame.Style) *Model {
 	return &Model{
-		submodel: submodel,
-		lineDetails: linedetails.New(),
+		submodel:    submodel,
+		lineDetails: linedetails.New(style),
 	}
 }
 
@@ -49,6 +50,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) ViewItem(item *models.LogLine) {
 	m.visible = true
 	m.lineDetails.SetSelectedItem(item)
+	m.lineDetails.SetFocused(true)
 }
 
 func (m *Model) View() string {

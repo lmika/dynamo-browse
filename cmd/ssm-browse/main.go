@@ -20,12 +20,13 @@ import (
 
 func main() {
 	var flagLocal = flag.Bool("local", false, "local endpoint")
+	var flagDebug = flag.String("debug", "", "file to log debug messages")
 	flag.Parse()
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()
 
-	closeFn := logging.EnableLogging()
+	closeFn := logging.EnableLogging(*flagDebug)
 	defer closeFn()
 
 	cfg, err := config.LoadDefaultConfig(context.Background())

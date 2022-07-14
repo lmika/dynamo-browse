@@ -3,11 +3,14 @@ package ui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
+	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/awstools/internal/ssm-browse/controllers"
+	"github.com/lmika/awstools/internal/ssm-browse/styles"
 	"github.com/lmika/awstools/internal/ssm-browse/ui/ssmdetails"
 	"github.com/lmika/awstools/internal/ssm-browse/ui/ssmlist"
+	"github.com/pkg/errors"
 )
 
 type Model struct {
@@ -21,11 +24,28 @@ type Model struct {
 }
 
 func NewModel(controller *controllers.SSMController, cmdController *commandctrl.CommandController) Model {
-	ssmList := ssmlist.New()
-	ssmdDetails := ssmdetails.New()
+	defaultStyles := styles.DefaultStyles
+	ssmList := ssmlist.New(defaultStyles.Frames)
+	ssmdDetails := ssmdetails.New(defaultStyles.Frames)
 	statusAndPrompt := statusandprompt.New(
-		layout.NewVBox(layout.LastChildFixedAt(17), ssmList, ssmdDetails),
-		"")
+		layout.NewVBox(layout.LastChildFixedAt(17), ssmList, ssmdDetails), "", defaultStyles.StatusAndPrompt)
+
+	cmdController.AddCommands(&commandctrl.CommandContext{
+		Commands: map[string]commandctrl.Command{
+			"clone": func(args []string) tea.Cmd {
+				if currentParam := ssmList.CurrentParameter(); currentParam != nil {
+					return controller.Clone(*currentParam)
+				}
+				return events.SetError(errors.New("no parameter selected"))
+			},
+			"delete": func(args []string) tea.Cmd {
+				if currentParam := ssmList.CurrentParameter(); currentParam != nil {
+					return controller.DeleteParameter(*currentParam)
+				}
+				return events.SetError(errors.New("no parameter selected"))
+			},
+		},
+	})
 
 	root := layout.FullScreen(statusAndPrompt)
 
