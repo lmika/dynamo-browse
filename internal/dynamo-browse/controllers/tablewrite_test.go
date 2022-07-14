@@ -135,6 +135,51 @@ func TestTableWriteController_SetNumberValue(t *testing.T) {
 	})
 }
 
+func TestTableWriteController_DeleteAttribute(t *testing.T) {
+	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+	defer cleanupFn()
+
+	provider := dynamo.NewProvider(client)
+	service := tables.NewService(provider)
+
+	t.Run("should delete top level attribute", func(t *testing.T) {
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("age")
+		assert.Equal(t, "23", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		invokeCommand(t, writeController.DeleteAttribute(0, "age"))
+
+		_, hasAge := state.ResultSet().Items()[0]["age"]
+		assert.False(t, hasAge)
+	})
+
+	t.Run("should delete attribute of map", func(t *testing.T) {
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+
+		beforeAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
+		beforeStreet := beforeAddress.Value["no"].(*types.AttributeValueMemberN).Value
+
+		assert.Equal(t, "123", beforeStreet)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		invokeCommand(t, writeController.DeleteAttribute(0, "address.no"))
+
+		afterAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
+		_, hasStreet := afterAddress.Value["no"]
+
+		assert.False(t, hasStreet)
+	})
+}
+
 func TestTableWriteController_PutItem(t *testing.T) {
 	t.Run("should put the selected item if dirty", func(t *testing.T) {
 		client, cleanupFn := testdynamo.SetupTestTable(t, testData)

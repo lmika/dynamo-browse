@@ -138,6 +138,35 @@ func (twc *TableWriteController) SetNumberValue(idx int, key string) tea.Cmd {
 	}
 }
 
+func (twc *TableWriteController) DeleteAttribute(idx int, key string) tea.Cmd {
+	return func() tea.Msg {
+		// Verify that the expression is valid
+		apPath := newAttrPath(key)
+
+		if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+			_, err := apPath.follow(set.Items()[idx])
+			return err
+		}); err != nil {
+			return events.Error(err)
+		}
+
+		if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+			err := apPath.deleteAt(set.Items()[idx])
+			if err != nil {
+				return err
+			}
+
+			set.SetDirty(idx, true)
+			set.RefreshColumns()
+			return nil
+		}); err != nil {
+			return events.Error(err)
+		}
+
+		return ResultSetUpdated{}
+	}
+}
+
 func (twc *TableWriteController) PutItem(idx int) tea.Cmd {
 	return func() tea.Msg {
 		resultSet := twc.state.ResultSet()
