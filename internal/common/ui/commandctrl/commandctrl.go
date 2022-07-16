@@ -37,14 +37,12 @@ func (c *CommandController) Prompt() tea.Cmd {
 }
 
 func (c *CommandController) Execute(commandInput string) tea.Cmd {
-	log.Println("Received input: ", commandInput)
 	input := strings.TrimSpace(commandInput)
 	if input == "" {
 		return nil
 	}
 
 	tokens := shellwords.Split(input)
-	log.Println("Tokens: ", tokens)
 	command := c.lookupCommand(tokens[0])
 	if command == nil {
 		log.Println("No such command: ", tokens)
@@ -52,6 +50,18 @@ func (c *CommandController) Execute(commandInput string) tea.Cmd {
 	}
 
 	return command(tokens[1:])
+}
+
+func (c *CommandController) Alias(commandName string) Command {
+	return func(args []string) tea.Cmd {
+		command := c.lookupCommand(commandName)
+		if command == nil {
+			log.Println("No such command: ", commandName)
+			return events.SetError(errors.New("no such command: " + commandName))
+		}
+
+		return command(args[1:])
+	}
 }
 
 func (c *CommandController) lookupCommand(name string) Command {

@@ -1,8 +1,10 @@
 package controllers_test
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
+	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/awstools/test/testdynamo"
@@ -41,6 +43,152 @@ func TestTableWriteController_NewItem(t *testing.T) {
 	})
 }
 
+func TestTableWriteController_SetAttributeValue(t *testing.T) {
+	t.Run("should preserve the type of the field if unspecified", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		t.Cleanup(cleanupFn)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		scenarios := []struct {
+			attrKey   string
+			attrValue string
+			expected  types.AttributeValue
+		}{
+			{
+				attrKey:   "alpha",
+				attrValue: "a new value",
+				expected:  &types.AttributeValueMemberS{Value: "a new value"},
+			},
+			{
+				attrKey:   "age",
+				attrValue: "1234",
+				expected:  &types.AttributeValueMemberN{Value: "1234"},
+			},
+			{
+				attrKey:   "useMailing",
+				attrValue: "t",
+				expected:  &types.AttributeValueMemberBOOL{Value: true},
+			},
+			{
+				attrKey:   "useMailing",
+				attrValue: "f",
+				expected:  &types.AttributeValueMemberBOOL{Value: false},
+			},
+		}
+
+		for _, scenario := range scenarios {
+			t.Run(fmt.Sprintf("should set value of field %v", scenario.attrKey), func(t *testing.T) {
+				state := controllers.NewState()
+				readController := controllers.NewTableReadController(state, service, "alpha-table")
+				writeController := controllers.NewTableWriteController(state, service, readController)
+
+				invokeCommand(t, readController.Init())
+				before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+				assert.Equal(t, "This is some value", before)
+				assert.False(t, state.ResultSet().IsDirty(0))
+
+				invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.UnsetItemType, scenario.attrKey), scenario.attrValue)
+
+				after, _ := state.ResultSet().Items()[0][scenario.attrKey]
+				assert.Equal(t, scenario.expected, after)
+				assert.True(t, state.ResultSet().IsDirty(0))
+			})
+		}
+	})
+
+	t.Run("should change the value to a particular field if already present", func(t *testing.T) {
+		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
+		t.Cleanup(cleanupFn)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		scenarios := []struct {
+			attrType  models.ItemType
+			attrValue string
+			expected  types.AttributeValue
+		}{
+			{
+				attrType:  models.StringItemType,
+				attrValue: "a new value",
+				expected:  &types.AttributeValueMemberS{Value: "a new value"},
+			},
+			{
+				attrType:  models.NumberItemType,
+				attrValue: "1234",
+				expected:  &types.AttributeValueMemberN{Value: "1234"},
+			},
+			{
+				attrType:  models.BoolItemType,
+				attrValue: "true",
+				expected:  &types.AttributeValueMemberBOOL{Value: true},
+			},
+			{
+				attrType:  models.BoolItemType,
+				attrValue: "false",
+				expected:  &types.AttributeValueMemberBOOL{Value: false},
+			},
+			{
+				attrType:  models.NullItemType,
+				attrValue: "",
+				expected:  &types.AttributeValueMemberNULL{Value: true},
+			},
+		}
+
+		for _, scenario := range scenarios {
+			t.Run(fmt.Sprintf("should change the value of a field to type %v", scenario.attrType), func(t *testing.T) {
+				state := controllers.NewState()
+				readController := controllers.NewTableReadController(state, service, "alpha-table")
+				writeController := controllers.NewTableWriteController(state, service, readController)
+
+				invokeCommand(t, readController.Init())
+				before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+				assert.Equal(t, "This is some value", before)
+				assert.False(t, state.ResultSet().IsDirty(0))
+
+				if scenario.attrValue == "" {
+					invokeCommand(t, writeController.SetAttributeValue(0, scenario.attrType, "alpha"))
+				} else {
+					invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, scenario.attrType, "alpha"), scenario.attrValue)
+				}
+
+				after, _ := state.ResultSet().Items()[0]["alpha"]
+				assert.Equal(t, scenario.expected, after)
+				assert.True(t, state.ResultSet().IsDirty(0))
+			})
+
+			t.Run(fmt.Sprintf("should change value of nested field to type %v", scenario.attrType), func(t *testing.T) {
+				state := controllers.NewState()
+				readController := controllers.NewTableReadController(state, service, "alpha-table")
+				writeController := controllers.NewTableWriteController(state, service, readController)
+
+				invokeCommand(t, readController.Init())
+
+				beforeAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
+				beforeStreet := beforeAddress.Value["street"].(*types.AttributeValueMemberS).Value
+
+				assert.Equal(t, "Fake st.", beforeStreet)
+				assert.False(t, state.ResultSet().IsDirty(0))
+
+				if scenario.attrValue == "" {
+					invokeCommand(t, writeController.SetAttributeValue(0, scenario.attrType, "address.street"))
+				} else {
+					invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, scenario.attrType, "address.street"), scenario.attrValue)
+				}
+
+				afterAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
+				after := afterAddress.Value["street"]
+
+				assert.Equal(t, scenario.expected, after)
+				assert.True(t, state.ResultSet().IsDirty(0))
+			})
+		}
+	})
+}
+
+/*
 func TestTableWriteController_SetStringValue(t *testing.T) {
 	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
 	defer cleanupFn()
@@ -134,6 +282,7 @@ func TestTableWriteController_SetNumberValue(t *testing.T) {
 		assert.True(t, state.ResultSet().IsDirty(0))
 	})
 }
+*/
 
 func TestTableWriteController_DeleteAttribute(t *testing.T) {
 	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
@@ -199,7 +348,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		assert.False(t, state.ResultSet().IsDirty(0))
 
 		// Modify the item and put it
-		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
 		invokeCommandWithPrompt(t, writeController.PutItem(0), "y")
 
 		// Rescan the table
@@ -227,7 +376,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		assert.False(t, state.ResultSet().IsDirty(0))
 
 		// Modify the item but do not put it
-		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
 		invokeCommandWithPrompt(t, writeController.PutItem(0), "n")
 
 		current, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
@@ -308,7 +457,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 		assert.False(t, state.ResultSet().IsDirty(0))
 
 		// Modify the item and put it
-		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
 		invokeCommandExpectingError(t, writeController.TouchItem(0))
 	})
 }
@@ -359,7 +508,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		assert.False(t, state.ResultSet().IsDirty(0))
 
 		// Modify the item and put it
-		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
 		invokeCommandExpectingError(t, writeController.NoisyTouchItem(0))
 	})
 }

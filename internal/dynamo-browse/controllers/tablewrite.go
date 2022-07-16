@@ -9,6 +9,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/pkg/errors"
+	"strconv"
 )
 
 type TableWriteController struct {
@@ -68,24 +69,50 @@ func (twc *TableWriteController) NewItem() tea.Cmd {
 	}
 }
 
-func (twc *TableWriteController) SetStringValue(idx int, key string) tea.Cmd {
-	return func() tea.Msg {
-		// Verify that the expression is valid
-		apPath := newAttrPath(key)
+func (twc *TableWriteController) SetAttributeValue(idx int, itemType models.ItemType, key string) tea.Cmd {
+	apPath := newAttrPath(key)
 
-		if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-			_, err := apPath.follow(set.Items()[idx])
-			return err
-		}); err != nil {
-			return events.Error(err)
+	var attrValue types.AttributeValue
+	if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) (err error) {
+		attrValue, err = apPath.follow(set.Items()[idx])
+		return err
+	}); err != nil {
+		return events.SetError(err)
+	}
+
+	switch itemType {
+	case models.UnsetItemType:
+		switch attrValue.(type) {
+		case *types.AttributeValueMemberS:
+			return twc.setStringValue(idx, apPath)
+		case *types.AttributeValueMemberN:
+			return twc.setNumberValue(idx, apPath)
+		case *types.AttributeValueMemberBOOL:
+			return twc.setBoolValue(idx, apPath)
+		default:
+			return events.SetError(errors.New("attribute type for key must be set"))
 		}
+	case models.StringItemType:
+		return twc.setStringValue(idx, apPath)
+	case models.NumberItemType:
+		return twc.setNumberValue(idx, apPath)
+	case models.BoolItemType:
+		return twc.setBoolValue(idx, apPath)
+	case models.NullItemType:
+		return twc.setNullValue(idx, apPath)
+	default:
+		return events.SetError(errors.New("unsupported attribute type"))
+	}
+}
 
+func (twc *TableWriteController) setStringValue(idx int, attr attrPath) tea.Cmd {
+	return func() tea.Msg {
 		return events.PromptForInputMsg{
 			Prompt: "string value: ",
 			OnDone: func(value string) tea.Cmd {
 				return func() tea.Msg {
 					if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-						err := apPath.setAt(set.Items()[idx], &types.AttributeValueMemberS{Value: value})
+						err := attr.setAt(set.Items()[idx], &types.AttributeValueMemberS{Value: value})
 						if err != nil {
 							return err
 						}
@@ -103,24 +130,14 @@ func (twc *TableWriteController) SetStringValue(idx int, key string) tea.Cmd {
 	}
 }
 
-func (twc *TableWriteController) SetNumberValue(idx int, key string) tea.Cmd {
+func (twc *TableWriteController) setNumberValue(idx int, attr attrPath) tea.Cmd {
 	return func() tea.Msg {
-		// Verify that the expression is valid
-		apPath := newAttrPath(key)
-
-		if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-			_, err := apPath.follow(set.Items()[idx])
-			return err
-		}); err != nil {
-			return events.Error(err)
-		}
-
 		return events.PromptForInputMsg{
 			Prompt: "number value: ",
 			OnDone: func(value string) tea.Cmd {
 				return func() tea.Msg {
 					if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-						err := apPath.setAt(set.Items()[idx], &types.AttributeValueMemberN{Value: value})
+						err := attr.setAt(set.Items()[idx], &types.AttributeValueMemberN{Value: value})
 						if err != nil {
 							return err
 						}
@@ -135,6 +152,54 @@ func (twc *TableWriteController) SetNumberValue(idx int, key string) tea.Cmd {
 				}
 			},
 		}
+	}
+}
+
+func (twc *TableWriteController) setBoolValue(idx int, attr attrPath) tea.Cmd {
+	return func() tea.Msg {
+		return events.PromptForInputMsg{
+			Prompt: "bool value: ",
+			OnDone: func(value string) tea.Cmd {
+				return func() tea.Msg {
+					b, err := strconv.ParseBool(value)
+					if err != nil {
+						return events.Error(err)
+					}
+
+					if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+						err := attr.setAt(set.Items()[idx], &types.AttributeValueMemberBOOL{Value: b})
+						if err != nil {
+							return err
+						}
+
+						set.SetDirty(idx, true)
+						set.RefreshColumns()
+						return nil
+					}); err != nil {
+						return events.Error(err)
+					}
+					return ResultSetUpdated{}
+				}
+			},
+		}
+	}
+}
+
+func (twc *TableWriteController) setNullValue(idx int, attr attrPath) tea.Cmd {
+	return func() tea.Msg {
+		if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+			err := attr.setAt(set.Items()[idx], &types.AttributeValueMemberNULL{Value: true})
+			if err != nil {
+				return err
+			}
+
+			set.SetDirty(idx, true)
+			set.RefreshColumns()
+			return nil
+		}); err != nil {
+			return events.Error(err)
+		}
+		return ResultSetUpdated{}
 	}
 }
 

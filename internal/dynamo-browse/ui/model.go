@@ -5,8 +5,9 @@ import (
 	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
+	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dialogprompt"
+	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
@@ -14,6 +15,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/pkg/errors"
+	"strings"
 )
 
 type Model struct {
@@ -61,17 +63,29 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 
 			// TEMP
 			"new-item": commandctrl.NoArgCommand(wc.NewItem()),
-			"set-s": func(args []string) tea.Cmd {
+			"set-attr": func(args []string) tea.Cmd {
 				if len(args) == 0 {
 					return events.SetError(errors.New("expected field"))
 				}
-				return wc.SetStringValue(dtv.SelectedItemIndex(), args[0])
-			},
-			"set-n": func(args []string) tea.Cmd {
-				if len(args) == 0 {
-					return events.SetError(errors.New("expected field"))
+
+				var itemType = models.UnsetItemType
+				if len(args) == 2 {
+					switch strings.ToUpper(args[0]) {
+					case "-S":
+						itemType = models.StringItemType
+					case "-N":
+						itemType = models.NumberItemType
+					case "-BOOL":
+						itemType = models.BoolItemType
+					case "-NULL":
+						itemType = models.NullItemType
+					default:
+						return events.SetError(errors.New("unrecognised item type"))
+					}
+					args = args[1:]
 				}
-				return wc.SetNumberValue(dtv.SelectedItemIndex(), args[0])
+
+				return wc.SetAttributeValue(dtv.SelectedItemIndex(), itemType, args[0])
 			},
 			"del-attr": func(args []string) tea.Cmd {
 				if len(args) == 0 {
@@ -89,6 +103,11 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 			"noisy-touch": func(args []string) tea.Cmd {
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
 			},
+
+			// Aliases
+			"sa": cc.Alias("set-attr"),
+			"da": cc.Alias("del-attr"),
+			"w":  cc.Alias("put"),
 		},
 	})
 

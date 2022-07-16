@@ -23,3 +23,22 @@ func (ps *promptSequence) next() tea.Msg {
 	}
 	return ps.onAllDone(ps.receivedValues)
 }
+
+//type SetAttributeArg struct {
+//	attrType models.ItemType
+//	attrName string
+//}
+//
+//func ParseSetAttributeArgs(args []string) (attrArgs []SetAttributeArg, err error) {
+//	var currArg SetAttributeArg
+//	for _, arg := range args {
+//		if arg[0] == '-' {
+//			currArg.attrType = models.ItemType(arg[1:])
+//		} else {
+//			currArg.attrName = arg
+//			attrArgs = append(attrArgs, currArg)
+//			currArg = SetAttributeArg{}
+//		}
+//	}
+//	return attrArgs, nil
+//}

@@ -19,7 +19,7 @@ import (
 func main() {
 	ctx := context.Background()
 	tableName := "business-addresses"
-	totalItems := 5000
+	totalItems := 500
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {

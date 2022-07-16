@@ -209,10 +209,11 @@ var testData = []testdynamo.TestData{
 		TableName: "alpha-table",
 		Data: []map[string]interface{}{
 			{
-				"pk":    "abc",
-				"sk":    "111",
-				"alpha": "This is some value",
-				"age":   23,
+				"pk":         "abc",
+				"sk":         "111",
+				"alpha":      "This is some value",
+				"age":        23,
+				"useMailing": true,
 				"address": map[string]any{
 					"no":     123,
 					"street": "Fake st.",
