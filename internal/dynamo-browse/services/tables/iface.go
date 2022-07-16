@@ -14,4 +14,5 @@ type TableProvider interface {
 	ScanItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error)
 	DeleteItem(ctx context.Context, tableName string, key map[string]types.AttributeValue) error
 	PutItem(ctx context.Context, name string, item models.Item) error
+	PutItems(ctx context.Context, name string, items []models.Item) error
 }

@@ -49,4 +49,10 @@ type PromptForTableMsg struct {
 	OnSelected func(tableName string) tea.Cmd
 }
 
-type ResultSetUpdated struct{}
+type ResultSetUpdated struct {
+	statusMessage string
+}
+
+func (rs ResultSetUpdated) StatusMessage() string {
+	return rs.statusMessage
+}

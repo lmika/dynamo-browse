@@ -13,8 +13,7 @@ import (
 func TestService_Describe(t *testing.T) {
 	tableName := "service-test-data"
 
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
+	client := testdynamo.SetupTestTable(t, testData)
 	provider := dynamo.NewProvider(client)
 
 	t.Run("return details of the table", func(t *testing.T) {
@@ -35,8 +34,7 @@ func TestService_Describe(t *testing.T) {
 func TestService_Scan(t *testing.T) {
 	tableName := "service-test-data"
 
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
+	client := testdynamo.SetupTestTable(t, testData)
 	provider := dynamo.NewProvider(client)
 
 	t.Run("return all columns and fields in sorted order", func(t *testing.T) {
@@ -52,9 +50,6 @@ func TestService_Scan(t *testing.T) {
 		// Hash first, then range, then columns in alphabetic order
 		assert.Equal(t, rs.TableInfo, ti)
 		assert.Equal(t, rs.Columns(), []string{"pk", "sk", "alpha", "beta", "gamma"})
-		//assert.Equal(t, rs.Items[0], testdynamo.TestRecordAsItem(t, testData[1]))
-		//assert.Equal(t, rs.Items[1], testdynamo.TestRecordAsItem(t, testData[0]))
-		//assert.Equal(t, rs.Items[2], testdynamo.TestRecordAsItem(t, testData[2]))
 	})
 }
 

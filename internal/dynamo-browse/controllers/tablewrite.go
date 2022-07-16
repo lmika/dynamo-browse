@@ -257,6 +257,68 @@ func (twc *TableWriteController) PutItem(idx int) tea.Cmd {
 	}
 }
 
+func (twc *TableWriteController) PutItems() tea.Cmd {
+	return func() tea.Msg {
+		var (
+			expectedPuts int
+			markedItems  int
+		)
+
+		twc.state.withResultSet(func(rs *models.ResultSet) {
+			markedItems = len(rs.MarkedItems())
+			for i := range rs.Items() {
+				if rs.IsDirty(i) && (markedItems == 0 || rs.Marked(i)) {
+					expectedPuts++
+				}
+			}
+		})
+
+		if expectedPuts == 0 {
+			if markedItems > 0 {
+				return events.StatusMsg("no marked items are modified")
+			} else {
+				return events.StatusMsg("no items are modified")
+			}
+		}
+
+		var promptMessage string
+		if markedItems > 0 {
+			promptMessage = applyToN("put ", expectedPuts, "marked item", "marked items", "? ")
+		} else {
+			promptMessage = applyToN("put ", expectedPuts, "item", "items", "? ")
+		}
+
+		return events.PromptForInputMsg{
+			Prompt: promptMessage,
+			OnDone: func(value string) tea.Cmd {
+				if value != "y" {
+					return events.SetStatus("operation aborted")
+				}
+
+				return func() tea.Msg {
+					if err := twc.state.withResultSetReturningError(func(rs *models.ResultSet) error {
+						updated, err := twc.tableService.PutSelectedItems(context.Background(), rs, func(idx int) bool {
+							return rs.IsDirty(idx) && (markedItems == 0 || rs.Marked(idx))
+						})
+						if err != nil {
+							return err
+						} else if updated != expectedPuts {
+							return errors.Errorf("expected %d updates but only %d were applied", expectedPuts, updated)
+						}
+						return nil
+					}); err != nil {
+						return events.Error(err)
+					}
+
+					return ResultSetUpdated{
+						statusMessage: applyToN("", expectedPuts, "item", "item", " put to table"),
+					}
+				}
+			},
+		}
+	}
+}
+
 func (twc *TableWriteController) TouchItem(idx int) tea.Cmd {
 	return func() tea.Msg {
 		resultSet := twc.state.ResultSet()
@@ -325,7 +387,7 @@ func (twc *TableWriteController) DeleteMarked() tea.Cmd {
 		}
 
 		return events.PromptForInputMsg{
-			Prompt: fmt.Sprintf("delete %d items? ", len(markedItems)),
+			Prompt: applyToN("delete ", len(markedItems), "item", "items", "? "),
 			OnDone: func(value string) tea.Cmd {
 				if value != "y" {
 					return events.SetStatus("operation aborted")
@@ -342,4 +404,11 @@ func (twc *TableWriteController) DeleteMarked() tea.Cmd {
 			},
 		}
 	}
+}
+
+func applyToN(prefix string, n int, singular, plural, suffix string) string {
+	if n == 1 {
+		return fmt.Sprintf("%v%v %v%v", prefix, n, singular, suffix)
+	}
+	return fmt.Sprintf("%v%v %v%v", prefix, n, plural, suffix)
 }

@@ -6,12 +6,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/lmika/awstools/internal/common/sliceutils"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
 
 type Provider struct {
 	client *dynamodb.Client
+}
+
+func NewProvider(client *dynamodb.Client) *Provider {
+	return &Provider{client: client}
 }
 
 func (p *Provider) ListTables(ctx context.Context) ([]string, error) {
@@ -60,8 +65,33 @@ func (p *Provider) PutItem(ctx context.Context, name string, item models.Item) e
 	return nil
 }
 
-func NewProvider(client *dynamodb.Client) *Provider {
-	return &Provider{client: client}
+func (p *Provider) PutItems(ctx context.Context, name string, items []models.Item) error {
+	return p.batchPutItems(ctx, name, items)
+}
+
+func (p *Provider) batchPutItems(ctx context.Context, name string, items []models.Item) error {
+	reqs := len(items)/25 + 1
+	for rn := 0; rn < reqs; rn++ {
+		s, f := rn*25, (rn+1)*25
+		if f > len(items) {
+			f = len(items)
+		}
+
+		itemsInThisRequest := items[s:f]
+		writeRequests := sliceutils.Map(itemsInThisRequest, func(item models.Item) types.WriteRequest {
+			return types.WriteRequest{PutRequest: &types.PutRequest{Item: item}}
+		})
+
+		_, err := p.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]types.WriteRequest{
+				name: writeRequests,
+			},
+		})
+		if err != nil {
+			errors.Wrapf(err, "unable to put page %v of back puts", rn)
+		}
+	}
+	return nil
 }
 
 func (p *Provider) ScanItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error) {

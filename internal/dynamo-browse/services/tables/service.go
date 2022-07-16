@@ -3,6 +3,7 @@ package tables
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/lmika/awstools/internal/common/sliceutils"
 	"strings"
 
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
@@ -112,6 +113,36 @@ func (s *Service) PutItemAt(ctx context.Context, resultSet *models.ResultSet, in
 	resultSet.SetDirty(index, false)
 	resultSet.SetNew(index, false)
 	return nil
+}
+
+func (s *Service) PutSelectedItems(ctx context.Context, resultSet *models.ResultSet, shouldPut func(idx int) bool) (int, error) {
+	type dirtyItem struct {
+		item models.Item
+		idx  int
+	}
+
+	dirtyItems := make([]dirtyItem, 0)
+	for i, item := range resultSet.Items() {
+		if shouldPut(i) {
+			dirtyItems = append(dirtyItems, dirtyItem{item, i})
+		}
+	}
+
+	if len(dirtyItems) == 0 {
+		return 0, nil
+	}
+
+	if err := s.provider.PutItems(ctx, resultSet.TableInfo.Name, sliceutils.Map(dirtyItems, func(t dirtyItem) models.Item {
+		return t.item
+	})); err != nil {
+		return 0, err
+	}
+
+	for _, di := range dirtyItems {
+		resultSet.SetDirty(di.idx, false)
+		resultSet.SetNew(di.idx, false)
+	}
+	return len(dirtyItems), nil
 }
 
 func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items []models.Item) error {

@@ -15,8 +15,7 @@ import (
 )
 
 func TestTableReadController_InitTable(t *testing.T) {
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
+	client := testdynamo.SetupTestTable(t, testData)
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
@@ -41,8 +40,7 @@ func TestTableReadController_InitTable(t *testing.T) {
 }
 
 func TestTableReadController_ListTables(t *testing.T) {
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
+	client := testdynamo.SetupTestTable(t, testData)
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
@@ -65,8 +63,7 @@ func TestTableReadController_ListTables(t *testing.T) {
 }
 
 func TestTableReadController_ExportCSV(t *testing.T) {
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
+	client := testdynamo.SetupTestTable(t, testData)
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
@@ -101,8 +98,7 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 }
 
 func TestTableReadController_Query(t *testing.T) {
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
+	client := testdynamo.SetupTestTable(t, testData)
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)

@@ -14,8 +14,7 @@ import (
 
 func TestTableWriteController_NewItem(t *testing.T) {
 	t.Run("should add an item with pk and sk set at the end of the result set", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		defer cleanupFn()
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -45,8 +44,7 @@ func TestTableWriteController_NewItem(t *testing.T) {
 
 func TestTableWriteController_SetAttributeValue(t *testing.T) {
 	t.Run("should preserve the type of the field if unspecified", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		t.Cleanup(cleanupFn)
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -99,8 +97,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 	})
 
 	t.Run("should change the value to a particular field if already present", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		t.Cleanup(cleanupFn)
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -188,105 +185,8 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 	})
 }
 
-/*
-func TestTableWriteController_SetStringValue(t *testing.T) {
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
-
-	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
-
-	t.Run("should change the value of a string field if already present", func(t *testing.T) {
-		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, "alpha-table")
-		writeController := controllers.NewTableWriteController(state, service, readController)
-
-		invokeCommand(t, readController.Init())
-		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
-		assert.Equal(t, "This is some value", before)
-		assert.False(t, state.ResultSet().IsDirty(0))
-
-		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "alpha"), "a new value")
-
-		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
-		assert.Equal(t, "a new value", after)
-		assert.True(t, state.ResultSet().IsDirty(0))
-	})
-
-	t.Run("should change the value of a string field within a map if already present", func(t *testing.T) {
-		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, "alpha-table")
-		writeController := controllers.NewTableWriteController(state, service, readController)
-
-		invokeCommand(t, readController.Init())
-
-		beforeAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
-		beforeStreet := beforeAddress.Value["street"].(*types.AttributeValueMemberS).Value
-
-		assert.Equal(t, "Fake st.", beforeStreet)
-		assert.False(t, state.ResultSet().IsDirty(0))
-
-		invokeCommandWithPrompt(t, writeController.SetStringValue(0, "address.street"), "Fiction rd.")
-
-		afterAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
-		afterStreet := afterAddress.Value["street"].(*types.AttributeValueMemberS).Value
-
-		assert.Equal(t, "Fiction rd.", afterStreet)
-		assert.True(t, state.ResultSet().IsDirty(0))
-	})
-}
-
-func TestTableWriteController_SetNumberValue(t *testing.T) {
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
-
-	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
-
-	t.Run("should change the value of a number field if already present", func(t *testing.T) {
-		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, "alpha-table")
-		writeController := controllers.NewTableWriteController(state, service, readController)
-
-		invokeCommand(t, readController.Init())
-		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("age")
-		assert.Equal(t, "23", before)
-		assert.False(t, state.ResultSet().IsDirty(0))
-
-		invokeCommandWithPrompt(t, writeController.SetNumberValue(0, "age"), "46")
-
-		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("age")
-		assert.Equal(t, "46", after)
-		assert.True(t, state.ResultSet().IsDirty(0))
-	})
-
-	t.Run("should change the value of a number field within a map if already present", func(t *testing.T) {
-		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, "alpha-table")
-		writeController := controllers.NewTableWriteController(state, service, readController)
-
-		invokeCommand(t, readController.Init())
-
-		beforeAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
-		beforeStreet := beforeAddress.Value["no"].(*types.AttributeValueMemberN).Value
-
-		assert.Equal(t, "123", beforeStreet)
-		assert.False(t, state.ResultSet().IsDirty(0))
-
-		invokeCommandWithPrompt(t, writeController.SetNumberValue(0, "address.no"), "456")
-
-		afterAddress := state.ResultSet().Items()[0]["address"].(*types.AttributeValueMemberM)
-		afterStreet := afterAddress.Value["no"].(*types.AttributeValueMemberN).Value
-
-		assert.Equal(t, "456", afterStreet)
-		assert.True(t, state.ResultSet().IsDirty(0))
-	})
-}
-*/
-
 func TestTableWriteController_DeleteAttribute(t *testing.T) {
-	client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-	defer cleanupFn()
+	client := testdynamo.SetupTestTable(t, testData)
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
@@ -331,8 +231,7 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 
 func TestTableWriteController_PutItem(t *testing.T) {
 	t.Run("should put the selected item if dirty", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		defer cleanupFn()
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -359,8 +258,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if user does not confirm", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		defer cleanupFn()
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -391,8 +289,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if not dirty", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		defer cleanupFn()
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -411,10 +308,111 @@ func TestTableWriteController_PutItem(t *testing.T) {
 	})
 }
 
+func TestTableWriteController_PutItems(t *testing.T) {
+	t.Run("should put all dirty items if none are marked", func(t *testing.T) {
+		client := testdynamo.SetupTestTable(t, testData)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(2, models.StringItemType, "alpha"), "another new value")
+
+		invokeCommandWithPrompt(t, writeController.PutItems(), "y")
+
+		// Rescan the table
+		invokeCommand(t, readController.Rescan())
+
+		assert.Equal(t, "a new value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "another new value", state.ResultSet().Items()[2]["alpha"].(*types.AttributeValueMemberS).Value)
+
+		assert.False(t, state.ResultSet().IsDirty(0))
+		assert.False(t, state.ResultSet().IsDirty(2))
+	})
+
+	t.Run("only put marked items", func(t *testing.T) {
+		client := testdynamo.SetupTestTable(t, testData)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(2, models.StringItemType, "alpha"), "another new value")
+		invokeCommand(t, writeController.ToggleMark(0))
+
+		invokeCommandWithPrompt(t, writeController.PutItems(), "y")
+
+		// Verify dirty items are unchanged
+		assert.Equal(t, "a new value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "another new value", state.ResultSet().Items()[2]["alpha"].(*types.AttributeValueMemberS).Value)
+
+		assert.False(t, state.ResultSet().IsDirty(0))
+		assert.True(t, state.ResultSet().IsDirty(2))
+
+		// Rescan the table and verify dirty items were not written
+		invokeCommand(t, readController.Rescan())
+
+		assert.Equal(t, "a new value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Nil(t, state.ResultSet().Items()[2]["alpha"])
+
+		assert.False(t, state.ResultSet().IsDirty(0))
+		assert.False(t, state.ResultSet().IsDirty(2))
+	})
+
+	t.Run("do not put marked items which are not diry", func(t *testing.T) {
+		client := testdynamo.SetupTestTable(t, testData)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider)
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, "alpha-table")
+		writeController := controllers.NewTableWriteController(state, service, readController)
+
+		invokeCommand(t, readController.Init())
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(2, models.StringItemType, "alpha"), "another new value")
+		invokeCommand(t, writeController.ToggleMark(1))
+
+		invokeCommand(t, writeController.PutItems())
+
+		// Verify dirty items are unchanged
+		assert.Equal(t, "a new value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "another new value", state.ResultSet().Items()[2]["alpha"].(*types.AttributeValueMemberS).Value)
+
+		assert.True(t, state.ResultSet().IsDirty(0))
+		assert.True(t, state.ResultSet().IsDirty(2))
+
+		// Rescan the table and verify dirty items were not written
+		invokeCommand(t, readController.Rescan())
+
+		assert.Equal(t, "This is some value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Nil(t, state.ResultSet().Items()[2]["alpha"])
+
+		assert.False(t, state.ResultSet().IsDirty(0))
+		assert.False(t, state.ResultSet().IsDirty(2))
+	})
+}
+
 func TestTableWriteController_TouchItem(t *testing.T) {
 	t.Run("should put the selected item if unmodified", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		defer cleanupFn()
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -440,8 +438,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if modified", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		defer cleanupFn()
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -464,8 +461,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 
 func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 	t.Run("should delete and put the selected item if unmodified", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		defer cleanupFn()
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)
@@ -491,8 +487,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if modified", func(t *testing.T) {
-		client, cleanupFn := testdynamo.SetupTestTable(t, testData)
-		defer cleanupFn()
+		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
 		service := tables.NewService(provider)

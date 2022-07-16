@@ -18,7 +18,7 @@ type TestData struct {
 	Data      []map[string]interface{}
 }
 
-func SetupTestTable(t *testing.T, testData []TestData) (*dynamodb.Client, func()) {
+func SetupTestTable(t *testing.T, testData []TestData) *dynamodb.Client {
 	t.Helper()
 	ctx := context.Background()
 
@@ -68,5 +68,5 @@ func SetupTestTable(t *testing.T, testData []TestData) (*dynamodb.Client, func()
 		}
 	})
 
-	return dynamoClient, func() {}
+	return dynamoClient
 }
