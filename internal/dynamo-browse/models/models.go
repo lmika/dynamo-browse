@@ -70,11 +70,11 @@ func (rs *ResultSet) IsNew(idx int) bool {
 	return rs.attributes[idx].New
 }
 
-func (rs *ResultSet) MarkedItems() []Item {
-	items := make([]Item, 0)
+func (rs *ResultSet) MarkedItems() []ItemIndex {
+	items := make([]ItemIndex, 0)
 	for i, itemAttr := range rs.attributes {
 		if itemAttr.Marked && !itemAttr.Hidden {
-			items = append(items, rs.items[i])
+			items = append(items, ItemIndex{Index: i, Item: rs.items[i]})
 		}
 	}
 	return items

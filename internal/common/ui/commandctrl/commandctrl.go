@@ -60,7 +60,10 @@ func (c *CommandController) Alias(commandName string) Command {
 			return events.SetError(errors.New("no such command: " + commandName))
 		}
 
-		return command(args[1:])
+		if len(args) > 1 {
+			return command(args[1:])
+		}
+		return command([]string{})
 	}
 }
 

@@ -115,34 +115,22 @@ func (s *Service) PutItemAt(ctx context.Context, resultSet *models.ResultSet, in
 	return nil
 }
 
-func (s *Service) PutSelectedItems(ctx context.Context, resultSet *models.ResultSet, shouldPut func(idx int) bool) (int, error) {
-	type dirtyItem struct {
-		item models.Item
-		idx  int
+func (s *Service) PutSelectedItems(ctx context.Context, resultSet *models.ResultSet, markedItems []models.ItemIndex) error {
+	if len(markedItems) == 0 {
+		return nil
 	}
 
-	dirtyItems := make([]dirtyItem, 0)
-	for i, item := range resultSet.Items() {
-		if shouldPut(i) {
-			dirtyItems = append(dirtyItems, dirtyItem{item, i})
-		}
-	}
-
-	if len(dirtyItems) == 0 {
-		return 0, nil
-	}
-
-	if err := s.provider.PutItems(ctx, resultSet.TableInfo.Name, sliceutils.Map(dirtyItems, func(t dirtyItem) models.Item {
-		return t.item
+	if err := s.provider.PutItems(ctx, resultSet.TableInfo.Name, sliceutils.Map(markedItems, func(t models.ItemIndex) models.Item {
+		return t.Item
 	})); err != nil {
-		return 0, err
+		return err
 	}
 
-	for _, di := range dirtyItems {
-		resultSet.SetDirty(di.idx, false)
-		resultSet.SetNew(di.idx, false)
+	for _, di := range markedItems {
+		resultSet.SetDirty(di.Index, false)
+		resultSet.SetNew(di.Index, false)
 	}
-	return len(dirtyItems), nil
+	return nil
 }
 
 func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items []models.Item) error {

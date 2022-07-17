@@ -77,21 +77,36 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 		}
 
 		for _, scenario := range scenarios {
-			t.Run(fmt.Sprintf("should set value of field %v", scenario.attrKey), func(t *testing.T) {
+			t.Run(fmt.Sprintf("should set value of field: %v", scenario.attrKey), func(t *testing.T) {
 				state := controllers.NewState()
 				readController := controllers.NewTableReadController(state, service, "alpha-table")
 				writeController := controllers.NewTableWriteController(state, service, readController)
 
 				invokeCommand(t, readController.Init())
-				before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
-				assert.Equal(t, "This is some value", before)
-				assert.False(t, state.ResultSet().IsDirty(0))
-
 				invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.UnsetItemType, scenario.attrKey), scenario.attrValue)
 
 				after, _ := state.ResultSet().Items()[0][scenario.attrKey]
 				assert.Equal(t, scenario.expected, after)
 				assert.True(t, state.ResultSet().IsDirty(0))
+			})
+
+			t.Run(fmt.Sprintf("should set value of marked fields: %v", scenario.attrKey), func(t *testing.T) {
+				state := controllers.NewState()
+				readController := controllers.NewTableReadController(state, service, "alpha-table")
+				writeController := controllers.NewTableWriteController(state, service, readController)
+
+				invokeCommand(t, readController.Init())
+				invokeCommand(t, writeController.ToggleMark(0))
+				invokeCommand(t, writeController.ToggleMark(2))
+				invokeCommandWithPrompt(t, writeController.SetAttributeValue(1, models.UnsetItemType, scenario.attrKey), scenario.attrValue)
+
+				after1, _ := state.ResultSet().Items()[0][scenario.attrKey]
+				assert.Equal(t, scenario.expected, after1)
+				assert.True(t, state.ResultSet().IsDirty(0))
+
+				after2, _ := state.ResultSet().Items()[2][scenario.attrKey]
+				assert.Equal(t, scenario.expected, after2)
+				assert.True(t, state.ResultSet().IsDirty(2))
 			})
 		}
 	})

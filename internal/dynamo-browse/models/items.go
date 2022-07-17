@@ -5,6 +5,11 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/models/itemrender"
 )
 
+type ItemIndex struct {
+	Index int
+	Item  Item
+}
+
 type Item map[string]types.AttributeValue
 
 // Clone creates a clone of the current item

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/awstools/internal/common/sliceutils"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/models"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
@@ -112,12 +113,15 @@ func (twc *TableWriteController) setStringValue(idx int, attr attrPath) tea.Cmd 
 			OnDone: func(value string) tea.Cmd {
 				return func() tea.Msg {
 					if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-						err := attr.setAt(set.Items()[idx], &types.AttributeValueMemberS{Value: value})
-						if err != nil {
+						if err := twc.applyToItems(set, idx, func(idx int, item models.Item) error {
+							if err := attr.setAt(item, &types.AttributeValueMemberS{Value: value}); err != nil {
+								return err
+							}
+							set.SetDirty(idx, true)
+							return nil
+						}); err != nil {
 							return err
 						}
-
-						set.SetDirty(idx, true)
 						set.RefreshColumns()
 						return nil
 					}); err != nil {
@@ -130,6 +134,19 @@ func (twc *TableWriteController) setStringValue(idx int, attr attrPath) tea.Cmd 
 	}
 }
 
+func (twc *TableWriteController) applyToItems(rs *models.ResultSet, selectedIndex int, applyFn func(idx int, item models.Item) error) error {
+	if markedItems := rs.MarkedItems(); len(markedItems) > 0 {
+		for _, mi := range markedItems {
+			if err := applyFn(mi.Index, mi.Item); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	return applyFn(selectedIndex, rs.Items()[selectedIndex])
+}
+
 func (twc *TableWriteController) setNumberValue(idx int, attr attrPath) tea.Cmd {
 	return func() tea.Msg {
 		return events.PromptForInputMsg{
@@ -137,12 +154,15 @@ func (twc *TableWriteController) setNumberValue(idx int, attr attrPath) tea.Cmd 
 			OnDone: func(value string) tea.Cmd {
 				return func() tea.Msg {
 					if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-						err := attr.setAt(set.Items()[idx], &types.AttributeValueMemberN{Value: value})
-						if err != nil {
+						if err := twc.applyToItems(set, idx, func(idx int, item models.Item) error {
+							if err := attr.setAt(item, &types.AttributeValueMemberN{Value: value}); err != nil {
+								return err
+							}
+							set.SetDirty(idx, true)
+							return nil
+						}); err != nil {
 							return err
 						}
-
-						set.SetDirty(idx, true)
 						set.RefreshColumns()
 						return nil
 					}); err != nil {
@@ -167,12 +187,15 @@ func (twc *TableWriteController) setBoolValue(idx int, attr attrPath) tea.Cmd {
 					}
 
 					if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-						err := attr.setAt(set.Items()[idx], &types.AttributeValueMemberBOOL{Value: b})
-						if err != nil {
+						if err := twc.applyToItems(set, idx, func(idx int, item models.Item) error {
+							if err := attr.setAt(item, &types.AttributeValueMemberBOOL{Value: b}); err != nil {
+								return err
+							}
+							set.SetDirty(idx, true)
+							return nil
+						}); err != nil {
 							return err
 						}
-
-						set.SetDirty(idx, true)
 						set.RefreshColumns()
 						return nil
 					}); err != nil {
@@ -188,12 +211,15 @@ func (twc *TableWriteController) setBoolValue(idx int, attr attrPath) tea.Cmd {
 func (twc *TableWriteController) setNullValue(idx int, attr attrPath) tea.Cmd {
 	return func() tea.Msg {
 		if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-			err := attr.setAt(set.Items()[idx], &types.AttributeValueMemberNULL{Value: true})
-			if err != nil {
+			if err := twc.applyToItems(set, idx, func(idx int, item models.Item) error {
+				if err := attr.setAt(item, &types.AttributeValueMemberNULL{Value: true}); err != nil {
+					return err
+				}
+				set.SetDirty(idx, true)
+				return nil
+			}); err != nil {
 				return err
 			}
-
-			set.SetDirty(idx, true)
 			set.RefreshColumns()
 			return nil
 		}); err != nil {
@@ -260,21 +286,29 @@ func (twc *TableWriteController) PutItem(idx int) tea.Cmd {
 func (twc *TableWriteController) PutItems() tea.Cmd {
 	return func() tea.Msg {
 		var (
-			expectedPuts int
-			markedItems  int
+			markedItemCount int
 		)
+		var itemsToPut []models.ItemIndex
 
 		twc.state.withResultSet(func(rs *models.ResultSet) {
-			markedItems = len(rs.MarkedItems())
-			for i := range rs.Items() {
-				if rs.IsDirty(i) && (markedItems == 0 || rs.Marked(i)) {
-					expectedPuts++
+			if markedItems := rs.MarkedItems(); len(markedItems) > 0 {
+				for _, mi := range markedItems {
+					markedItemCount += 1
+					if rs.IsDirty(mi.Index) {
+						itemsToPut = append(itemsToPut, mi)
+					}
+				}
+			} else {
+				for i, itm := range rs.Items() {
+					if rs.IsDirty(i) {
+						itemsToPut = append(itemsToPut, models.ItemIndex{Item: itm, Index: i})
+					}
 				}
 			}
 		})
 
-		if expectedPuts == 0 {
-			if markedItems > 0 {
+		if len(itemsToPut) == 0 {
+			if markedItemCount > 0 {
 				return events.StatusMsg("no marked items are modified")
 			} else {
 				return events.StatusMsg("no items are modified")
@@ -282,10 +316,10 @@ func (twc *TableWriteController) PutItems() tea.Cmd {
 		}
 
 		var promptMessage string
-		if markedItems > 0 {
-			promptMessage = applyToN("put ", expectedPuts, "marked item", "marked items", "? ")
+		if markedItemCount > 0 {
+			promptMessage = applyToN("put ", len(itemsToPut), "marked item", "marked items", "? ")
 		} else {
-			promptMessage = applyToN("put ", expectedPuts, "item", "items", "? ")
+			promptMessage = applyToN("put ", len(itemsToPut), "item", "items", "? ")
 		}
 
 		return events.PromptForInputMsg{
@@ -297,13 +331,9 @@ func (twc *TableWriteController) PutItems() tea.Cmd {
 
 				return func() tea.Msg {
 					if err := twc.state.withResultSetReturningError(func(rs *models.ResultSet) error {
-						updated, err := twc.tableService.PutSelectedItems(context.Background(), rs, func(idx int) bool {
-							return rs.IsDirty(idx) && (markedItems == 0 || rs.Marked(idx))
-						})
+						err := twc.tableService.PutSelectedItems(context.Background(), rs, itemsToPut)
 						if err != nil {
 							return err
-						} else if updated != expectedPuts {
-							return errors.Errorf("expected %d updates but only %d were applied", expectedPuts, updated)
 						}
 						return nil
 					}); err != nil {
@@ -311,7 +341,7 @@ func (twc *TableWriteController) PutItems() tea.Cmd {
 					}
 
 					return ResultSetUpdated{
-						statusMessage: applyToN("", expectedPuts, "item", "item", " put to table"),
+						statusMessage: applyToN("", len(itemsToPut), "item", "item", " put to table"),
 					}
 				}
 			},
@@ -395,7 +425,9 @@ func (twc *TableWriteController) DeleteMarked() tea.Cmd {
 
 				return func() tea.Msg {
 					ctx := context.Background()
-					if err := twc.tableService.Delete(ctx, resultSet.TableInfo, markedItems); err != nil {
+					if err := twc.tableService.Delete(ctx, resultSet.TableInfo, sliceutils.Map(markedItems, func(index models.ItemIndex) models.Item {
+						return index.Item
+					})); err != nil {
 						return events.Error(err)
 					}
 
