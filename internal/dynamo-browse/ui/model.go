@@ -28,6 +28,7 @@ type Model struct {
 
 	root      tea.Model
 	tableView *dynamotableview.Model
+	itemView  *dynamoitemview.Model
 }
 
 func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteController, cc *commandctrl.CommandController) Model {
@@ -122,6 +123,7 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 		tableSelect:          tableSelect,
 		root:                 root,
 		tableView:            dtv,
+		itemView:             div,
 	}
 }
 
@@ -132,7 +134,7 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case controllers.ResultSetUpdated:
-		m.tableView.Refresh()
+		return m, m.tableView.Refresh()
 	case tea.KeyMsg:
 		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() {
 			switch msg.String() {

@@ -85,6 +85,7 @@ func (m *Model) Resize(w, h int) layout.ResizingModel {
 func (m *Model) updateViewportToSelectedMessage() {
 	if m.selectedItem == nil {
 		m.viewport.SetContent("")
+		return
 	}
 
 	viewportContent := &strings.Builder{}

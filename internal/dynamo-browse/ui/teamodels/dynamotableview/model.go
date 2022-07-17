@@ -197,13 +197,13 @@ func (m *Model) selectedItem() (itemTableRow, bool) {
 func (m *Model) postSelectedItemChanged() tea.Msg {
 	item, ok := m.selectedItem()
 	if !ok {
-		return nil
+		return dynamoitemview.NewItemSelected{ResultSet: item.resultSet, Item: nil}
 	}
 
 	return dynamoitemview.NewItemSelected{ResultSet: item.resultSet, Item: item.item}
 }
 
-func (m *Model) Refresh() {
-
+func (m *Model) Refresh() tea.Cmd {
 	m.table.SetRows(m.rows)
+	return m.postSelectedItemChanged
 }
