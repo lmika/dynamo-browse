@@ -9,10 +9,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: amazon/dynamodb-local:latest
+      localstack:
+        image: localstack/localstack
         ports:
-          - 18000:8000
+          - "4566:4566"
+        env:
+          SERVICES: ssm,dynamodb
     steps:
       - name: Checkout
         uses: actions/checkout@v2
