@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/common/sliceutils"
 	"github.com/lmika/awstools/internal/common/ui/events"
 	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
 )
@@ -59,15 +60,18 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return s, nil
 	case tea.KeyMsg:
 		if s.pendingInput != nil {
-			switch msg.String() {
-			case "ctrl+c", "esc":
+			switch msg.Type {
+			case tea.KeyCtrlC, tea.KeyEsc:
 				s.pendingInput = nil
-			case "enter":
+			case tea.KeyEnter:
 				pendingInput := s.pendingInput
 				s.pendingInput = nil
 
 				return s, pendingInput.OnDone(s.textInput.Value())
 			default:
+				if msg.Type == tea.KeyRunes {
+					msg.Runes = sliceutils.Filter(msg.Runes, func(r rune) bool { return r != '\x0d' && r != '\x0a' })
+				}
 				newTextInput, cmd := s.textInput.Update(msg)
 				s.textInput = newTextInput
 				return s, cmd
