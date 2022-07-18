@@ -92,7 +92,7 @@ func (c *TableReadController) PromptForQuery() tea.Cmd {
 					return events.SetError(err)
 				}
 
-				return func() tea.Msg {
+				return c.doIfNoneDirty(func() tea.Msg {
 					resultSet := c.state.ResultSet()
 					newResultSet, err := c.tableService.ScanOrQuery(context.Background(), resultSet.TableInfo, expr)
 					if err != nil {
@@ -100,17 +100,42 @@ func (c *TableReadController) PromptForQuery() tea.Cmd {
 					}
 
 					return c.setResultSetAndFilter(newResultSet, "")
-				}
+				})
 			},
 		}
 	}
 }
 
-func (c *TableReadController) Rescan() tea.Cmd {
+func (c *TableReadController) doIfNoneDirty(cmd tea.Cmd) tea.Cmd {
+	var anyDirty = false
+	for i := 0; i < len(c.state.ResultSet().Items()); i++ {
+		anyDirty = anyDirty || c.state.ResultSet().IsDirty(i)
+	}
+
+	if !anyDirty {
+		return cmd
+	}
+
 	return func() tea.Msg {
+		return events.PromptForInputMsg{
+			Prompt: "reset modified items? ",
+			OnDone: func(value string) tea.Cmd {
+				if value != "y" {
+					return events.SetStatus("operation aborted")
+				}
+
+				return cmd
+			},
+		}
+	}
+
+}
+
+func (c *TableReadController) Rescan() tea.Cmd {
+	return c.doIfNoneDirty(func() tea.Msg {
 		resultSet := c.state.ResultSet()
 		return c.doScan(context.Background(), resultSet, resultSet.Query)
-	}
+	})
 }
 
 func (c *TableReadController) ExportCSV(filename string) tea.Cmd {

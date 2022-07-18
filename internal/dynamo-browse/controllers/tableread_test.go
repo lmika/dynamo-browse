@@ -62,6 +62,40 @@ func TestTableReadController_ListTables(t *testing.T) {
 	})
 }
 
+func TestTableReadController_Rescan(t *testing.T) {
+	client := testdynamo.SetupTestTable(t, testData)
+
+	provider := dynamo.NewProvider(client)
+	service := tables.NewService(provider)
+	state := controllers.NewState()
+	readController := controllers.NewTableReadController(state, service, "bravo-table")
+
+	t.Run("should perform a rescan", func(t *testing.T) {
+		invokeCommand(t, readController.Init())
+		invokeCommand(t, readController.Rescan())
+	})
+
+	t.Run("should prompt to rescan if any dirty rows", func(t *testing.T) {
+		invokeCommand(t, readController.Init())
+
+		state.ResultSet().SetDirty(0, true)
+
+		invokeCommandWithPrompt(t, readController.Rescan(), "y")
+
+		assert.False(t, state.ResultSet().IsDirty(0))
+	})
+
+	t.Run("should not rescan if any dirty rows", func(t *testing.T) {
+		invokeCommand(t, readController.Init())
+
+		state.ResultSet().SetDirty(0, true)
+
+		invokeCommandWithPrompt(t, readController.Rescan(), "n")
+
+		assert.True(t, state.ResultSet().IsDirty(0))
+	})
+}
+
 func TestTableReadController_ExportCSV(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
