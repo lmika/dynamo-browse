@@ -4,27 +4,27 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"github.com/lmika/awstools/internal/common/ui/logging"
+	"github.com/lmika/awstools/internal/common/workspaces"
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/awstools/internal/common/ui/dispatcher"
-	"github.com/lmika/awstools/internal/sqs-browse/controllers"
 	"github.com/lmika/awstools/internal/sqs-browse/models"
 	sqsprovider "github.com/lmika/awstools/internal/sqs-browse/providers/sqs"
-	"github.com/lmika/awstools/internal/sqs-browse/providers/stormstore"
+	"github.com/lmika/awstools/internal/sqs-browse/providers/stores"
 	"github.com/lmika/awstools/internal/sqs-browse/services/messages"
-	"github.com/lmika/awstools/internal/sqs-browse/services/pollmessage"
 	"github.com/lmika/awstools/internal/sqs-browse/ui"
 	"github.com/lmika/events"
 	"github.com/lmika/gopkgs/cli"
 )
 
 func main() {
-	var flagQueue = flag.String("q", "", "queue to poll")
-	var flagTarget = flag.String("t", "", "target queue to push to")
+	//var flagQueue = flag.String("q", "", "queue to poll")
+	//var flagTarget = flag.String("t", "", "target queue to push to")
+	var flagDebug = flag.String("debug", "", "file to log debug messages")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -36,24 +36,22 @@ func main() {
 
 	bus := events.New()
 
-	workspaceFile, err := os.CreateTemp("", "sqs-browse*.workspace")
+	wsManager := workspaces.New(workspaces.MetaInfo{
+		Command: "sqs-browse",
+	})
+	ws, err := wsManager.CreateTemp()
 	if err != nil {
-		cli.Fatalf("cannot create workspace file: %v", err)
+		cli.Fatalf("cannot create workspace: %v", ws)
 	}
-	workspaceFile.Close() // We just need the filename
+	defer ws.Close()
 
-	msgStore, err := stormstore.NewStore(workspaceFile.Name())
-	if err != nil {
-		cli.Fatalf("cannot open workspace: %v", err)
-	}
-	defer msgStore.Close()
-
+	msgStore := stores.NewMessageStore(ws)
 	sqsProvider := sqsprovider.NewProvider(sqsClient)
 
-	messageService := messages.NewService(sqsProvider)
-	pollService := pollmessage.NewService(msgStore, sqsProvider, *flagQueue, bus)
+	messageService := messages.NewService(msgStore, sqsProvider)
+	//pollService := pollmessage.NewService(msgStore, sqsProvider, *flagQueue, bus)
 
-	msgSendingHandlers := controllers.NewMessageSendingController(messageService, *flagTarget)
+	//msgSendingHandlers := controllers.NewMessageSendingController(messageService, *flagTarget)
 
 	loopback := &msgLoopback{}
 	uiDispatcher := dispatcher.NewDispatcher(loopback)
@@ -64,20 +62,14 @@ func main() {
 
 	bus.On("new-messages", func(m []*models.Message) { p.Send(ui.NewMessagesEvent(m)) })
 
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		fmt.Println("fatal:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
+	closeFn := logging.EnableLogging(*flagDebug)
+	defer closeFn()
 
-	log.Printf("workspace file: %v", workspaceFile.Name())
-
-	go func() {
-		if err := pollService.Poll(context.Background()); err != nil {
-			log.Printf("cannot start poller: %v", err)
-		}
-	}()
+	//go func() {
+	//	if err := pollService.Poll(context.Background()); err != nil {
+	//		log.Printf("cannot start poller: %v", err)
+	//	}
+	//}()
 
 	if err := p.Start(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)

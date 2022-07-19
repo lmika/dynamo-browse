@@ -9,12 +9,18 @@ import (
 
 type Service struct {
 	messageSender MessageSender
+	store         MessageStore
 }
 
-func NewService(messageSender MessageSender) *Service {
+func NewService(store MessageStore, messageSender MessageSender) *Service {
 	return &Service{
+		store:         store,
 		messageSender: messageSender,
 	}
+}
+
+func (s *Service) List() ([]models.Message, error) {
+	return s.store.List()
 }
 
 func (s *Service) SendTo(ctx context.Context, msg models.Message, destQueue string) (string, error) {
