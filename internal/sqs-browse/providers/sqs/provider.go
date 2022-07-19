@@ -25,7 +25,7 @@ func (p *Provider) SendMessage(ctx context.Context, msg models.Message, queue st
 
 	out, err := p.client.SendMessage(ctx, &sqs.SendMessageInput{
 		QueueUrl:    aws.String(queue),
-		MessageBody: aws.String(msg.Data),
+		MessageBody: aws.String(msg.Body),
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to send message to %v", queue)
@@ -52,10 +52,10 @@ func (p *Provider) PollForNewMessages(ctx context.Context, queue string) ([]*mod
 	messagesToDelete := make([]types.DeleteMessageBatchRequestEntry, 0, len(out.Messages))
 	for _, msg := range out.Messages {
 		newLocalMessage := &models.Message{
-			Queue:    queue,
+			//Queue:    queue,
 			ExtID:    aws.ToString(msg.MessageId),
 			Received: time.Now(),
-			Data:     aws.ToString(msg.Body),
+			Body:     aws.ToString(msg.Body),
 		}
 		messagesToReturn = append(messagesToReturn, newLocalMessage)
 

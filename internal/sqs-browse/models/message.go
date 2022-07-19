@@ -17,6 +17,8 @@ type Message struct {
 	GroupID  uint64 `storm:"index"`
 	Received time.Time
 	Body     string
+	Flag     int
+	Remarks  string
 }
 
 type Event struct {
@@ -26,4 +28,8 @@ type Event struct {
 	Operation   string
 	QueueName   string
 	SuccessCode int
+}
+
+type MessageList struct {
+	Messages []Message
 }

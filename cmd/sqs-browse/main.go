@@ -4,8 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/awstools/internal/common/ui/commandctrl"
 	"github.com/lmika/awstools/internal/common/ui/logging"
+	"github.com/lmika/awstools/internal/common/ui/osstyle"
 	"github.com/lmika/awstools/internal/common/workspaces"
+	"log"
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -56,7 +60,11 @@ func main() {
 	loopback := &msgLoopback{}
 	uiDispatcher := dispatcher.NewDispatcher(loopback)
 
-	uiModel := ui.NewModel(uiDispatcher, msgSendingHandlers)
+	_, _ = uiDispatcher, messageService
+
+	commandController := commandctrl.NewCommandController()
+	uiModel := ui.NewModel(commandController)
+
 	p := tea.NewProgram(uiModel, tea.WithAltScreen())
 	loopback.program = p
 
@@ -64,6 +72,23 @@ func main() {
 
 	closeFn := logging.EnableLogging(*flagDebug)
 	defer closeFn()
+
+	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
+	if lipgloss.HasDarkBackground() {
+		if colorScheme := osstyle.CurrentColorScheme(); colorScheme == osstyle.ColorSchemeLightMode {
+			log.Printf("terminal reads dark but really in light mode")
+			lipgloss.SetHasDarkBackground(true)
+		} else {
+			log.Printf("in dark background")
+		}
+	} else {
+		if colorScheme := osstyle.CurrentColorScheme(); colorScheme == osstyle.ColorSchemeDarkMode {
+			log.Printf("terminal reads light but really in dark mode")
+			lipgloss.SetHasDarkBackground(true)
+		} else {
+			log.Printf("cannot detect system darkmode")
+		}
+	}
 
 	//go func() {
 	//	if err := pollService.Poll(context.Background()); err != nil {

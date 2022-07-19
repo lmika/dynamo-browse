@@ -15,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.24.0
 	github.com/brianvoe/gofakeit/v6 v6.15.0
 	github.com/calyptia/go-bubble-table v0.2.1
-	github.com/charmbracelet/bubbles v0.11.0
+	github.com/charmbracelet/bubbles v0.13.0
 	github.com/charmbracelet/bubbletea v0.21.0
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/google/uuid v1.3.0
