@@ -299,7 +299,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		assert.True(t, state.ResultSet().IsDirty(0))
 
 		// Rescan the table to confirm item is not modified
-		invokeCommand(t, readController.Rescan())
+		invokeCommandWithPrompt(t, readController.Rescan(), "y")
 		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
 		assert.Equal(t, "This is some value", after)
 		assert.False(t, state.ResultSet().IsDirty(0))
@@ -381,7 +381,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		assert.True(t, state.ResultSet().IsDirty(2))
 
 		// Rescan the table and verify dirty items were not written
-		invokeCommand(t, readController.Rescan())
+		invokeCommandWithPrompt(t, readController.Rescan(), "y")
 
 		assert.Equal(t, "a new value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
 		assert.Nil(t, state.ResultSet().Items()[2]["alpha"])
@@ -417,7 +417,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		assert.True(t, state.ResultSet().IsDirty(2))
 
 		// Rescan the table and verify dirty items were not written
-		invokeCommand(t, readController.Rescan())
+		invokeCommandWithPrompt(t, readController.Rescan(), "y")
 
 		assert.Equal(t, "This is some value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
 		assert.Nil(t, state.ResultSet().Items()[2]["alpha"])
