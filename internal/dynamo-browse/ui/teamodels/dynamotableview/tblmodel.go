@@ -16,7 +16,7 @@ var (
 	dirtyRowStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#e13131"))
 	newRowStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#31e131"))
+			Foreground(lipgloss.AdaptiveColor{Light: "#2B800C", Dark: "#73C653"})
 
 	metaInfoStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888888"))
@@ -50,6 +50,19 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 	metaInfoStyle := style.Copy().Inherit(metaInfoStyle)
 
 	sb := strings.Builder{}
+
+	// The status column
+	switch {
+	case isNew:
+		sb.WriteString(style.Render("*\t"))
+	case isDirty:
+		sb.WriteString(style.Render("M\t"))
+	case isMarked:
+		sb.WriteString(style.Render("•\t"))
+	default:
+		sb.WriteString(metaInfoStyle.Render("⋅\t"))
+	}
+
 	for i, colName := range mtr.resultSet.Columns()[mtr.model.colOffset:] {
 		if i > 0 {
 			sb.WriteString(style.Render("\t"))

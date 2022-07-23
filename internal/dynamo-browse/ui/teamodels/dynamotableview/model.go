@@ -43,18 +43,6 @@ type Model struct {
 	resultSet *models.ResultSet
 }
 
-type columnModel struct {
-	m *Model
-}
-
-func (cm columnModel) Len() int {
-	return len(cm.m.resultSet.Columns()[cm.m.colOffset:])
-}
-
-func (cm columnModel) Header(index int) string {
-	return cm.m.resultSet.Columns()[cm.m.colOffset+index]
-}
-
 func New(uiStyles styles.Styles) *Model {
 	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
 	rows := make([]table.Row, 0)
@@ -70,8 +58,8 @@ func New(uiStyles styles.Styles) *Model {
 			MoveDown: key.NewBinding(key.WithKeys("k", "down")),
 			PageUp:   key.NewBinding(key.WithKeys("I", "pgup")),
 			PageDown: key.NewBinding(key.WithKeys("K", "pgdown")),
-			Home:     key.NewBinding(key.WithKeys("I", "home")),
-			End:      key.NewBinding(key.WithKeys("K", "end")),
+			Home:     key.NewBinding(key.WithKeys("0", "home")),
+			End:      key.NewBinding(key.WithKeys("$", "end")),
 			ColLeft:  key.NewBinding(key.WithKeys("j", "left")),
 			ColRight: key.NewBinding(key.WithKeys("l", "right")),
 		},
