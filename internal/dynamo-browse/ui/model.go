@@ -45,7 +45,7 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 
 	cc.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
-			"q": commandctrl.NoArgCommand(tea.Quit),
+			"quit": commandctrl.NoArgCommand(tea.Quit),
 			"table": func(args []string) tea.Cmd {
 				if len(args) == 0 {
 					return rc.ListTables()
@@ -109,6 +109,7 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 			"sa": cc.Alias("set-attr"),
 			"da": cc.Alias("del-attr"),
 			"w":  cc.Alias("put"),
+			"q":  cc.Alias("quit"),
 		},
 	})
 
@@ -148,9 +149,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.tableReadController.PromptForQuery()
 			case "/":
 				return m, m.tableReadController.Filter()
-			case "e":
-				m.itemEdit.Visible()
-				return m, nil
+			//case "e":
+			//	m.itemEdit.Visible()
+			//	return m, nil
 			case ":":
 				return m, m.commandController.Prompt()
 			case "ctrl+c", "esc":
