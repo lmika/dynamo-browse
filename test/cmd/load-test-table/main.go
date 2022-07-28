@@ -13,6 +13,7 @@ import (
 	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
 	"github.com/lmika/gopkgs/cli"
+	"github.com/pkg/errors"
 	"log"
 )
 
@@ -29,28 +30,17 @@ func main() {
 	dynamoClient := dynamodb.NewFromConfig(cfg,
 		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:4566")))
 
-	if _, err = dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
-		TableName: aws.String(tableName),
-	}); err != nil {
-		log.Printf("warn: cannot delete table: %v: %v", tableName, err)
+	// Other tables
+	if err := createTable(ctx, dynamoClient, "user-accounts"); err != nil {
+		log.Fatal(err)
 	}
 
-	if _, err = dynamoClient.CreateTable(ctx, &dynamodb.CreateTableInput{
-		TableName: aws.String(tableName),
-		KeySchema: []types.KeySchemaElement{
-			{AttributeName: aws.String("pk"), KeyType: types.KeyTypeHash},
-			{AttributeName: aws.String("sk"), KeyType: types.KeyTypeRange},
-		},
-		AttributeDefinitions: []types.AttributeDefinition{
-			{AttributeName: aws.String("pk"), AttributeType: types.ScalarAttributeTypeS},
-			{AttributeName: aws.String("sk"), AttributeType: types.ScalarAttributeTypeS},
-		},
-		ProvisionedThroughput: &types.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(100),
-			WriteCapacityUnits: aws.Int64(100),
-		},
-	}); err != nil {
-		log.Fatalf("warn: cannot create table: %v", tableName)
+	if err := createTable(ctx, dynamoClient, "inventory"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := createTable(ctx, dynamoClient, tableName); err != nil {
+		log.Fatal(err)
 	}
 
 	tableInfo := &models.TableInfo{
@@ -85,4 +75,31 @@ func main() {
 	}
 
 	log.Printf("table '%v' created with %v items", tableName, totalItems)
+}
+
+func createTable(ctx context.Context, dynamoClient *dynamodb.Client, tableName string) error {
+	if _, err := dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
+		TableName: aws.String(tableName),
+	}); err != nil {
+		log.Printf("warn: cannot delete table: %v: %v", tableName, err)
+	}
+
+	if _, err := dynamoClient.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName: aws.String(tableName),
+		KeySchema: []types.KeySchemaElement{
+			{AttributeName: aws.String("pk"), KeyType: types.KeyTypeHash},
+			{AttributeName: aws.String("sk"), KeyType: types.KeyTypeRange},
+		},
+		AttributeDefinitions: []types.AttributeDefinition{
+			{AttributeName: aws.String("pk"), AttributeType: types.ScalarAttributeTypeS},
+			{AttributeName: aws.String("sk"), AttributeType: types.ScalarAttributeTypeS},
+		},
+		ProvisionedThroughput: &types.ProvisionedThroughput{
+			ReadCapacityUnits:  aws.Int64(100),
+			WriteCapacityUnits: aws.Int64(100),
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "cannot create table: %v", tableName)
+	}
+	return nil
 }

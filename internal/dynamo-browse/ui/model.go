@@ -36,7 +36,7 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 
 	dtv := dynamotableview.New(uiStyles)
 	div := dynamoitemview.New(uiStyles)
-	mainView := layout.NewVBox(layout.LastChildFixedAt(17), dtv, div)
+	mainView := layout.NewVBox(layout.LastChildFixedAt(13), dtv, div)
 
 	itemEdit := dynamoitemedit.NewModel(mainView)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
