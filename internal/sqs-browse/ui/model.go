@@ -11,10 +11,10 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/awstools/internal/common/ui/dispatcher"
-	"github.com/lmika/awstools/internal/common/ui/events"
-	"github.com/lmika/awstools/internal/sqs-browse/controllers"
-	"github.com/lmika/awstools/internal/sqs-browse/models"
+	"github.com/lmika/audax/internal/common/ui/dispatcher"
+	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/sqs-browse/controllers"
+	"github.com/lmika/audax/internal/sqs-browse/models"
 	table "github.com/lmika/go-bubble-table"
 )
 

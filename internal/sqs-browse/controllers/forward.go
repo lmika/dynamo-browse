@@ -3,9 +3,9 @@ package controllers
 import (
 	"context"
 
-	"github.com/lmika/awstools/internal/common/ui/uimodels"
-	"github.com/lmika/awstools/internal/sqs-browse/models"
-	"github.com/lmika/awstools/internal/sqs-browse/services/messages"
+	"github.com/lmika/audax/internal/common/ui/uimodels"
+	"github.com/lmika/audax/internal/sqs-browse/models"
+	"github.com/lmika/audax/internal/sqs-browse/services/messages"
 	"github.com/pkg/errors"
 )
 

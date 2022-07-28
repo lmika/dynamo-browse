@@ -3,8 +3,8 @@ package commandctrl_test
 import (
 	"testing"
 
-	"github.com/lmika/awstools/internal/common/ui/commandctrl"
-	"github.com/lmika/awstools/internal/common/ui/events"
+	"github.com/lmika/audax/internal/common/ui/commandctrl"
+	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/stretchr/testify/assert"
 )
 

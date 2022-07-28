@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
-	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
-	"github.com/lmika/awstools/test/testdynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
+	"github.com/lmika/audax/test/testdynamo"
 	"github.com/stretchr/testify/assert"
 )
 

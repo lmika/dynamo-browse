@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
 	table "github.com/lmika/go-bubble-table"
 )
 

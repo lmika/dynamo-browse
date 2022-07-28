@@ -2,7 +2,7 @@ package models
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/awstools/internal/dynamo-browse/models/itemrender"
+	"github.com/lmika/audax/internal/dynamo-browse/models/itemrender"
 )
 
 type ItemIndex struct {

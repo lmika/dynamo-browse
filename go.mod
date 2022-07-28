@@ -1,4 +1,4 @@
-module github.com/lmika/awstools
+module github.com/lmika/audax
 
 go 1.18
 

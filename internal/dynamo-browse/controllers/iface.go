@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"context"
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
 type TableReadService interface {

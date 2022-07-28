@@ -3,7 +3,7 @@ package logreader
 import (
 	"bufio"
 	"encoding/json"
-	"github.com/lmika/awstools/internal/slog-view/models"
+	"github.com/lmika/audax/internal/slog-view/models"
 	"github.com/pkg/errors"
 	"log"
 	"os"

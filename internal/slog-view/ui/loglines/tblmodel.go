@@ -3,7 +3,7 @@ package loglines
 import (
 	"fmt"
 	table "github.com/lmika/go-bubble-table"
-	"github.com/lmika/awstools/internal/slog-view/models"
+	"github.com/lmika/audax/internal/slog-view/models"
 	"io"
 	"strings"
 )

@@ -2,7 +2,7 @@ package controllers
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/awstools/internal/common/ui/events"
+	"github.com/lmika/audax/internal/common/ui/events"
 )
 
 type promptSequence struct {

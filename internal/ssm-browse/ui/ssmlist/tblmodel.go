@@ -3,7 +3,7 @@ package ssmlist
 import (
 	"fmt"
 	table "github.com/lmika/go-bubble-table"
-	"github.com/lmika/awstools/internal/ssm-browse/models"
+	"github.com/lmika/audax/internal/ssm-browse/models"
 	"io"
 	"strings"
 )

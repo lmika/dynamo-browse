@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/asdine/storm"
-	"github.com/lmika/awstools/internal/sqs-browse/models"
+	"github.com/lmika/audax/internal/sqs-browse/models"
 	"github.com/pkg/errors"
 )
 

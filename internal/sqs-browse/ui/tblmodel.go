@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	table "github.com/lmika/go-bubble-table"
-	"github.com/lmika/awstools/internal/sqs-browse/models"
+	"github.com/lmika/audax/internal/sqs-browse/models"
 )
 
 type messageTableRow models.Message

@@ -3,7 +3,7 @@ package controllers
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
 type NewResultSet struct {

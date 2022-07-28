@@ -4,8 +4,8 @@ import (
 	table "github.com/calyptia/go-bubble-table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/utils"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
 )
 
 type Model struct {

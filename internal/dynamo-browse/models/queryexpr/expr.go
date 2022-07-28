@@ -1,6 +1,6 @@
 package queryexpr
 
-import "github.com/lmika/awstools/internal/dynamo-browse/models"
+import "github.com/lmika/audax/internal/dynamo-browse/models"
 
 type QueryExpr struct {
 	ast *astExpr

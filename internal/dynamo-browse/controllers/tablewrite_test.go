@@ -3,11 +3,11 @@ package controllers_test
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
-	"github.com/lmika/awstools/internal/dynamo-browse/providers/dynamo"
-	"github.com/lmika/awstools/internal/dynamo-browse/services/tables"
-	"github.com/lmika/awstools/test/testdynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/controllers"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
+	"github.com/lmika/audax/test/testdynamo"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

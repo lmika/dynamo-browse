@@ -3,9 +3,9 @@ package controllers
 import (
 	"context"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/awstools/internal/common/ui/events"
-	"github.com/lmika/awstools/internal/ssm-browse/models"
-	"github.com/lmika/awstools/internal/ssm-browse/services/ssmparameters"
+	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/ssm-browse/models"
+	"github.com/lmika/audax/internal/ssm-browse/services/ssmparameters"
 	"sync"
 )
 

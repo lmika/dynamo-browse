@@ -3,9 +3,9 @@ package ssmlist
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/awstools/internal/ssm-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/audax/internal/ssm-browse/models"
 	table "github.com/lmika/go-bubble-table"
 )
 

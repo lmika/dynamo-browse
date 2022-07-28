@@ -3,9 +3,9 @@ package loglines
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/awstools/internal/slog-view/models"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/audax/internal/slog-view/models"
 	table "github.com/lmika/go-bubble-table"
 	"path/filepath"
 )

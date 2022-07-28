@@ -2,14 +2,14 @@ package ui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/awstools/internal/common/ui/commandctrl"
-	"github.com/lmika/awstools/internal/common/ui/events"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
-	"github.com/lmika/awstools/internal/ssm-browse/controllers"
-	"github.com/lmika/awstools/internal/ssm-browse/styles"
-	"github.com/lmika/awstools/internal/ssm-browse/ui/ssmdetails"
-	"github.com/lmika/awstools/internal/ssm-browse/ui/ssmlist"
+	"github.com/lmika/audax/internal/common/ui/commandctrl"
+	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/statusandprompt"
+	"github.com/lmika/audax/internal/ssm-browse/controllers"
+	"github.com/lmika/audax/internal/ssm-browse/styles"
+	"github.com/lmika/audax/internal/ssm-browse/ui/ssmdetails"
+	"github.com/lmika/audax/internal/ssm-browse/ui/ssmlist"
 	"github.com/pkg/errors"
 )
 

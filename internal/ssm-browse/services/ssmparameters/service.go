@@ -2,7 +2,7 @@ package ssmparameters
 
 import (
 	"context"
-	"github.com/lmika/awstools/internal/ssm-browse/models"
+	"github.com/lmika/audax/internal/ssm-browse/models"
 )
 
 type Service struct {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/lmika/awstools/internal/common/ui/events"
-	"github.com/lmika/awstools/internal/common/ui/uimodels"
+	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/common/ui/uimodels"
 	"github.com/pkg/errors"
 )
 

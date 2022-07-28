@@ -3,7 +3,7 @@ package messages
 import (
 	"context"
 
-	"github.com/lmika/awstools/internal/sqs-browse/models"
+	"github.com/lmika/audax/internal/sqs-browse/models"
 	"github.com/pkg/errors"
 )
 

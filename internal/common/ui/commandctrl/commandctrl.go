@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/lmika/awstools/internal/common/ui/events"
+	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/shellwords"
 )
 

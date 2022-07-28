@@ -2,14 +2,14 @@ package ui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/awstools/internal/common/ui/commandctrl"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/statusandprompt"
-	"github.com/lmika/awstools/internal/slog-view/controllers"
-	"github.com/lmika/awstools/internal/slog-view/styles"
-	"github.com/lmika/awstools/internal/slog-view/ui/fullviewlinedetails"
-	"github.com/lmika/awstools/internal/slog-view/ui/linedetails"
-	"github.com/lmika/awstools/internal/slog-view/ui/loglines"
+	"github.com/lmika/audax/internal/common/ui/commandctrl"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/statusandprompt"
+	"github.com/lmika/audax/internal/slog-view/controllers"
+	"github.com/lmika/audax/internal/slog-view/styles"
+	"github.com/lmika/audax/internal/slog-view/ui/fullviewlinedetails"
+	"github.com/lmika/audax/internal/slog-view/ui/linedetails"
+	"github.com/lmika/audax/internal/slog-view/ui/loglines"
 )
 
 type Model struct {

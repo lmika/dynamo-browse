@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"fmt"
-	"github.com/lmika/awstools/internal/ssm-browse/models"
+	"github.com/lmika/audax/internal/ssm-browse/models"
 )
 
 type NewParameterListMsg struct {

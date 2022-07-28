@@ -2,9 +2,9 @@ package controllers
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/awstools/internal/common/ui/events"
-	"github.com/lmika/awstools/internal/slog-view/models"
-	"github.com/lmika/awstools/internal/slog-view/services/logreader"
+	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/slog-view/models"
+	"github.com/lmika/audax/internal/slog-view/services/logreader"
 	"sync"
 )
 

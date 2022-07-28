@@ -2,8 +2,8 @@ package dynamoitemview
 
 import (
 	"fmt"
-	"github.com/lmika/awstools/internal/dynamo-browse/models/itemrender"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
+	"github.com/lmika/audax/internal/dynamo-browse/models/itemrender"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"io"
 	"strings"
 	"text/tabwriter"
@@ -11,9 +11,9 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
 )
 
 var (

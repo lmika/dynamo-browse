@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 	"strings"
 )

@@ -4,12 +4,12 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/awstools/internal/dynamo-browse/controllers"
-	"github.com/lmika/awstools/internal/dynamo-browse/models"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/dynamoitemview"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/frame"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/awstools/internal/dynamo-browse/ui/teamodels/styles"
+	"github.com/lmika/audax/internal/dynamo-browse/controllers"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	table "github.com/lmika/go-bubble-table"
 )
 

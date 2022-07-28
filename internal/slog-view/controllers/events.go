@@ -1,6 +1,6 @@
 package controllers
 
-import "github.com/lmika/awstools/internal/slog-view/models"
+import "github.com/lmika/audax/internal/slog-view/models"
 
 type NewLogFile *models.LogFile
 
