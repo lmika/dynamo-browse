@@ -8,6 +8,8 @@ common AWS services, such as DynamoDB, without having to learn incantations with
 go to the AWS console itself.  This keeps you focused on your task and saves you from
 breaking concentration, especially if you do a lot in the terminal.
 
+![dynamo-browse](https://audax.tools/images/dynamo-browse/main-item-view.png)
+
 ## The Toolset
 
 More info about the available tools are available here:
