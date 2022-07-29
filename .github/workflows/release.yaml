@@ -8,6 +8,13 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack
+        ports:
+          - "4566:4566"
+        env:
+          SERVICES: ssm,dynamodb
     steps:
       - name: Checkout
         uses: actions/checkout@v2
