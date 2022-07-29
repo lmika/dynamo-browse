@@ -25,7 +25,7 @@ nfpms:
     builds:
       - dynamo-browse
     vendor: lmika
-    homepage: https://awstools.lmika.dev/
+    homepage: https://audax.tools/
     maintainer: Leon Mika <lmika@lmika.org>
     description: TUI tools for AWS administration
     license: MIT
@@ -39,7 +39,7 @@ brews:
       owner: lmika
       name: awstools
     folder: Formula
-    homepage:  https://awstools.lmika.dev
+    homepage:  https://audax.tools
     description: TUI tools for AWS administration
     license: MIT
 checksum:
