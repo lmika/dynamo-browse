@@ -6,6 +6,7 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -15,6 +16,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/pkg/errors"
+	"log"
 	"strings"
 )
 
@@ -43,6 +45,11 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
 
+	ps := pluginruntime.New()
+	if _, err := ps.Load("testscript.js"); err != nil {
+		log.Println(err)
+	}
+
 	cc.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
 			"quit": commandctrl.NoArgCommand(tea.Quit),
@@ -62,7 +69,6 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 			"unmark": commandctrl.NoArgCommand(rc.Unmark()),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked()),
 
-			// TEMP
 			"new-item": commandctrl.NoArgCommand(wc.NewItem()),
 			"set-attr": func(args []string) tea.Cmd {
 				if len(args) == 0 {
@@ -103,6 +109,11 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 			},
 			"noisy-touch": func(args []string) tea.Cmd {
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
+			},
+
+			// TEMP
+			"runscript": func(args []string) tea.Cmd {
+				return nil
 			},
 
 			// Aliases

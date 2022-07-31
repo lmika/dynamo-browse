@@ -60,6 +60,9 @@ func main() {
 	tableReadController := controllers.NewTableReadController(state, tableService, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
 
+	closeFn := logging.EnableLogging(*flagDebug)
+	defer closeFn()
+
 	commandController := commandctrl.NewCommandController()
 	model := ui.NewModel(tableReadController, tableWriteController, commandController)
 
@@ -67,9 +70,6 @@ func main() {
 	lipgloss.HasDarkBackground()
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
-
-	closeFn := logging.EnableLogging(*flagDebug)
-	defer closeFn()
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	if lipgloss.HasDarkBackground() {
