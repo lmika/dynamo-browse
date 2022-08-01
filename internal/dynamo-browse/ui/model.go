@@ -33,7 +33,12 @@ type Model struct {
 	itemView  *dynamoitemview.Model
 }
 
-func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteController, cc *commandctrl.CommandController) Model {
+func NewModel(
+	rc *controllers.TableReadController,
+	wc *controllers.TableWriteController,
+	cc *commandctrl.CommandController,
+	prs *pluginruntime.Service,
+) Model {
 	uiStyles := styles.DefaultStyles
 
 	dtv := dynamotableview.New(uiStyles)
@@ -113,6 +118,11 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 
 			// TEMP
 			"runscript": func(args []string) tea.Cmd {
+				_, err := prs.Load("testscript.js")
+				if err != nil {
+					log.Println(err)
+				}
+
 				return nil
 			},
 

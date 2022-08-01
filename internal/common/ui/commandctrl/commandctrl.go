@@ -11,7 +11,8 @@ import (
 )
 
 type CommandController struct {
-	commandList *CommandContext
+	commandList    *CommandContext
+	missingCommand MissingCommand
 }
 
 func NewCommandController() *CommandController {
@@ -23,6 +24,10 @@ func NewCommandController() *CommandController {
 func (c *CommandController) AddCommands(ctx *CommandContext) {
 	ctx.parent = c.commandList
 	c.commandList = ctx
+}
+
+func (c *CommandController) SetMissingCommand(missingCommand MissingCommand) {
+	c.missingCommand = missingCommand
 }
 
 func (c *CommandController) Prompt() tea.Cmd {
@@ -44,12 +49,19 @@ func (c *CommandController) Execute(commandInput string) tea.Cmd {
 
 	tokens := shellwords.Split(input)
 	command := c.lookupCommand(tokens[0])
-	if command == nil {
-		log.Println("No such command: ", tokens)
-		return events.SetError(errors.New("no such command: " + tokens[0]))
+	if command != nil {
+		return command(tokens[1:])
 	}
 
-	return command(tokens[1:])
+	if c.missingCommand != nil {
+		command = c.missingCommand(tokens[0])
+		if command != nil {
+			return command(tokens[1:])
+		}
+	}
+
+	log.Println("No such command: ", tokens)
+	return events.SetError(errors.New("no such command: " + tokens[0]))
 }
 
 func (c *CommandController) Alias(commandName string) Command {

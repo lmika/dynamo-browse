@@ -13,6 +13,7 @@ import (
 	"github.com/lmika/audax/internal/common/ui/osstyle"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
 	"github.com/lmika/gopkgs/cli"
@@ -63,13 +64,17 @@ func main() {
 	closeFn := logging.EnableLogging(*flagDebug)
 	defer closeFn()
 
+	pluginRuntimeService := pluginruntime.New()
+
 	commandController := commandctrl.NewCommandController()
-	model := ui.NewModel(tableReadController, tableWriteController, commandController)
+	model := ui.NewModel(tableReadController, tableWriteController, commandController, pluginRuntimeService)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
+	pluginRuntimeService.SetMessageSender(p.Send)
+	commandController.SetMissingCommand(pluginRuntimeService.MissingCommand)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	if lipgloss.HasDarkBackground() {
@@ -89,6 +94,8 @@ func main() {
 	}
 
 	log.Println("launching")
+	pluginRuntimeService.Start()
+
 	if err := p.Start(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)

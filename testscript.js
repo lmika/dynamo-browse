@@ -1,19 +1,8 @@
-console.log("Hello world!!");
+const dynamobrowse = require("audax:dynamo-browse");
 
-class MyTestClass {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
+dynamobrowse.session.registerCommand("bla", () => {
+    dynamobrowse.ui.prompt("What is your name? ").then((name) => {
+        dynamobrowse.ui.alert("Hello, " + name);
+    })
+})
 
-    doTheSum() {
-        return this.x + this.y;
-    }
-}
-
-
-let myClass = new MyTestClass(2, 2);
-console.log("My test class = " + myClass.doTheSum());
-
-
-audax.ui.prompt("Hello");

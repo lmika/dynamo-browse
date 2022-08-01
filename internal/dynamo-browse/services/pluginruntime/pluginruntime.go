@@ -1,21 +1,49 @@
 package pluginruntime
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dop251/goja"
-	"github.com/dop251/goja_nodejs/console"
+	"github.com/dop251/goja_nodejs/eventloop"
 	"github.com/dop251/goja_nodejs/require"
+	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/pkg/errors"
 	"os"
 )
 
 type Service struct {
-	registry *require.Registry
+	registry  *require.Registry
+	eventLoop *eventloop.EventLoop
+
+	userCommands map[string]goja.Callable
+
+	msgSender func(msg tea.Msg)
 }
 
 func New() *Service {
-	return &Service{
-		registry: new(require.Registry),
+	srv := &Service{
+		userCommands: make(map[string]goja.Callable),
 	}
+
+	srv.registry = new(require.Registry)
+	srv.registry.RegisterNativeModule("audax:dynamo-browse", audaxDynamoBrowse(srv))
+
+	srv.eventLoop = eventloop.NewEventLoop(eventloop.WithRegistry(srv.registry))
+
+	return srv
+}
+
+func (s *Service) SetMessageSender(msgFn func(msg tea.Msg)) {
+	s.msgSender = msgFn
+}
+
+func (s *Service) postMessage(msg tea.Msg) {
+	if s.msgSender != nil {
+		s.msgSender(msg)
+	}
+}
+
+func (s *Service) Start() {
+	s.eventLoop.Start()
 }
 
 func (s *Service) Load(filename string) (*Plugin, error) {
@@ -24,13 +52,39 @@ func (s *Service) Load(filename string) (*Plugin, error) {
 		return nil, errors.Wrapf(err, "unable to load plugin %v", filename)
 	}
 
-	runtime := goja.New()
-	s.registry.Enable(runtime)
-	console.Enable(runtime)
-
-	if _, err := runtime.RunScript(filename, string(f)); err != nil {
-		return nil, errors.Wrapf(err, "error loading plugin %v", filename)
+	pgrm, err := goja.Compile(filename, string(f), true)
+	if err != nil {
+		return nil, errors.Wrapf(err, "compile error %v", filename)
 	}
 
-	return &Plugin{}, nil
+	//rt := goja.New()
+	//s.registry.Enable(rt)
+	//console.Enable(rt)
+
+	plugin := &Plugin{pgrm: pgrm}
+	s.eventLoop.RunOnLoop(func(rt *goja.Runtime) {
+		plugin.Run(rt)
+	})
+
+	return nil, nil
+}
+
+func (s *Service) MissingCommand(name string) commandctrl.Command {
+	callable := s.userCommands[name]
+	if callable == nil {
+		return nil
+	}
+
+	return func(args []string) tea.Cmd {
+		s.eventLoop.RunOnLoop(func(rt *goja.Runtime) {
+			argValues := make([]goja.Value, len(args))
+			for i, a := range args {
+				argValues[i] = rt.ToValue(a)
+			}
+
+			// TODO: deal with error
+			callable(goja.Undefined(), argValues...)
+		})
+		return nil
+	}
 }
