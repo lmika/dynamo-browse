@@ -6,21 +6,25 @@ import (
 	"github.com/dop251/goja_nodejs/eventloop"
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
+	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/pkg/errors"
+	"log"
 	"os"
 )
 
 type Service struct {
 	registry  *require.Registry
 	eventLoop *eventloop.EventLoop
+	state     *controllers.State
 
 	userCommands map[string]goja.Callable
 
 	msgSender func(msg tea.Msg)
 }
 
-func New() *Service {
+func New(state *controllers.State) *Service {
 	srv := &Service{
+		state:        state,
 		userCommands: make(map[string]goja.Callable),
 	}
 
@@ -63,7 +67,9 @@ func (s *Service) Load(filename string) (*Plugin, error) {
 
 	plugin := &Plugin{pgrm: pgrm}
 	s.eventLoop.RunOnLoop(func(rt *goja.Runtime) {
-		plugin.Run(rt)
+		if err := plugin.Run(rt); err != nil {
+			log.Printf("error: %v", err)
+		}
 	})
 
 	return nil, nil
@@ -83,7 +89,9 @@ func (s *Service) MissingCommand(name string) commandctrl.Command {
 			}
 
 			// TODO: deal with error
-			callable(goja.Undefined(), argValues...)
+			if _, err := callable(goja.Undefined(), argValues...); err != nil {
+				log.Printf("error: %v", err)
+			}
 		})
 		return nil
 	}

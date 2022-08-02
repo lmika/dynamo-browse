@@ -19,6 +19,9 @@ func audaxDynamoBrowse(service *Service) require.ModuleLoader {
 			log.Printf("registering user command: %v", name)
 			service.userCommands[name] = fn
 		})
+		sessionObj.DefineAccessorProperty("currentResultSet", rt.ToValue(func() goja.Value {
+			return newJSResultSet(rt, service.state.ResultSet())
+		}), nil, goja.FLAG_FALSE, goja.FLAG_FALSE)
 
 		// UI
 		uiObj := rt.NewObject()

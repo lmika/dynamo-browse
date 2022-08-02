@@ -50,11 +50,6 @@ func NewModel(
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
 
-	ps := pluginruntime.New()
-	if _, err := ps.Load("testscript.js"); err != nil {
-		log.Println(err)
-	}
-
 	cc.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
 			"quit": commandctrl.NoArgCommand(tea.Quit),
