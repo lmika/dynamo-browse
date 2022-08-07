@@ -185,7 +185,7 @@ func (c *TableReadController) doScan(ctx context.Context, resultSet *models.Resu
 }
 
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string) tea.Msg {
-	c.state.setResultSetAndFilter(resultSet, filter)
+	c.state.SetResultSetAndFilter(resultSet, filter)
 	return c.state.buildNewResultSetMessage("")
 }
 

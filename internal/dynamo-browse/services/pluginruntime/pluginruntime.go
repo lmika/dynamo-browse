@@ -13,18 +13,21 @@ import (
 )
 
 type Service struct {
+	state        *controllers.State
+	tableService controllers.TableReadService
+
 	registry  *require.Registry
 	eventLoop *eventloop.EventLoop
-	state     *controllers.State
 
 	userCommands map[string]goja.Callable
 
 	msgSender func(msg tea.Msg)
 }
 
-func New(state *controllers.State) *Service {
+func New(state *controllers.State, tableService controllers.TableReadService) *Service {
 	srv := &Service{
 		state:        state,
+		tableService: tableService,
 		userCommands: make(map[string]goja.Callable),
 	}
 

@@ -6,8 +6,11 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
+var resultSetSymbol = goja.NewSymbol("resultSetProxy")
+
 func newJSResultSet(rt *goja.Runtime, resultSet *models.ResultSet) *goja.Object {
 	obj := rt.NewObject()
+	obj.DefineDataPropertySymbol(resultSetSymbol, rt.NewDynamicObject(goProxyValue{resultSet}), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_FALSE)
 	obj.DefineDataProperty("table", newJSTableInfo(rt, resultSet.TableInfo), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_FALSE)
 	obj.DefineDataProperty("rows", rt.NewDynamicArray(resultSetRowProxy{rt, resultSet}), goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_FALSE)
 	return obj
@@ -91,4 +94,26 @@ func (r resultSetItemProxy) Keys() []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+type goProxyValue struct{ v any }
+
+func (g goProxyValue) Get(key string) goja.Value {
+	return goja.Undefined()
+}
+
+func (g goProxyValue) Set(key string, val goja.Value) bool {
+	return false
+}
+
+func (g goProxyValue) Has(key string) bool {
+	return false
+}
+
+func (g goProxyValue) Delete(key string) bool {
+	return false
+}
+
+func (g goProxyValue) Keys() []string {
+	return nil
 }

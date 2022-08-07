@@ -64,7 +64,7 @@ func main() {
 	closeFn := logging.EnableLogging(*flagDebug)
 	defer closeFn()
 
-	pluginRuntimeService := pluginruntime.New(state)
+	pluginRuntimeService := pluginruntime.New(state, tableService)
 
 	commandController := commandctrl.NewCommandController()
 	model := ui.NewModel(tableReadController, tableWriteController, commandController, pluginRuntimeService)

@@ -44,7 +44,7 @@ func (s *State) withResultSetReturningError(rs func(*models.ResultSet) error) (e
 	return err
 }
 
-func (s *State) setResultSetAndFilter(resultSet *models.ResultSet, filter string) {
+func (s *State) SetResultSetAndFilter(resultSet *models.ResultSet, filter string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
