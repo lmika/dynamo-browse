@@ -11,9 +11,12 @@ import (
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/common/ui/logging"
 	"github.com/lmika/audax/internal/common/ui/osstyle"
+	"github.com/lmika/audax/internal/common/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
+	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
 	"github.com/lmika/gopkgs/cli"
 	"log"
@@ -34,6 +37,16 @@ func main() {
 		cli.Fatalf("cannot load AWS config: %v", err)
 	}
 
+	wsManager := workspaces.New(workspaces.MetaInfo{
+		Command: "sqs-browse",
+	})
+	//ws, err := wsManager.CreateTemp()
+	ws, err := wsManager.Open("temp.workspace")
+	if err != nil {
+		cli.Fatalf("cannot create workspace: %v", ws)
+	}
+	defer ws.Close()
+
 	var dynamoClient *dynamodb.Client
 	if *flagLocal != "" {
 		host, port, err := net.SplitHostPort(*flagLocal)
@@ -53,11 +66,13 @@ func main() {
 	}
 
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
 
 	tableService := tables.NewService(dynamoProvider)
+	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 
 	state := controllers.NewState()
-	tableReadController := controllers.NewTableReadController(state, tableService, *flagTable)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
 
 	commandController := commandctrl.NewCommandController()

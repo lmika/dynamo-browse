@@ -7,14 +7,17 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/pkg/errors"
+	"log"
 	"os"
 	"sync"
 )
 
 type TableReadController struct {
-	tableService TableReadService
-	tableName    string
+	tableService     TableReadService
+	workspaceService *workspaces.Service
+	tableName        string
 
 	// state
 	mutex *sync.Mutex
@@ -23,12 +26,13 @@ type TableReadController struct {
 	//filter    string
 }
 
-func NewTableReadController(state *State, tableService TableReadService, tableName string) *TableReadController {
+func NewTableReadController(state *State, tableService TableReadService, workspaceService *workspaces.Service, tableName string) *TableReadController {
 	return &TableReadController{
-		state:        state,
-		tableService: tableService,
-		tableName:    tableName,
-		mutex:        new(sync.Mutex),
+		state:            state,
+		tableService:     tableService,
+		workspaceService: workspaceService,
+		tableName:        tableName,
+		mutex:            new(sync.Mutex),
 	}
 }
 
@@ -99,6 +103,9 @@ func (c *TableReadController) PromptForQuery() tea.Cmd {
 						return events.Error(err)
 					}
 
+					if err := c.workspaceService.PushSnapshot(resultSet); err != nil {
+						log.Printf("cannot push snapshot: %v", err)
+					}
 					return c.setResultSetAndFilter(newResultSet, "")
 				})
 			},
