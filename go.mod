@@ -18,6 +18,8 @@ require (
 	github.com/charmbracelet/bubbles v0.11.0
 	github.com/charmbracelet/bubbletea v0.21.0
 	github.com/charmbracelet/lipgloss v0.5.0
+	github.com/dop251/goja v0.0.0-20220730095050-d11430fb5f72
+	github.com/dop251/goja_nodejs v0.0.0-20220712185256-8cad205bf387
 	github.com/google/uuid v1.3.0
 	github.com/lmika/events v0.0.0-20200906102219-a2269cd4394e
 	github.com/lmika/go-bubble-table v0.2.2-0.20220616114432-6bbb2995e538
@@ -45,8 +47,6 @@ require (
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
-	github.com/dop251/goja v0.0.0-20220730095050-d11430fb5f72 // indirect
-	github.com/dop251/goja_nodejs v0.0.0-20220712185256-8cad205bf387 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect

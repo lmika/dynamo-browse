@@ -1,6 +1,8 @@
 package commandctrl
 
 import (
+	"bufio"
+	"bytes"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pkg/errors"
 	"log"
@@ -84,4 +86,19 @@ func (c *CommandController) lookupCommand(name string) Command {
 		}
 	}
 	return nil
+}
+
+func (c *CommandController) ExecuteFile(file []byte, filename string) error {
+	scnr := bufio.NewScanner(bytes.NewReader(file))
+	for scnr.Scan() {
+		line := strings.TrimSpace(scnr.Text())
+		if line == "" {
+			continue
+		} else if line[0] == '#' {
+			continue
+		}
+
+		c.Execute(line) // TODO: deal with errors
+	}
+	return scnr.Err()
 }

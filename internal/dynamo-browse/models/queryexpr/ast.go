@@ -6,7 +6,12 @@ import (
 )
 
 type astExpr struct {
-	Equality *astBinOp `parser:"@@"`
+	//Equality *astBinOp `parser:"@@"`
+	Root *astDisjunction `parser:"@@"`
+}
+
+type astDisjunction struct {
+	Operands []*astBinOp `parser:"@@ ('or' @@)*"`
 }
 
 type astBinOp struct {

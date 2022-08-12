@@ -17,6 +17,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/pkg/errors"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -24,9 +25,11 @@ type Model struct {
 	tableReadController  *controllers.TableReadController
 	tableWriteController *controllers.TableWriteController
 	commandController    *commandctrl.CommandController
-	itemEdit             *dynamoitemedit.Model
-	statusAndPrompt      *statusandprompt.StatusAndPrompt
-	tableSelect          *tableselect.Model
+
+	dynamoTableView *dynamotableview.Model
+	itemEdit        *dynamoitemedit.Model
+	statusAndPrompt *statusandprompt.StatusAndPrompt
+	tableSelect     *tableselect.Model
 
 	root      tea.Model
 	tableView *dynamotableview.Model
@@ -112,8 +115,12 @@ func NewModel(
 			},
 
 			// TEMP
-			"runscript": func(args []string) tea.Cmd {
-				_, err := prs.Load("testscript.js")
+			"loadscript": func(args []string) tea.Cmd {
+				if len(args) == 0 {
+					return events.SetError(errors.New("expected filename"))
+				}
+
+				_, err := prs.Load(args[0])
 				if err != nil {
 					log.Println(err)
 				}
@@ -135,6 +142,7 @@ func NewModel(
 		tableReadController:  rc,
 		tableWriteController: wc,
 		commandController:    cc,
+		dynamoTableView:      dtv,
 		itemEdit:             itemEdit,
 		statusAndPrompt:      statusAndPrompt,
 		tableSelect:          tableSelect,
@@ -145,6 +153,15 @@ func NewModel(
 }
 
 func (m Model) Init() tea.Cmd {
+	// TEMP
+	rcFilename := os.ExpandEnv("$HOME/.config/audax/dynamo-browse/init.rc")
+	if rcFile, err := os.ReadFile(rcFilename); err == nil {
+		if err := m.commandController.ExecuteFile(rcFile, rcFilename); err != nil {
+			log.Printf("error executing %v: %v", err)
+		}
+	}
+	// END TEMP
+
 	return m.tableReadController.Init()
 }
 
@@ -183,4 +200,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	return m.root.View()
+}
+
+func (m Model) SelectedItemIndex() int {
+	return m.dynamoTableView.SelectedItemIndex()
 }

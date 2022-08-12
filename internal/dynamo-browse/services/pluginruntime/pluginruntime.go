@@ -86,6 +86,12 @@ func (s *Service) MissingCommand(name string) commandctrl.Command {
 
 	return func(args []string) tea.Cmd {
 		s.eventLoop.RunOnLoop(func(rt *goja.Runtime) {
+			rt.SetPromiseRejectionTracker(func(p *goja.Promise, operation goja.PromiseRejectionOperation) {
+				if operation == goja.PromiseRejectionReject {
+					log.Printf("unhandled promise rejection: %v", p.Result().String())
+				}
+			})
+
 			argValues := make([]goja.Value, len(args))
 			for i, a := range args {
 				argValues[i] = rt.ToValue(a)

@@ -68,6 +68,7 @@ func main() {
 
 	commandController := commandctrl.NewCommandController()
 	model := ui.NewModel(tableReadController, tableWriteController, commandController, pluginRuntimeService)
+	state.SetUIStateProvider(model)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()

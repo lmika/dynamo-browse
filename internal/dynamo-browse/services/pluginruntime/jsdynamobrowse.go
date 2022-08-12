@@ -24,7 +24,7 @@ func audaxDynamoBrowse(service *Service) require.ModuleLoader {
 			log.Printf("registering user command: %v", name)
 			service.userCommands[name] = fn
 		})
-		sessionObj.DefineAccessorProperty("currentResultSet", rt.ToValue(func() goja.Value {
+		sessionObj.DefineAccessorProperty("resultSet", rt.ToValue(func() goja.Value {
 			return newJSResultSet(rt, service.state.ResultSet())
 		}), rt.ToValue(func(v goja.Value) error {
 			obj := v.ToObject(rt)
@@ -47,6 +47,14 @@ func audaxDynamoBrowse(service *Service) require.ModuleLoader {
 			service.postMessage(controllers.NewResultSet{ResultSet: resultSet})
 			return nil
 		}), goja.FLAG_FALSE, goja.FLAG_FALSE)
+		sessionObj.DefineAccessorProperty("selectedRow", rt.ToValue(func() goja.Value {
+			selectedRow := service.state.SelectedRow()
+			if selectedRow < 0 {
+				return goja.Undefined()
+			}
+			return newItemInfo(rt, service.state.ResultSet(), selectedRow)
+		}), nil, goja.FLAG_FALSE, goja.FLAG_FALSE)
+
 		sessionObj.Set("query", func(exprStr string, opts *goja.Object) goja.Value {
 			currentResultSet := service.state.ResultSet()
 
@@ -86,7 +94,7 @@ func audaxDynamoBrowse(service *Service) require.ModuleLoader {
 
 		// UI
 		uiObj := rt.NewObject()
-		uiObj.Set("alert", func(call goja.FunctionCall) goja.Value {
+		uiObj.Set("print", func(call goja.FunctionCall) goja.Value {
 			sb := new(strings.Builder)
 			for _, arg := range call.Arguments {
 				sb.WriteString(arg.String())

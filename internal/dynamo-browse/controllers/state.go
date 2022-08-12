@@ -7,9 +7,10 @@ import (
 )
 
 type State struct {
-	mutex     *sync.Mutex
-	resultSet *models.ResultSet
-	filter    string
+	mutex           *sync.Mutex
+	resultSet       *models.ResultSet
+	filter          string
+	uiStateProvider UIStateProvider
 }
 
 func NewState() *State {
@@ -18,10 +19,21 @@ func NewState() *State {
 	}
 }
 
+func (s *State) SetUIStateProvider(prov UIStateProvider) {
+	s.uiStateProvider = prov
+}
+
 func (s *State) ResultSet() *models.ResultSet {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	return s.resultSet
+}
+
+func (s *State) SelectedRow() int {
+	if s.uiStateProvider == nil {
+		return -1
+	}
+	return s.uiStateProvider.SelectedItemIndex()
 }
 
 func (s *State) Filter() string {

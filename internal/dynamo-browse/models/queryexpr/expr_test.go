@@ -44,4 +44,18 @@ func TestModExpr_Query(t *testing.T) {
 		assert.Equal(t, "pk", plan.Expression.Names()["#0"])
 		assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
 	})
+
+	t.Run("perform scan with disjunction", func(t *testing.T) {
+		modExpr, err := queryexpr.Parse(`pk^="prefix" or pk="prefix"`) // TODO: fix this so that '^ =' is invalid
+		assert.NoError(t, err)
+
+		plan, err := modExpr.Plan(tableInfo)
+		assert.NoError(t, err)
+
+		assert.False(t, plan.CanQuery)
+		assert.Equal(t, "(begins_with (#0, :0)) OR (#0 = :1)", aws.ToString(plan.Expression.Filter()))
+		assert.Equal(t, "pk", plan.Expression.Names()["#0"])
+		assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "prefix", plan.Expression.Values()[":1"].(*types.AttributeValueMemberS).Value)
+	})
 }
