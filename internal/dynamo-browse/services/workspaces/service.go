@@ -7,24 +7,25 @@ import (
 	"time"
 )
 
-type Service struct {
-	store ResultSetSnapshotStore
+type ViewSnapshotService struct {
+	store ViewSnapshotStore
 }
 
-func NewService(store ResultSetSnapshotStore) *Service {
-	return &Service{
+func NewService(store ViewSnapshotStore) *ViewSnapshotService {
+	return &ViewSnapshotService{
 		store: store,
 	}
 }
 
-func (s *Service) PushSnapshot(rs *models.ResultSet) error {
-	newSnapshot := &serialisable.ResultSetSnapshot{
+func (s *ViewSnapshotService) PushSnapshot(rs *models.ResultSet, filter string) error {
+	newSnapshot := &serialisable.ViewSnapshot{
 		Time:      time.Now(),
-		TableInfo: rs.TableInfo,
+		TableName: rs.TableInfo.Name,
 	}
 	if q := rs.Query; q != nil {
-		newSnapshot.Query.Expression = q.String()
+		newSnapshot.Query = q.String()
 	}
+	newSnapshot.Filter = filter
 
 	if head, err := s.store.Head(); head != nil {
 		newSnapshot.BackLink = head.ID
@@ -40,4 +41,23 @@ func (s *Service) PushSnapshot(rs *models.ResultSet) error {
 	}
 
 	return nil
+}
+
+func (s *ViewSnapshotService) PopSnapshot() (*serialisable.ViewSnapshot, error) {
+	vs, err := s.store.Head()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get snapshot head")
+	}
+	if vs == nil {
+		return vs, nil
+	}
+
+	if err := s.store.SetAsHead(vs.BackLink); err != nil {
+		return nil, errors.Wrap(err, "cannot set new head")
+	}
+	if err := s.store.Remove(vs.ID); err != nil {
+		return nil, errors.Wrap(err, "cannot remove old ID")
+	}
+
+	return vs, nil
 }
