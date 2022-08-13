@@ -149,6 +149,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.tableReadController.PromptForQuery()
 			case "/":
 				return m, m.tableReadController.Filter()
+			case "backspace":
+				return m, m.tableReadController.ViewBack()
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
