@@ -47,9 +47,8 @@ func (s *ViewSnapshotService) PopSnapshot() (*serialisable.ViewSnapshot, error) 
 	vs, err := s.store.Head()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get snapshot head")
-	}
-	if vs == nil {
-		return vs, nil
+	} else if vs == nil || vs.BackLink == 0 {
+		return nil, nil
 	}
 
 	if err := s.store.SetAsHead(vs.BackLink); err != nil {
@@ -57,6 +56,13 @@ func (s *ViewSnapshotService) PopSnapshot() (*serialisable.ViewSnapshot, error) 
 	}
 	if err := s.store.Remove(vs.ID); err != nil {
 		return nil, errors.Wrap(err, "cannot remove old ID")
+	}
+
+	vs, err = s.store.Head()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get snapshot head")
+	} else if vs == nil || vs.BackLink == 0 {
+		return nil, nil
 	}
 
 	return vs, nil
