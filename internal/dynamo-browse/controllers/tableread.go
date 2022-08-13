@@ -22,8 +22,6 @@ type TableReadController struct {
 	// state
 	mutex *sync.Mutex
 	state *State
-	//resultSet *models.ResultSet
-	//filter    string
 }
 
 func NewTableReadController(state *State, tableService TableReadService, workspaceService *workspaces.ViewSnapshotService, tableName string) *TableReadController {
@@ -88,34 +86,6 @@ func (c *TableReadController) PromptForQuery() tea.Cmd {
 				return func() tea.Msg {
 					return c.runQuery(c.state.ResultSet().TableInfo, value, "", true)
 				}
-
-				//if value == "" {
-				//	return func() tea.Msg {
-				//		resultSet := c.state.ResultSet()
-				//		if err := c.workspaceService.PushSnapshot(resultSet, ""); err != nil {
-				//			log.Printf("cannot push snapshot: %v", err)
-				//		}
-				//		return c.doScan(context.Background(), resultSet, nil)
-				//	}
-				//}
-				//
-				//expr, err := queryexpr.Parse(value)
-				//if err != nil {
-				//	return events.SetError(err)
-				//}
-				//
-				//return c.doIfNoneDirty(func() tea.Msg {
-				//	resultSet := c.state.ResultSet()
-				//	newResultSet, err := c.tableService.ScanOrQuery(context.Background(), resultSet.TableInfo, expr)
-				//	if err != nil {
-				//		return events.Error(err)
-				//	}
-				//
-				//	if err := c.workspaceService.PushSnapshot(resultSet, ""); err != nil {
-				//		log.Printf("cannot push snapshot: %v", err)
-				//	}
-				//	return c.setResultSetAndFilter(newResultSet, "")
-				//})
 			},
 		}
 	}
