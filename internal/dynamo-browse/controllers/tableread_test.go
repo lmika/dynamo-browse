@@ -4,9 +4,12 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/common/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
+	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -17,11 +20,14 @@ import (
 func TestTableReadController_InitTable(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
 
 	t.Run("should prompt for table if no table name provided", func(t *testing.T) {
-		readController := controllers.NewTableReadController(controllers.NewState(), service, "")
+		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "")
 
 		cmd := readController.Init()
 		event := cmd()
@@ -30,7 +36,7 @@ func TestTableReadController_InitTable(t *testing.T) {
 	})
 
 	t.Run("should scan table if table name provided", func(t *testing.T) {
-		readController := controllers.NewTableReadController(controllers.NewState(), service, "")
+		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "")
 
 		cmd := readController.Init()
 		event := cmd()
@@ -42,9 +48,12 @@ func TestTableReadController_InitTable(t *testing.T) {
 func TestTableReadController_ListTables(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
-	readController := controllers.NewTableReadController(controllers.NewState(), service, "")
+	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "")
 
 	t.Run("returns a list of tables", func(t *testing.T) {
 		cmd := readController.ListTables()
@@ -65,10 +74,13 @@ func TestTableReadController_ListTables(t *testing.T) {
 func TestTableReadController_Rescan(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
 	state := controllers.NewState()
-	readController := controllers.NewTableReadController(state, service, "bravo-table")
+	readController := controllers.NewTableReadController(state, service, workspaceService, "bravo-table")
 
 	t.Run("should perform a rescan", func(t *testing.T) {
 		invokeCommand(t, readController.Init())
@@ -99,9 +111,12 @@ func TestTableReadController_Rescan(t *testing.T) {
 func TestTableReadController_ExportCSV(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
-	readController := controllers.NewTableReadController(controllers.NewState(), service, "bravo-table")
+	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "bravo-table")
 
 	t.Run("should export result set to CSV file", func(t *testing.T) {
 		tempFile := tempFile(t)
@@ -122,7 +137,7 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 
 	t.Run("should return error if result set is not set", func(t *testing.T) {
 		tempFile := tempFile(t)
-		readController := controllers.NewTableReadController(controllers.NewState(), service, "non-existant-table")
+		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "non-existant-table")
 
 		invokeCommandExpectingError(t, readController.Init())
 		invokeCommandExpectingError(t, readController.ExportCSV(tempFile))
@@ -134,9 +149,12 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 func TestTableReadController_Query(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
-	readController := controllers.NewTableReadController(controllers.NewState(), service, "bravo-table")
+	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "bravo-table")
 
 	t.Run("should run scan with filter based on user query", func(t *testing.T) {
 		tempFile := tempFile(t)
@@ -156,7 +174,7 @@ func TestTableReadController_Query(t *testing.T) {
 
 	t.Run("should return error if result set is not set", func(t *testing.T) {
 		tempFile := tempFile(t)
-		readController := controllers.NewTableReadController(controllers.NewState(), service, "non-existant-table")
+		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "non-existant-table")
 
 		invokeCommandExpectingError(t, readController.Init())
 		invokeCommandExpectingError(t, readController.ExportCSV(tempFile))
@@ -175,6 +193,19 @@ func tempFile(t *testing.T) string {
 	})
 
 	return tempFile.Name()
+}
+
+func testWorkspace(t *testing.T) *workspaces.Workspace {
+	wsTempFile := tempFile(t)
+
+	wsManager := workspaces.New(workspaces.MetaInfo{Command: "dynamo-browse"})
+	ws, err := wsManager.Open(wsTempFile)
+	if err != nil {
+		t.Fatalf("cannot create workspace manager: %v", err)
+	}
+	t.Cleanup(func() { ws.Close() })
+
+	return ws
 }
 
 func invokeCommand(t *testing.T, cmd tea.Cmd) tea.Msg {
