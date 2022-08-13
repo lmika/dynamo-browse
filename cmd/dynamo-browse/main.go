@@ -28,6 +28,7 @@ func main() {
 	var flagTable = flag.String("t", "", "dynamodb table name")
 	var flagLocal = flag.String("local", "", "local endpoint")
 	var flagDebug = flag.String("debug", "", "file to log debug messages")
+	var flagWorkspace = flag.String("w", "", "workspace file")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -37,11 +38,11 @@ func main() {
 		cli.Fatalf("cannot load AWS config: %v", err)
 	}
 
-	wsManager := workspaces.New(workspaces.MetaInfo{
-		Command: "sqs-browse",
-	})
-	//ws, err := wsManager.CreateTemp()
-	ws, err := wsManager.Open("temp.workspace")
+	closeFn := logging.EnableLogging(*flagDebug)
+	defer closeFn()
+
+	wsManager := workspaces.New(workspaces.MetaInfo{Command: "dynamo-browse"})
+	ws, err := wsManager.OpenOrCreate(*flagWorkspace)
 	if err != nil {
 		cli.Fatalf("cannot create workspace: %v", ws)
 	}
@@ -82,9 +83,6 @@ func main() {
 	lipgloss.HasDarkBackground()
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
-
-	closeFn := logging.EnableLogging(*flagDebug)
-	defer closeFn()
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	if lipgloss.HasDarkBackground() {
