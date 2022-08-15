@@ -3,9 +3,8 @@ package models
 import "sort"
 
 type ResultSet struct {
-	TableInfo *TableInfo
-	Query     Queryable
-	//Columns    []string
+	TableInfo  *TableInfo
+	Query      Queryable
 	items      []Item
 	attributes []ItemAttribute
 

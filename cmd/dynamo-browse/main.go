@@ -11,10 +11,13 @@ import (
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/common/ui/logging"
 	"github.com/lmika/audax/internal/common/ui/osstyle"
+	"github.com/lmika/audax/internal/common/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
+	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
+	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
 	"github.com/lmika/gopkgs/cli"
 	"log"
@@ -26,6 +29,7 @@ func main() {
 	var flagTable = flag.String("t", "", "dynamodb table name")
 	var flagLocal = flag.String("local", "", "local endpoint")
 	var flagDebug = flag.String("debug", "", "file to log debug messages")
+	var flagWorkspace = flag.String("w", "", "workspace file")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -34,6 +38,16 @@ func main() {
 	if err != nil {
 		cli.Fatalf("cannot load AWS config: %v", err)
 	}
+
+	closeFn := logging.EnableLogging(*flagDebug)
+	defer closeFn()
+
+	wsManager := workspaces.New(workspaces.MetaInfo{Command: "dynamo-browse"})
+	ws, err := wsManager.OpenOrCreate(*flagWorkspace)
+	if err != nil {
+		cli.Fatalf("cannot create workspace: %v", ws)
+	}
+	defer ws.Close()
 
 	var dynamoClient *dynamodb.Client
 	if *flagLocal != "" {
@@ -54,15 +68,14 @@ func main() {
 	}
 
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
 
 	tableService := tables.NewService(dynamoProvider)
+	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 
 	state := controllers.NewState()
-	tableReadController := controllers.NewTableReadController(state, tableService, *flagTable)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
-
-	closeFn := logging.EnableLogging(*flagDebug)
-	defer closeFn()
 
 	pluginRuntimeService := pluginruntime.New(state, tableService)
 
@@ -74,6 +87,7 @@ func main() {
 	lipgloss.HasDarkBackground()
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
+
 	pluginRuntimeService.SetMessageSender(p.Send)
 	commandController.SetMissingCommand(pluginRuntimeService.MissingCommand)
 

@@ -7,28 +7,30 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/pkg/errors"
+	"log"
 	"os"
 	"sync"
 )
 
 type TableReadController struct {
-	tableService TableReadService
-	tableName    string
+	tableService     TableReadService
+	workspaceService *workspaces.ViewSnapshotService
+	tableName        string
 
 	// state
 	mutex *sync.Mutex
 	state *State
-	//resultSet *models.ResultSet
-	//filter    string
 }
 
-func NewTableReadController(state *State, tableService TableReadService, tableName string) *TableReadController {
+func NewTableReadController(state *State, tableService TableReadService, workspaceService *workspaces.ViewSnapshotService, tableName string) *TableReadController {
 	return &TableReadController{
-		state:        state,
-		tableService: tableService,
-		tableName:    tableName,
-		mutex:        new(sync.Mutex),
+		state:            state,
+		tableService:     tableService,
+		workspaceService: workspaceService,
+		tableName:        tableName,
+		mutex:            new(sync.Mutex),
 	}
 }
 
@@ -70,8 +72,9 @@ func (c *TableReadController) ScanTable(name string) tea.Cmd {
 		if err != nil {
 			return events.Error(err)
 		}
+		resultSet = c.tableService.Filter(resultSet, c.state.Filter())
 
-		return c.setResultSetAndFilter(resultSet, c.state.Filter())
+		return c.setResultSetAndFilter(resultSet, c.state.Filter(), true)
 	}
 }
 
@@ -80,62 +83,75 @@ func (c *TableReadController) PromptForQuery() tea.Cmd {
 		return events.PromptForInputMsg{
 			Prompt: "query: ",
 			OnDone: func(value string) tea.Cmd {
-				if value == "" {
-					return func() tea.Msg {
-						resultSet := c.state.ResultSet()
-						return c.doScan(context.Background(), resultSet, nil)
-					}
+				return func() tea.Msg {
+					return c.runQuery(c.state.ResultSet().TableInfo, value, "", true)
 				}
-
-				expr, err := queryexpr.Parse(value)
-				if err != nil {
-					return events.SetError(err)
-				}
-
-				return c.doIfNoneDirty(func() tea.Msg {
-					resultSet := c.state.ResultSet()
-					newResultSet, err := c.tableService.ScanOrQuery(context.Background(), resultSet.TableInfo, expr)
-					if err != nil {
-						return events.Error(err)
-					}
-
-					return c.setResultSetAndFilter(newResultSet, "")
-				})
 			},
 		}
 	}
 }
 
-func (c *TableReadController) doIfNoneDirty(cmd tea.Cmd) tea.Cmd {
+func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query, newFilter string, pushSnapshot bool) tea.Msg {
+	if query == "" {
+		newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, nil)
+		if err != nil {
+			return events.Error(err)
+		}
+
+		if newFilter != "" {
+			newResultSet = c.tableService.Filter(newResultSet, newFilter)
+		}
+
+		return c.setResultSetAndFilter(newResultSet, newFilter, pushSnapshot)
+	}
+
+	expr, err := queryexpr.Parse(query)
+	if err != nil {
+		return events.SetError(err)
+	}
+
+	return c.doIfNoneDirty(func() tea.Msg {
+		newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, expr)
+		if err != nil {
+			return events.Error(err)
+		}
+
+		if newFilter != "" {
+			newResultSet = c.tableService.Filter(newResultSet, newFilter)
+		}
+		return c.setResultSetAndFilter(newResultSet, newFilter, pushSnapshot)
+	})
+}
+
+func (c *TableReadController) doIfNoneDirty(cmd tea.Cmd) tea.Msg {
 	var anyDirty = false
 	for i := 0; i < len(c.state.ResultSet().Items()); i++ {
 		anyDirty = anyDirty || c.state.ResultSet().IsDirty(i)
 	}
 
 	if !anyDirty {
-		return cmd
+		return cmd()
 	}
 
-	return func() tea.Msg {
-		return events.PromptForInputMsg{
-			Prompt: "reset modified items? ",
-			OnDone: func(value string) tea.Cmd {
-				if value != "y" {
-					return events.SetStatus("operation aborted")
-				}
+	return events.PromptForInputMsg{
+		Prompt: "reset modified items? ",
+		OnDone: func(value string) tea.Cmd {
+			if value != "y" {
+				return events.SetStatus("operation aborted")
+			}
 
-				return cmd
-			},
-		}
+			return cmd
+		},
 	}
-
 }
 
 func (c *TableReadController) Rescan() tea.Cmd {
-	return c.doIfNoneDirty(func() tea.Msg {
-		resultSet := c.state.ResultSet()
-		return c.doScan(context.Background(), resultSet, resultSet.Query)
-	})
+	return func() tea.Msg {
+		return c.doIfNoneDirty(func() tea.Msg {
+			resultSet := c.state.ResultSet()
+			return c.doScan(context.Background(), resultSet, resultSet.Query, true)
+		})
+	}
 }
 
 func (c *TableReadController) ExportCSV(filename string) tea.Cmd {
@@ -173,7 +189,7 @@ func (c *TableReadController) ExportCSV(filename string) tea.Cmd {
 	}
 }
 
-func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable) tea.Msg {
+func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable, pushBackstack bool) tea.Msg {
 	newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
 	if err != nil {
 		return events.Error(err)
@@ -181,10 +197,16 @@ func (c *TableReadController) doScan(ctx context.Context, resultSet *models.Resu
 
 	newResultSet = c.tableService.Filter(newResultSet, c.state.Filter())
 
-	return c.setResultSetAndFilter(newResultSet, c.state.Filter())
+	return c.setResultSetAndFilter(newResultSet, c.state.Filter(), pushBackstack)
 }
 
-func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string) tea.Msg {
+func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string, pushBackstack bool) tea.Msg {
+	if pushBackstack {
+		if err := c.workspaceService.PushSnapshot(resultSet, filter); err != nil {
+			log.Printf("cannot push snapshot: %v", err)
+		}
+	}
+
 	c.state.SetResultSetAndFilter(resultSet, filter)
 	return c.state.buildNewResultSetMessage("")
 }
@@ -209,9 +231,46 @@ func (c *TableReadController) Filter() tea.Cmd {
 					resultSet := c.state.ResultSet()
 					newResultSet := c.tableService.Filter(resultSet, value)
 
-					return c.setResultSetAndFilter(newResultSet, value)
+					return c.setResultSetAndFilter(newResultSet, value, true)
 				}
 			},
 		}
+	}
+}
+
+func (c *TableReadController) ViewBack() tea.Cmd {
+	return func() tea.Msg {
+		viewSnapshot, err := c.workspaceService.PopSnapshot()
+		if err != nil {
+			return events.Error(err)
+		} else if viewSnapshot == nil {
+			return events.StatusMsg("Backstack is empty")
+		}
+
+		currentResultSet := c.state.ResultSet()
+
+		var currentQueryExpr string
+		if currentResultSet.Query != nil {
+			currentQueryExpr = currentResultSet.Query.String()
+		}
+
+		if viewSnapshot.TableName == currentResultSet.TableInfo.Name && viewSnapshot.Query == currentQueryExpr {
+			log.Printf("backstack: setting filter to '%v'", viewSnapshot.Filter)
+
+			newResultSet := c.tableService.Filter(currentResultSet, viewSnapshot.Filter)
+			return c.setResultSetAndFilter(newResultSet, viewSnapshot.Filter, false)
+		}
+
+		tableInfo := currentResultSet.TableInfo
+		if viewSnapshot.TableName != currentResultSet.TableInfo.Name {
+			tableInfo, err = c.tableService.Describe(context.Background(), viewSnapshot.TableName)
+			if err != nil {
+				return events.Error(err)
+			}
+		}
+
+		log.Printf("backstack: running query: table = '%v', query = '%v', filter = '%v'",
+			tableInfo.Name, viewSnapshot.Query, viewSnapshot.Filter)
+		return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false)
 	}
 }
