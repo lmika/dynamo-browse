@@ -62,7 +62,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			// TEMP
 			case ":":
-				return m, m.cmdController.Prompt()
+				return m, func() tea.Msg { return m.cmdController.Prompt() }
 			case "w":
 				return m, m.controller.ViewLogLineFullScreen(m.logLines.SelectedLogLine())
 			// END TEMP

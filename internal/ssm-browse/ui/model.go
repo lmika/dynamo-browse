@@ -32,17 +32,17 @@ func NewModel(controller *controllers.SSMController, cmdController *commandctrl.
 
 	cmdController.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
-			"clone": func(args []string) tea.Cmd {
+			"clone": func(args []string) tea.Msg {
 				if currentParam := ssmList.CurrentParameter(); currentParam != nil {
 					return controller.Clone(*currentParam)
 				}
-				return events.SetError(errors.New("no parameter selected"))
+				return events.Error(errors.New("no parameter selected"))
 			},
-			"delete": func(args []string) tea.Cmd {
+			"delete": func(args []string) tea.Msg {
 				if currentParam := ssmList.CurrentParameter(); currentParam != nil {
 					return controller.DeleteParameter(*currentParam)
 				}
-				return events.SetError(errors.New("no parameter selected"))
+				return events.Error(errors.New("no parameter selected"))
 			},
 		},
 	})
@@ -75,7 +75,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			// TEMP
 			case ":":
-				return m, m.cmdController.Prompt()
+				return m, func() tea.Msg { return m.cmdController.Prompt() }
 			// END TEMP
 
 			case "ctrl+c", "q":

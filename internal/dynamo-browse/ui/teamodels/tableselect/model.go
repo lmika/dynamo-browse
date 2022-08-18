@@ -55,7 +55,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					var sel controllers.PromptForTableMsg
 					sel, m.pendingSelection = *m.pendingSelection, nil
 
-					return m, sel.OnSelected(m.listController.list.SelectedItem().(tableItem).name)
+					return m, func() tea.Msg { return sel.OnSelected(m.listController.list.SelectedItem().(tableItem).name) }
 				}
 			}
 

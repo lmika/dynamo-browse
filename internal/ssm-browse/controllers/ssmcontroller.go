@@ -39,26 +39,24 @@ func (c *SSMController) Fetch() tea.Cmd {
 	}
 }
 
-func (c *SSMController) ChangePrefix(newPrefix string) tea.Cmd {
-	return func() tea.Msg {
-		res, err := c.service.List(context.Background(), newPrefix)
-		if err != nil {
-			return events.Error(err)
-		}
+func (c *SSMController) ChangePrefix(newPrefix string) tea.Msg {
+	res, err := c.service.List(context.Background(), newPrefix)
+	if err != nil {
+		return events.Error(err)
+	}
 
-		c.mutex.Lock()
-		defer c.mutex.Unlock()
-		c.prefix = newPrefix
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.prefix = newPrefix
 
-		return NewParameterListMsg{
-			Prefix:     c.prefix,
-			Parameters: res,
-		}
+	return NewParameterListMsg{
+		Prefix:     c.prefix,
+		Parameters: res,
 	}
 }
 
-func (c *SSMController) Clone(param models.SSMParameter) tea.Cmd {
-	return events.PromptForInput("New key: ", func(value string) tea.Cmd {
+func (c *SSMController) Clone(param models.SSMParameter) tea.Msg {
+	return events.PromptForInput("New key: ", func(value string) tea.Msg {
 		return func() tea.Msg {
 			ctx := context.Background()
 			if err := c.service.Clone(ctx, param, value); err != nil {
@@ -78,23 +76,21 @@ func (c *SSMController) Clone(param models.SSMParameter) tea.Cmd {
 	})
 }
 
-func (c *SSMController) DeleteParameter(param models.SSMParameter) tea.Cmd {
-	return events.Confirm("delete parameter? ", func() tea.Cmd {
-		return func() tea.Msg {
-			ctx := context.Background()
-			if err := c.service.Delete(ctx, param); err != nil {
-				return events.Error(err)
-			}
+func (c *SSMController) DeleteParameter(param models.SSMParameter) tea.Msg {
+	return events.Confirm("delete parameter? ", func() tea.Msg {
+		ctx := context.Background()
+		if err := c.service.Delete(ctx, param); err != nil {
+			return events.Error(err)
+		}
 
-			res, err := c.service.List(context.Background(), c.prefix)
-			if err != nil {
-				return events.Error(err)
-			}
+		res, err := c.service.List(context.Background(), c.prefix)
+		if err != nil {
+			return events.Error(err)
+		}
 
-			return NewParameterListMsg{
-				Prefix:     c.prefix,
-				Parameters: res,
-			}
+		return NewParameterListMsg{
+			Prefix:     c.prefix,
+			Parameters: res,
 		}
 	})
 }
