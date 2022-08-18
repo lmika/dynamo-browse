@@ -25,18 +25,16 @@ func (c *CommandController) AddCommands(ctx *CommandContext) {
 	c.commandList = ctx
 }
 
-func (c *CommandController) Prompt() tea.Cmd {
-	return func() tea.Msg {
-		return events.PromptForInputMsg{
-			Prompt: ":",
-			OnDone: func(value string) tea.Cmd {
-				return c.Execute(value)
-			},
-		}
+func (c *CommandController) Prompt() tea.Msg {
+	return events.PromptForInputMsg{
+		Prompt: ":",
+		OnDone: func(value string) tea.Msg {
+			return c.Execute(value)
+		},
 	}
 }
 
-func (c *CommandController) Execute(commandInput string) tea.Cmd {
+func (c *CommandController) Execute(commandInput string) tea.Msg {
 	input := strings.TrimSpace(commandInput)
 	if input == "" {
 		return nil
@@ -46,18 +44,18 @@ func (c *CommandController) Execute(commandInput string) tea.Cmd {
 	command := c.lookupCommand(tokens[0])
 	if command == nil {
 		log.Println("No such command: ", tokens)
-		return events.SetError(errors.New("no such command: " + tokens[0]))
+		return events.Error(errors.New("no such command: " + tokens[0]))
 	}
 
 	return command(tokens[1:])
 }
 
 func (c *CommandController) Alias(commandName string) Command {
-	return func(args []string) tea.Cmd {
+	return func(args []string) tea.Msg {
 		command := c.lookupCommand(commandName)
 		if command == nil {
 			log.Println("No such command: ", commandName)
-			return events.SetError(errors.New("no such command: " + commandName))
+			return events.Error(errors.New("no such command: " + commandName))
 		}
 
 		return command(args)

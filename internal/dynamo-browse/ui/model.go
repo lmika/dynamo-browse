@@ -46,27 +46,27 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 	cc.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
 			"quit": commandctrl.NoArgCommand(tea.Quit),
-			"table": func(args []string) tea.Cmd {
+			"table": func(args []string) tea.Msg {
 				if len(args) == 0 {
 					return rc.ListTables()
 				} else {
 					return rc.ScanTable(args[0])
 				}
 			},
-			"export": func(args []string) tea.Cmd {
+			"export": func(args []string) tea.Msg {
 				if len(args) == 0 {
-					return events.SetError(errors.New("expected filename"))
+					return events.Error(errors.New("expected filename"))
 				}
 				return rc.ExportCSV(args[0])
 			},
-			"unmark": commandctrl.NoArgCommand(rc.Unmark()),
-			"delete": commandctrl.NoArgCommand(wc.DeleteMarked()),
+			"unmark": commandctrl.NoArgCommand(rc.Unmark),
+			"delete": commandctrl.NoArgCommand(wc.DeleteMarked),
 
 			// TEMP
-			"new-item": commandctrl.NoArgCommand(wc.NewItem()),
-			"set-attr": func(args []string) tea.Cmd {
+			"new-item": commandctrl.NoArgCommand(wc.NewItem),
+			"set-attr": func(args []string) tea.Msg {
 				if len(args) == 0 {
-					return events.SetError(errors.New("expected field"))
+					return events.Error(errors.New("expected field"))
 				}
 
 				var itemType = models.UnsetItemType
@@ -81,27 +81,27 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 					case "-NULL":
 						itemType = models.NullItemType
 					default:
-						return events.SetError(errors.New("unrecognised item type"))
+						return events.Error(errors.New("unrecognised item type"))
 					}
 					args = args[1:]
 				}
 
 				return wc.SetAttributeValue(dtv.SelectedItemIndex(), itemType, args[0])
 			},
-			"del-attr": func(args []string) tea.Cmd {
+			"del-attr": func(args []string) tea.Msg {
 				if len(args) == 0 {
-					return events.SetError(errors.New("expected field"))
+					return events.Error(errors.New("expected field"))
 				}
 				return wc.DeleteAttribute(dtv.SelectedItemIndex(), args[0])
 			},
 
-			"put": func(args []string) tea.Cmd {
+			"put": func(args []string) tea.Msg {
 				return wc.PutItems()
 			},
-			"touch": func(args []string) tea.Cmd {
+			"touch": func(args []string) tea.Msg {
 				return wc.TouchItem(dtv.SelectedItemIndex())
 			},
-			"noisy-touch": func(args []string) tea.Cmd {
+			"noisy-touch": func(args []string) tea.Msg {
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
 			},
 
@@ -129,7 +129,7 @@ func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteCon
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.tableReadController.Init()
+	return m.tableReadController.Init
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -141,21 +141,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "m":
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
-					return m, m.tableWriteController.ToggleMark(idx)
+					return m, func() tea.Msg { return m.tableWriteController.ToggleMark(idx) }
 				}
 			case "R":
-				return m, m.tableReadController.Rescan()
+				return m, m.tableReadController.Rescan
 			case "?":
-				return m, m.tableReadController.PromptForQuery()
+				return m, m.tableReadController.PromptForQuery
 			case "/":
-				return m, m.tableReadController.Filter()
+				return m, m.tableReadController.Filter
 			case "backspace":
-				return m, m.tableReadController.ViewBack()
+				return m, m.tableReadController.ViewBack
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
 			case ":":
-				return m, m.commandController.Prompt()
+				return m, m.commandController.Prompt
 			case "ctrl+c", "esc":
 				return m, tea.Quit
 			}

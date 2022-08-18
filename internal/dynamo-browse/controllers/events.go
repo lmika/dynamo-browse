@@ -46,7 +46,7 @@ type SetReadWrite struct {
 
 type PromptForTableMsg struct {
 	Tables     []string
-	OnSelected func(tableName string) tea.Cmd
+	OnSelected func(tableName string) tea.Msg
 }
 
 type ResultSetUpdated struct {

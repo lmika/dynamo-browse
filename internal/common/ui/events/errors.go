@@ -16,5 +16,5 @@ type ModeMessage string
 // PromptForInput indicates that the context is requesting a line of input
 type PromptForInputMsg struct {
 	Prompt string
-	OnDone func(value string) tea.Cmd
+	OnDone func(value string) tea.Msg
 }

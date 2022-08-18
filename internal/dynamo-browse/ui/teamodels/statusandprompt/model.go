@@ -67,7 +67,7 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				pendingInput := s.pendingInput
 				s.pendingInput = nil
 
-				return s, pendingInput.OnDone(s.textInput.Value())
+				return s, func() tea.Msg { return pendingInput.OnDone(s.textInput.Value()) }
 			default:
 				if msg.Type == tea.KeyRunes {
 					msg.Runes = sliceutils.Filter(msg.Runes, func(r rune) bool { return r != '\x0d' && r != '\x0a' })
