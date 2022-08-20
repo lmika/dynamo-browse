@@ -8,6 +8,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
+	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
@@ -22,12 +23,13 @@ func TestTableReadController_InitTable(t *testing.T) {
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
 
 	t.Run("should prompt for table if no table name provided", func(t *testing.T) {
-		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "")
+		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "")
 
 		event := readController.Init()
 
@@ -35,7 +37,7 @@ func TestTableReadController_InitTable(t *testing.T) {
 	})
 
 	t.Run("should scan table if table name provided", func(t *testing.T) {
-		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "")
+		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "")
 
 		event := readController.Init()
 
@@ -48,10 +50,11 @@ func TestTableReadController_ListTables(t *testing.T) {
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
-	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "")
+	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "")
 
 	t.Run("returns a list of tables", func(t *testing.T) {
 		event := readController.ListTables().(controllers.PromptForTableMsg)
@@ -72,11 +75,12 @@ func TestTableReadController_Rescan(t *testing.T) {
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
 	state := controllers.NewState()
-	readController := controllers.NewTableReadController(state, service, workspaceService, "bravo-table")
+	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "bravo-table")
 
 	t.Run("should perform a rescan", func(t *testing.T) {
 		invokeCommand(t, readController.Init())
@@ -109,10 +113,11 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
-	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "bravo-table")
+	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "bravo-table")
 
 	t.Run("should export result set to CSV file", func(t *testing.T) {
 		tempFile := tempFile(t)
@@ -133,7 +138,7 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 
 	t.Run("should return error if result set is not set", func(t *testing.T) {
 		tempFile := tempFile(t)
-		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "non-existant-table")
+		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "non-existant-table")
 
 		invokeCommandExpectingError(t, readController.Init())
 		invokeCommandExpectingError(t, readController.ExportCSV(tempFile))
@@ -147,10 +152,11 @@ func TestTableReadController_Query(t *testing.T) {
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
-	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "bravo-table")
+	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "bravo-table")
 
 	t.Run("should run scan with filter based on user query", func(t *testing.T) {
 		tempFile := tempFile(t)
@@ -170,7 +176,7 @@ func TestTableReadController_Query(t *testing.T) {
 
 	t.Run("should return error if result set is not set", func(t *testing.T) {
 		tempFile := tempFile(t)
-		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, "non-existant-table")
+		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "non-existant-table")
 
 		invokeCommandExpectingError(t, readController.Init())
 		invokeCommandExpectingError(t, readController.ExportCSV(tempFile))
