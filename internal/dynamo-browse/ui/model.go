@@ -15,8 +15,20 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/tableselect"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
 	"github.com/pkg/errors"
+	"log"
 	"strings"
+)
+
+const (
+	ViewModeTablePrimary   = 0
+	ViewModeTableItemEqual = 1
+	ViewModeItemPrimary    = 2
+	ViewModeItemOnly       = 3
+	ViewModeTableOnly      = 4
+
+	ViewModeCount = 5
 )
 
 type Model struct {
@@ -27,9 +39,12 @@ type Model struct {
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
 
+	mainViewIndex int
+
 	root      tea.Model
 	tableView *dynamotableview.Model
 	itemView  *dynamoitemview.Model
+	mainView  tea.Model
 }
 
 func NewModel(
@@ -42,7 +57,7 @@ func NewModel(
 
 	dtv := dynamotableview.New(uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
-	mainView := layout.NewVBox(layout.LastChildFixedAt(13), dtv, div)
+	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
 	itemEdit := dynamoitemedit.NewModel(mainView)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
@@ -131,6 +146,7 @@ func NewModel(
 		root:                 root,
 		tableView:            dtv,
 		itemView:             div,
+		mainView:             mainView,
 	}
 }
 
@@ -140,6 +156,9 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case controllers.SetTableItemView:
+		cmd := m.setMainViewIndex(msg.ViewIndex)
+		return m, cmd
 	case controllers.ResultSetUpdated:
 		return m, m.tableView.Refresh()
 	case tea.KeyMsg:
@@ -161,6 +180,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.tableReadController.Filter
 			case "backspace":
 				return m, m.tableReadController.ViewBack
+			case "w":
+				return m, func() tea.Msg {
+					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)}
+				}
+			case "W":
+				return m, func() tea.Msg {
+					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)}
+				}
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
@@ -179,4 +206,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	return m.root.View()
+}
+
+func (m *Model) setMainViewIndex(viewIndex int) tea.Cmd {
+	log.Printf("setting view index = %v", viewIndex)
+
+	var newMainView tea.Model
+	switch viewIndex {
+	case ViewModeTablePrimary:
+		newMainView = layout.NewVBox(layout.LastChildFixedAt(14), m.tableView, m.itemView)
+	case ViewModeTableItemEqual:
+		newMainView = layout.NewVBox(layout.EqualSize(), m.tableView, m.itemView)
+	case ViewModeItemPrimary:
+		newMainView = layout.NewVBox(layout.FirstChildFixedAt(7), m.tableView, m.itemView)
+	case ViewModeItemOnly:
+		newMainView = layout.NewZStack(m.itemView, m.tableView)
+	case ViewModeTableOnly:
+		newMainView = layout.NewZStack(m.tableView, m.tableView)
+	default:
+		newMainView = m.mainView
+	}
+
+	m.mainViewIndex = viewIndex
+	m.mainView = newMainView
+	m.itemEdit.SetSubmodel(m.mainView)
+	return m.tableView.Refresh()
 }

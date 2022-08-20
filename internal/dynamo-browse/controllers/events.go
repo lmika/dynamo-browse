@@ -6,6 +6,10 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
+type SetTableItemView struct {
+	ViewIndex int
+}
+
 type NewResultSet struct {
 	ResultSet     *models.ResultSet
 	currentFilter string

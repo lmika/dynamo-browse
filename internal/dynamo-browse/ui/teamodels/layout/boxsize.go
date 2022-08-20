@@ -24,6 +24,21 @@ func (l equalSize) childSize(idx, cnt, available int) int {
 	return childrenHeight
 }
 
+func FirstChildFixedAt(size int) BoxSize {
+	return firstChildFixedAt{size}
+}
+
+type firstChildFixedAt struct {
+	firstChildSize int
+}
+
+func (l firstChildFixedAt) childSize(idx, cnt, available int) int {
+	if idx == 0 {
+		return l.firstChildSize
+	}
+	return (equalSize{}).childSize(idx, cnt-1, available-l.firstChildSize)
+}
+
 func LastChildFixedAt(size int) BoxSize {
 	return lastChildFixedAt{size}
 }
