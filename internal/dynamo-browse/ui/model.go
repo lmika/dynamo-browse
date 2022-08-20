@@ -15,8 +15,20 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/tableselect"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
 	"github.com/pkg/errors"
+	"log"
 	"strings"
+)
+
+const (
+	ViewModeTablePrimary   = 0
+	ViewModeTableItemEqual = 1
+	ViewModeItemPrimary    = 2
+	ViewModeItemOnly       = 3
+	ViewModeTableOnly      = 4
+
+	ViewModeCount = 5
 )
 
 type Model struct {
@@ -169,7 +181,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "backspace":
 				return m, m.tableReadController.ViewBack
 			case "w":
-				return m, func() tea.Msg { return controllers.SetTableItemView{ViewIndex: (m.mainViewIndex + 1) % 3} }
+				return m, func() tea.Msg {
+					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)}
+				}
+			case "W":
+				return m, func() tea.Msg {
+					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)}
+				}
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
@@ -191,14 +209,20 @@ func (m Model) View() string {
 }
 
 func (m *Model) setMainViewIndex(viewIndex int) tea.Cmd {
+	log.Printf("setting view index = %v", viewIndex)
+
 	var newMainView tea.Model
 	switch viewIndex {
-	case 0:
+	case ViewModeTablePrimary:
 		newMainView = layout.NewVBox(layout.LastChildFixedAt(14), m.tableView, m.itemView)
-	case 1:
+	case ViewModeTableItemEqual:
 		newMainView = layout.NewVBox(layout.EqualSize(), m.tableView, m.itemView)
-	case 2:
+	case ViewModeItemPrimary:
 		newMainView = layout.NewVBox(layout.FirstChildFixedAt(7), m.tableView, m.itemView)
+	case ViewModeItemOnly:
+		newMainView = layout.NewZStack(m.itemView, m.tableView)
+	case ViewModeTableOnly:
+		newMainView = layout.NewZStack(m.tableView, m.tableView)
 	default:
 		newMainView = m.mainView
 	}
