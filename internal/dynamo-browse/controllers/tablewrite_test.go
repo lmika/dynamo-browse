@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
+	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
@@ -17,6 +18,7 @@ import (
 func TestTableWriteController_NewItem(t *testing.T) {
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	t.Run("should add an item with pk and sk set at the end of the result set", func(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
@@ -25,7 +27,7 @@ func TestTableWriteController_NewItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -50,6 +52,7 @@ func TestTableWriteController_NewItem(t *testing.T) {
 func TestTableWriteController_SetAttributeValue(t *testing.T) {
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	t.Run("should preserve the type of the field if unspecified", func(t *testing.T) {
 
@@ -88,7 +91,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 				service := tables.NewService(provider)
 
 				state := controllers.NewState()
-				readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 				writeController := controllers.NewTableWriteController(state, service, readController)
 
 				invokeCommand(t, readController.Init())
@@ -108,7 +111,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -162,7 +165,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 		for _, scenario := range scenarios {
 			t.Run(fmt.Sprintf("should change the value of a field to type %v", scenario.attrType), func(t *testing.T) {
 				state := controllers.NewState()
-				readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 				writeController := controllers.NewTableWriteController(state, service, readController)
 
 				invokeCommand(t, readController.Init())
@@ -183,7 +186,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 
 			t.Run(fmt.Sprintf("should change value of nested field to type %v", scenario.attrType), func(t *testing.T) {
 				state := controllers.NewState()
-				readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 				writeController := controllers.NewTableWriteController(state, service, readController)
 
 				invokeCommand(t, readController.Init())
@@ -215,13 +218,14 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider)
 
 	t.Run("should delete top level attribute", func(t *testing.T) {
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -237,7 +241,7 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 
 	t.Run("should delete attribute of map", func(t *testing.T) {
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -260,6 +264,7 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 func TestTableWriteController_PutItem(t *testing.T) {
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	t.Run("should put the selected item if dirty", func(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
@@ -268,7 +273,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -295,7 +300,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -326,7 +331,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -342,6 +347,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 func TestTableWriteController_PutItems(t *testing.T) {
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	t.Run("should put all dirty items if none are marked", func(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
@@ -350,7 +356,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -378,7 +384,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -414,7 +420,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -447,6 +453,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 func TestTableWriteController_TouchItem(t *testing.T) {
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	t.Run("should put the selected item if unmodified", func(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
@@ -455,7 +462,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -481,7 +488,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -499,6 +506,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	t.Run("should delete and put the selected item if unmodified", func(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
@@ -507,7 +515,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -533,7 +541,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table

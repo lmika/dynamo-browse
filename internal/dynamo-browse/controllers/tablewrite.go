@@ -107,7 +107,7 @@ func (twc *TableWriteController) setStringValue(idx int, attr attrPath) tea.Msg 
 		Prompt: "string value: ",
 		OnDone: func(value string) tea.Msg {
 			if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-				if err := twc.applyToItems(set, idx, func(idx int, item models.Item) error {
+				if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
 					if err := attr.setAt(item, &types.AttributeValueMemberS{Value: value}); err != nil {
 						return err
 					}
@@ -126,25 +126,12 @@ func (twc *TableWriteController) setStringValue(idx int, attr attrPath) tea.Msg 
 	}
 }
 
-func (twc *TableWriteController) applyToItems(rs *models.ResultSet, selectedIndex int, applyFn func(idx int, item models.Item) error) error {
-	if markedItems := rs.MarkedItems(); len(markedItems) > 0 {
-		for _, mi := range markedItems {
-			if err := applyFn(mi.Index, mi.Item); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	return applyFn(selectedIndex, rs.Items()[selectedIndex])
-}
-
 func (twc *TableWriteController) setNumberValue(idx int, attr attrPath) tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt: "number value: ",
 		OnDone: func(value string) tea.Msg {
 			if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-				if err := twc.applyToItems(set, idx, func(idx int, item models.Item) error {
+				if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
 					if err := attr.setAt(item, &types.AttributeValueMemberN{Value: value}); err != nil {
 						return err
 					}
@@ -173,7 +160,7 @@ func (twc *TableWriteController) setBoolValue(idx int, attr attrPath) tea.Msg {
 			}
 
 			if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-				if err := twc.applyToItems(set, idx, func(idx int, item models.Item) error {
+				if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
 					if err := attr.setAt(item, &types.AttributeValueMemberBOOL{Value: b}); err != nil {
 						return err
 					}
@@ -194,7 +181,7 @@ func (twc *TableWriteController) setBoolValue(idx int, attr attrPath) tea.Msg {
 
 func (twc *TableWriteController) setNullValue(idx int, attr attrPath) tea.Msg {
 	if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-		if err := twc.applyToItems(set, idx, func(idx int, item models.Item) error {
+		if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
 			if err := attr.setAt(item, &types.AttributeValueMemberNULL{Value: true}); err != nil {
 				return err
 			}

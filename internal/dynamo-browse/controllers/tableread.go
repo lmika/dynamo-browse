@@ -3,34 +3,47 @@ package controllers
 import (
 	"context"
 	"encoding/csv"
+	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/pkg/errors"
+	"golang.design/x/clipboard"
 	"log"
 	"os"
+	"strings"
 	"sync"
 )
 
 type TableReadController struct {
-	tableService     TableReadService
-	workspaceService *workspaces.ViewSnapshotService
-	tableName        string
+	tableService        TableReadService
+	workspaceService    *workspaces.ViewSnapshotService
+	itemRendererService *itemrenderer.Service
+	tableName           string
 
 	// state
-	mutex *sync.Mutex
-	state *State
+	mutex         *sync.Mutex
+	state         *State
+	clipboardInit bool
 }
 
-func NewTableReadController(state *State, tableService TableReadService, workspaceService *workspaces.ViewSnapshotService, tableName string) *TableReadController {
+func NewTableReadController(
+	state *State,
+	tableService TableReadService,
+	workspaceService *workspaces.ViewSnapshotService,
+	itemRendererService *itemrenderer.Service,
+	tableName string,
+) *TableReadController {
 	return &TableReadController{
-		state:            state,
-		tableService:     tableService,
-		workspaceService: workspaceService,
-		tableName:        tableName,
-		mutex:            new(sync.Mutex),
+		state:               state,
+		tableService:        tableService,
+		workspaceService:    workspaceService,
+		itemRendererService: itemRendererService,
+		tableName:           tableName,
+		mutex:               new(sync.Mutex),
 	}
 }
 
@@ -253,4 +266,41 @@ func (c *TableReadController) ViewBack() tea.Msg {
 	log.Printf("backstack: running query: table = '%v', query = '%v', filter = '%v'",
 		tableInfo.Name, viewSnapshot.Query, viewSnapshot.Filter)
 	return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false)
+}
+
+func (c *TableReadController) CopyItemToClipboard(idx int) tea.Msg {
+	if err := c.initClipboard(); err != nil {
+		return events.Error(err)
+	}
+
+	itemCount := 0
+	c.state.withResultSet(func(resultSet *models.ResultSet) {
+		sb := new(strings.Builder)
+		_ = applyToMarkedItems(resultSet, idx, func(idx int, item models.Item) error {
+			if sb.Len() > 0 {
+				fmt.Fprintln(sb, "---")
+			}
+			c.itemRendererService.RenderItem(sb, resultSet.Items()[idx], resultSet, true)
+			itemCount += 1
+			return nil
+		})
+		clipboard.Write(clipboard.FmtText, []byte(sb.String()))
+	})
+
+	return events.SetStatus(applyToN("", itemCount, "item", "items", " copied to clipboard"))
+}
+
+func (c *TableReadController) initClipboard() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.clipboardInit {
+		return nil
+	}
+
+	if err := clipboard.Init(); err != nil {
+		return errors.Wrap(err, "unable to enable clipboard")
+	}
+	c.clipboardInit = true
+	return nil
 }
