@@ -27,9 +27,12 @@ type Model struct {
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
 
+	mainViewIndex int
+
 	root      tea.Model
 	tableView *dynamotableview.Model
 	itemView  *dynamoitemview.Model
+	mainView  tea.Model
 }
 
 func NewModel(
@@ -42,7 +45,7 @@ func NewModel(
 
 	dtv := dynamotableview.New(uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
-	mainView := layout.NewVBox(layout.LastChildFixedAt(13), dtv, div)
+	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
 	itemEdit := dynamoitemedit.NewModel(mainView)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
@@ -131,6 +134,7 @@ func NewModel(
 		root:                 root,
 		tableView:            dtv,
 		itemView:             div,
+		mainView:             mainView,
 	}
 }
 
@@ -140,6 +144,9 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case controllers.SetTableItemView:
+		cmd := m.setMainViewIndex(msg.ViewIndex)
+		return m, cmd
 	case controllers.ResultSetUpdated:
 		return m, m.tableView.Refresh()
 	case tea.KeyMsg:
@@ -161,6 +168,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.tableReadController.Filter
 			case "backspace":
 				return m, m.tableReadController.ViewBack
+			case "w":
+				return m, func() tea.Msg { return controllers.SetTableItemView{ViewIndex: (m.mainViewIndex + 1) % 3} }
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
@@ -179,4 +188,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	return m.root.View()
+}
+
+func (m *Model) setMainViewIndex(viewIndex int) tea.Cmd {
+	var newMainView tea.Model
+	switch viewIndex {
+	case 0:
+		newMainView = layout.NewVBox(layout.LastChildFixedAt(14), m.tableView, m.itemView)
+	case 1:
+		newMainView = layout.NewVBox(layout.EqualSize(), m.tableView, m.itemView)
+	case 2:
+		newMainView = layout.NewVBox(layout.FirstChildFixedAt(7), m.tableView, m.itemView)
+	default:
+		newMainView = m.mainView
+	}
+
+	m.mainViewIndex = viewIndex
+	m.mainView = newMainView
+	m.itemEdit.SetSubmodel(m.mainView)
+	return m.tableView.Refresh()
 }

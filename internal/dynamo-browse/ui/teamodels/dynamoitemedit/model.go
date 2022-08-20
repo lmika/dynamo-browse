@@ -107,3 +107,8 @@ func (m *Model) Resize(w, h int) layout.ResizingModel {
 func (m *Model) Visible() {
 	m.visible = true
 }
+
+func (m *Model) SetSubmodel(submodel tea.Model) {
+	m.submodel = submodel
+	m.Resize(m.w, m.h)
+}
