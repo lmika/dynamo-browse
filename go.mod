@@ -25,6 +25,7 @@ require (
 	github.com/lmika/shellwords v0.0.0-20140714114018-ce258dd729fe
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
+	golang.design/x/clipboard v0.6.2
 )
 
 require (
@@ -61,6 +62,10 @@ require (
 	github.com/sahilm/fuzzy v0.1.0 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
+	golang.design/x/clipboard v0.6.2 // indirect
+	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56 // indirect
+	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
+	golang.org/x/mobile v0.0.0-20210716004757-34ab1303b554 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

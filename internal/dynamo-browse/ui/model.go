@@ -6,6 +6,7 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -31,11 +32,16 @@ type Model struct {
 	itemView  *dynamoitemview.Model
 }
 
-func NewModel(rc *controllers.TableReadController, wc *controllers.TableWriteController, cc *commandctrl.CommandController) Model {
+func NewModel(
+	rc *controllers.TableReadController,
+	wc *controllers.TableWriteController,
+	itemRendererService *itemrenderer.Service,
+	cc *commandctrl.CommandController,
+) Model {
 	uiStyles := styles.DefaultStyles
 
 	dtv := dynamotableview.New(uiStyles)
-	div := dynamoitemview.New(uiStyles)
+	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(13), dtv, div)
 
 	itemEdit := dynamoitemedit.NewModel(mainView)
@@ -142,6 +148,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "m":
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, func() tea.Msg { return m.tableWriteController.ToggleMark(idx) }
+				}
+			case "c":
+				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
+					return m, func() tea.Msg { return m.tableReadController.CopyItemToClipboard(idx) }
 				}
 			case "R":
 				return m, m.tableReadController.Rescan
