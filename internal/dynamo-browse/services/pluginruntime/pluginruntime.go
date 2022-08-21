@@ -7,14 +7,16 @@ import (
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
+	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/pkg/errors"
 	"log"
 	"os"
 )
 
 type Service struct {
-	state        *controllers.State
-	tableService controllers.TableReadService
+	state               *controllers.State
+	tableService        controllers.TableReadService
+	viewSnapshotService *workspaces_service.ViewSnapshotService
 
 	registry  *require.Registry
 	eventLoop *eventloop.EventLoop
@@ -24,15 +26,21 @@ type Service struct {
 	msgSender func(msg tea.Msg)
 }
 
-func New(state *controllers.State, tableService controllers.TableReadService) *Service {
+func New(
+	state *controllers.State,
+	tableService controllers.TableReadService,
+	viewSnapshotService *workspaces_service.ViewSnapshotService,
+) *Service {
 	srv := &Service{
-		state:        state,
-		tableService: tableService,
-		userCommands: make(map[string]goja.Callable),
+		state:               state,
+		tableService:        tableService,
+		viewSnapshotService: viewSnapshotService,
+		userCommands:        make(map[string]goja.Callable),
 	}
 
 	srv.registry = new(require.Registry)
 	srv.registry.RegisterNativeModule("audax:dynamo-browse", audaxDynamoBrowse(srv))
+	srv.registry.RegisterNativeModule("audax:x/exec", jsExecModule())
 
 	srv.eventLoop = eventloop.NewEventLoop(eventloop.WithRegistry(srv.registry))
 

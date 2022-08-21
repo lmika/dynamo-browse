@@ -43,6 +43,7 @@ func audaxDynamoBrowse(service *Service) require.ModuleLoader {
 			}
 			resultSet := rsp.v.(*models.ResultSet)
 
+			service.viewSnapshotService.PushSnapshot(resultSet, "")
 			service.state.SetResultSetAndFilter(resultSet, "")
 			service.postMessage(controllers.NewResultSet{ResultSet: resultSet})
 			return nil

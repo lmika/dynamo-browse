@@ -12,3 +12,7 @@ type ViewSnapshot struct {
 	Query     string
 	Filter    string
 }
+
+func (vs *ViewSnapshot) IsSameView(other *ViewSnapshot) bool {
+	return vs.TableName == other.TableName && vs.Query == other.Query && vs.Filter == other.Filter
+}

@@ -4,6 +4,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/pkg/errors"
+	"log"
 	"time"
 )
 
@@ -27,10 +28,18 @@ func (s *ViewSnapshotService) PushSnapshot(rs *models.ResultSet, filter string) 
 	}
 	newSnapshot.Filter = filter
 
-	if head, err := s.store.Head(); head != nil {
-		newSnapshot.BackLink = head.ID
-	} else if err != nil {
+	head, err := s.store.Head()
+	if err != nil {
 		return errors.Wrap(err, "cannot get head result set")
+	}
+
+	if head != nil {
+		if newSnapshot.IsSameView(head) {
+			// Duplicate
+			return nil
+		}
+
+		newSnapshot.BackLink = head.ID
 	}
 
 	if err := s.store.Save(newSnapshot); err != nil {
@@ -47,7 +56,11 @@ func (s *ViewSnapshotService) PopSnapshot() (*serialisable.ViewSnapshot, error) 
 	vs, err := s.store.Head()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get snapshot head")
-	} else if vs == nil || vs.BackLink == 0 {
+	} else if vs == nil {
+		return nil, nil
+	}
+
+	if vs.BackLink == 0 {
 		return nil, nil
 	}
 
@@ -61,9 +74,10 @@ func (s *ViewSnapshotService) PopSnapshot() (*serialisable.ViewSnapshot, error) 
 	vs, err = s.store.Head()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get snapshot head")
-	} else if vs == nil || vs.BackLink == 0 {
+	} else if vs == nil {
 		return nil, nil
 	}
 
+	log.Printf("returning backstack: table='%v', query='%v', filter='%v'", vs.TableName, vs.Query, vs.Filter)
 	return vs, nil
 }
