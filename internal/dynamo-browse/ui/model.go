@@ -6,8 +6,8 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
+	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -20,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	"log"
 	"os"
-	"log"
 	"strings"
 )
 
@@ -32,13 +31,16 @@ const (
 	ViewModeTableOnly      = 4
 
 	ViewModeCount = 5
+
+	tablePrimaryItemRows     = 16
+	itemViewPrimaryTableRows = 7
 )
 
 type Model struct {
 	tableReadController  *controllers.TableReadController
 	tableWriteController *controllers.TableWriteController
 	commandController    *commandctrl.CommandController
-	dynamoTableView *dynamotableview.Model
+	dynamoTableView      *dynamotableview.Model
 	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
@@ -54,15 +56,15 @@ type Model struct {
 func NewModel(
 	rc *controllers.TableReadController,
 	wc *controllers.TableWriteController,
-	cc *commandctrl.CommandController,
 	itemRendererService *itemrenderer.Service,
+	cc *commandctrl.CommandController,
 	prs *pluginruntime.Service,
 ) Model {
 	uiStyles := styles.DefaultStyles
 
 	dtv := dynamotableview.New(uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
-	mainView := layout.NewVBox(layout.LastChildFixedAt(17), dtv, div)
+	mainView := layout.NewVBox(layout.LastChildFixedAt(tablePrimaryItemRows), dtv, div)
 
 	itemEdit := dynamoitemedit.NewModel(mainView)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
@@ -247,11 +249,11 @@ func (m *Model) setMainViewIndex(viewIndex int) tea.Cmd {
 	var newMainView tea.Model
 	switch viewIndex {
 	case ViewModeTablePrimary:
-		newMainView = layout.NewVBox(layout.LastChildFixedAt(14), m.tableView, m.itemView)
+		newMainView = layout.NewVBox(layout.LastChildFixedAt(tablePrimaryItemRows), m.tableView, m.itemView)
 	case ViewModeTableItemEqual:
 		newMainView = layout.NewVBox(layout.EqualSize(), m.tableView, m.itemView)
 	case ViewModeItemPrimary:
-		newMainView = layout.NewVBox(layout.FirstChildFixedAt(7), m.tableView, m.itemView)
+		newMainView = layout.NewVBox(layout.FirstChildFixedAt(itemViewPrimaryTableRows), m.tableView, m.itemView)
 	case ViewModeItemOnly:
 		newMainView = layout.NewZStack(m.itemView, m.tableView)
 	case ViewModeTableOnly:

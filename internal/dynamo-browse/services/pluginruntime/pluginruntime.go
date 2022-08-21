@@ -92,7 +92,7 @@ func (s *Service) MissingCommand(name string) commandctrl.Command {
 		return nil
 	}
 
-	return func(args []string) tea.Cmd {
+	return func(args []string) tea.Msg {
 		s.eventLoop.RunOnLoop(func(rt *goja.Runtime) {
 			rt.SetPromiseRejectionTracker(func(p *goja.Promise, operation goja.PromiseRejectionOperation) {
 				if operation == goja.PromiseRejectionReject {

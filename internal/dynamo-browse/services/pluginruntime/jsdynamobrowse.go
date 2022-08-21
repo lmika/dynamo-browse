@@ -110,7 +110,7 @@ func audaxDynamoBrowse(service *Service) require.ModuleLoader {
 			p, resolve, _ := rt.NewPromise()
 			service.postMessage(events.PromptForInputMsg{
 				Prompt: msg,
-				OnDone: func(value string) tea.Cmd {
+				OnDone: func(value string) tea.Msg {
 					service.eventLoop.RunOnLoop(func(rt *goja.Runtime) {
 						resolve(value)
 					})
