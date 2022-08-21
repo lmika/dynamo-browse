@@ -15,9 +15,9 @@ func (ps *promptSequence) next() tea.Msg {
 	if len(ps.receivedValues) < len(ps.prompts) {
 		return events.PromptForInputMsg{
 			Prompt: ps.prompts[len(ps.receivedValues)],
-			OnDone: func(value string) tea.Cmd {
+			OnDone: func(value string) tea.Msg {
 				ps.receivedValues = append(ps.receivedValues, value)
-				return ps.next
+				return ps.next()
 			},
 		}
 	}

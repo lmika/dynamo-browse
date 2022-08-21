@@ -6,6 +6,10 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
+type SetTableItemView struct {
+	ViewIndex int
+}
+
 type NewResultSet struct {
 	ResultSet     *models.ResultSet
 	currentFilter string
@@ -46,7 +50,7 @@ type SetReadWrite struct {
 
 type PromptForTableMsg struct {
 	Tables     []string
-	OnSelected func(tableName string) tea.Cmd
+	OnSelected func(tableName string) tea.Msg
 }
 
 type ResultSetUpdated struct {

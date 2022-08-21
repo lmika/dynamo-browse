@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
+	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -15,37 +16,52 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/tableselect"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
 	"github.com/pkg/errors"
 	"log"
 	"os"
+	"log"
 	"strings"
+)
+
+const (
+	ViewModeTablePrimary   = 0
+	ViewModeTableItemEqual = 1
+	ViewModeItemPrimary    = 2
+	ViewModeItemOnly       = 3
+	ViewModeTableOnly      = 4
+
+	ViewModeCount = 5
 )
 
 type Model struct {
 	tableReadController  *controllers.TableReadController
 	tableWriteController *controllers.TableWriteController
 	commandController    *commandctrl.CommandController
-
 	dynamoTableView *dynamotableview.Model
-	itemEdit        *dynamoitemedit.Model
-	statusAndPrompt *statusandprompt.StatusAndPrompt
-	tableSelect     *tableselect.Model
+	itemEdit             *dynamoitemedit.Model
+	statusAndPrompt      *statusandprompt.StatusAndPrompt
+	tableSelect          *tableselect.Model
+
+	mainViewIndex int
 
 	root      tea.Model
 	tableView *dynamotableview.Model
 	itemView  *dynamoitemview.Model
+	mainView  tea.Model
 }
 
 func NewModel(
 	rc *controllers.TableReadController,
 	wc *controllers.TableWriteController,
 	cc *commandctrl.CommandController,
+	itemRendererService *itemrenderer.Service,
 	prs *pluginruntime.Service,
 ) Model {
 	uiStyles := styles.DefaultStyles
 
 	dtv := dynamotableview.New(uiStyles)
-	div := dynamoitemview.New(uiStyles)
+	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(17), dtv, div)
 
 	itemEdit := dynamoitemedit.NewModel(mainView)
@@ -56,26 +72,27 @@ func NewModel(
 	cc.AddCommands(&commandctrl.CommandContext{
 		Commands: map[string]commandctrl.Command{
 			"quit": commandctrl.NoArgCommand(tea.Quit),
-			"table": func(args []string) tea.Cmd {
+			"table": func(args []string) tea.Msg {
 				if len(args) == 0 {
 					return rc.ListTables()
 				} else {
 					return rc.ScanTable(args[0])
 				}
 			},
-			"export": func(args []string) tea.Cmd {
+			"export": func(args []string) tea.Msg {
 				if len(args) == 0 {
-					return events.SetError(errors.New("expected filename"))
+					return events.Error(errors.New("expected filename"))
 				}
 				return rc.ExportCSV(args[0])
 			},
-			"unmark": commandctrl.NoArgCommand(rc.Unmark()),
-			"delete": commandctrl.NoArgCommand(wc.DeleteMarked()),
+			"unmark": commandctrl.NoArgCommand(rc.Unmark),
+			"delete": commandctrl.NoArgCommand(wc.DeleteMarked),
 
-			"new-item": commandctrl.NoArgCommand(wc.NewItem()),
-			"set-attr": func(args []string) tea.Cmd {
+			// TEMP
+			"new-item": commandctrl.NoArgCommand(wc.NewItem),
+			"set-attr": func(args []string) tea.Msg {
 				if len(args) == 0 {
-					return events.SetError(errors.New("expected field"))
+					return events.Error(errors.New("expected field"))
 				}
 
 				var itemType = models.UnsetItemType
@@ -90,34 +107,34 @@ func NewModel(
 					case "-NULL":
 						itemType = models.NullItemType
 					default:
-						return events.SetError(errors.New("unrecognised item type"))
+						return events.Error(errors.New("unrecognised item type"))
 					}
 					args = args[1:]
 				}
 
 				return wc.SetAttributeValue(dtv.SelectedItemIndex(), itemType, args[0])
 			},
-			"del-attr": func(args []string) tea.Cmd {
+			"del-attr": func(args []string) tea.Msg {
 				if len(args) == 0 {
-					return events.SetError(errors.New("expected field"))
+					return events.Error(errors.New("expected field"))
 				}
 				return wc.DeleteAttribute(dtv.SelectedItemIndex(), args[0])
 			},
 
-			"put": func(args []string) tea.Cmd {
+			"put": func(args []string) tea.Msg {
 				return wc.PutItems()
 			},
-			"touch": func(args []string) tea.Cmd {
+			"touch": func(args []string) tea.Msg {
 				return wc.TouchItem(dtv.SelectedItemIndex())
 			},
-			"noisy-touch": func(args []string) tea.Cmd {
+			"noisy-touch": func(args []string) tea.Msg {
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
 			},
 
 			// TEMP
-			"loadscript": func(args []string) tea.Cmd {
+			"loadscript": func(args []string) tea.Msg {
 				if len(args) == 0 {
-					return events.SetError(errors.New("expected filename"))
+					return events.Error(errors.New("expected filename"))
 				}
 
 				_, err := prs.Load(args[0])
@@ -149,6 +166,7 @@ func NewModel(
 		root:                 root,
 		tableView:            dtv,
 		itemView:             div,
+		mainView:             mainView,
 	}
 }
 
@@ -162,11 +180,14 @@ func (m Model) Init() tea.Cmd {
 	}
 	// END TEMP
 
-	return m.tableReadController.Init()
+	return m.tableReadController.Init
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case controllers.SetTableItemView:
+		cmd := m.setMainViewIndex(msg.ViewIndex)
+		return m, cmd
 	case controllers.ResultSetUpdated:
 		return m, m.tableView.Refresh()
 	case tea.KeyMsg:
@@ -174,21 +195,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "m":
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
-					return m, m.tableWriteController.ToggleMark(idx)
+					return m, func() tea.Msg { return m.tableWriteController.ToggleMark(idx) }
+				}
+			case "c":
+				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
+					return m, func() tea.Msg { return m.tableReadController.CopyItemToClipboard(idx) }
 				}
 			case "R":
-				return m, m.tableReadController.Rescan()
+				return m, m.tableReadController.Rescan
 			case "?":
-				return m, m.tableReadController.PromptForQuery()
+				return m, m.tableReadController.PromptForQuery
 			case "/":
-				return m, m.tableReadController.Filter()
+				return m, m.tableReadController.Filter
 			case "backspace":
-				return m, m.tableReadController.ViewBack()
+				return m, m.tableReadController.ViewBack
+			case "w":
+				return m, func() tea.Msg {
+					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)}
+				}
+			case "W":
+				return m, func() tea.Msg {
+					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)}
+				}
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
 			case ":":
-				return m, m.commandController.Prompt()
+				return m, m.commandController.Prompt
 			case "ctrl+c", "esc":
 				return m, tea.Quit
 			}
@@ -206,4 +239,29 @@ func (m Model) View() string {
 
 func (m Model) SelectedItemIndex() int {
 	return m.dynamoTableView.SelectedItemIndex()
+}
+
+func (m *Model) setMainViewIndex(viewIndex int) tea.Cmd {
+	log.Printf("setting view index = %v", viewIndex)
+
+	var newMainView tea.Model
+	switch viewIndex {
+	case ViewModeTablePrimary:
+		newMainView = layout.NewVBox(layout.LastChildFixedAt(14), m.tableView, m.itemView)
+	case ViewModeTableItemEqual:
+		newMainView = layout.NewVBox(layout.EqualSize(), m.tableView, m.itemView)
+	case ViewModeItemPrimary:
+		newMainView = layout.NewVBox(layout.FirstChildFixedAt(7), m.tableView, m.itemView)
+	case ViewModeItemOnly:
+		newMainView = layout.NewZStack(m.itemView, m.tableView)
+	case ViewModeTableOnly:
+		newMainView = layout.NewZStack(m.tableView, m.tableView)
+	default:
+		newMainView = m.mainView
+	}
+
+	m.mainViewIndex = viewIndex
+	m.mainView = newMainView
+	m.itemEdit.SetSubmodel(m.mainView)
+	return m.tableView.Refresh()
 }

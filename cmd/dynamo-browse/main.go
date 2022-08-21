@@ -16,9 +16,11 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
+	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/gopkgs/cli"
 	"log"
 	"net"
@@ -67,20 +69,22 @@ func main() {
 		dynamoClient = dynamodb.NewFromConfig(cfg)
 	}
 
+	uiStyles := styles.DefaultStyles
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
 
 	tableService := tables.NewService(dynamoProvider)
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
 
 	state := controllers.NewState()
-	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, *flagTable)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
 
 	pluginRuntimeService := pluginruntime.New(state, tableService, workspaceService)
 
 	commandController := commandctrl.NewCommandController()
-	model := ui.NewModel(tableReadController, tableWriteController, commandController, pluginRuntimeService)
+	model := ui.NewModel(tableReadController, tableWriteController, itemRendererService, commandController, pluginRuntimeService)
 	state.SetUIStateProvider(model)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
