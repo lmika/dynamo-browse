@@ -8,6 +8,7 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/pkg/errors"
@@ -23,6 +24,7 @@ type TableReadController struct {
 	workspaceService    *workspaces.ViewSnapshotService
 	itemRendererService *itemrenderer.Service
 	tableName           string
+	loadFromLastView    bool
 
 	// state
 	mutex         *sync.Mutex
@@ -36,6 +38,7 @@ func NewTableReadController(
 	workspaceService *workspaces.ViewSnapshotService,
 	itemRendererService *itemrenderer.Service,
 	tableName string,
+	loadFromLastView bool,
 ) *TableReadController {
 	return &TableReadController{
 		state:               state,
@@ -49,6 +52,13 @@ func NewTableReadController(
 
 // Init does an initial scan of the table.  If no table is specified, it prompts for a table, then does a scan.
 func (c *TableReadController) Init() tea.Msg {
+	// Restore previous view
+	if c.loadFromLastView {
+		if vs, err := c.workspaceService.ViewRestore(); err == nil && vs != nil {
+			return c.updateViewToSnapshot(vs)
+		}
+	}
+
 	if c.tableName == "" {
 		return c.ListTables()
 	} else {
@@ -234,14 +244,38 @@ func (c *TableReadController) Filter() tea.Msg {
 }
 
 func (c *TableReadController) ViewBack() tea.Msg {
-	viewSnapshot, err := c.workspaceService.PopSnapshot()
+	viewSnapshot, err := c.workspaceService.ViewBack()
 	if err != nil {
 		return events.Error(err)
 	} else if viewSnapshot == nil {
 		return events.StatusMsg("Backstack is empty")
 	}
 
+	return c.updateViewToSnapshot(viewSnapshot)
+}
+
+func (c *TableReadController) ViewForward() tea.Msg {
+	viewSnapshot, err := c.workspaceService.ViewForward()
+	if err != nil {
+		return events.Error(err)
+	} else if viewSnapshot == nil {
+		return events.StatusMsg("At top of view stack")
+	}
+
+	return c.updateViewToSnapshot(viewSnapshot)
+}
+
+func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.ViewSnapshot) tea.Msg {
+	var err error
 	currentResultSet := c.state.ResultSet()
+
+	if currentResultSet == nil {
+		tableInfo, err := c.tableService.Describe(context.Background(), viewSnapshot.TableName)
+		if err != nil {
+			return events.Error(err)
+		}
+		return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false)
+	}
 
 	var currentQueryExpr string
 	if currentResultSet.Query != nil {

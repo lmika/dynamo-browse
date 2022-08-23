@@ -163,6 +163,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.tableView.Refresh()
 	case tea.KeyMsg:
 		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() {
+			log.Printf("key = %+v", msg)
 			switch msg.String() {
 			case "m":
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
@@ -180,6 +181,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.tableReadController.Filter
 			case "backspace":
 				return m, m.tableReadController.ViewBack
+			case "\\":
+				return m, m.tableReadController.ViewForward
 			case "w":
 				return m, func() tea.Msg {
 					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)}

@@ -43,6 +43,55 @@ func (s *ResultSetSnapshotStore) SetAsHead(resultSetID int64) error {
 	return nil
 }
 
+func (s *ResultSetSnapshotStore) CurrentlyViewedSnapshot() (*serialisable.ViewSnapshot, error) {
+	var resultSetID int64
+	if err := s.ws.Get("viewIds", "current", &resultSetID); err != nil {
+		if errors.Is(err, storm.ErrNotFound) {
+			return nil, nil
+		}
+
+		return nil, errors.Wrap(err, "cannot get head")
+	}
+
+	var rss serialisable.ViewSnapshot
+	if err := s.ws.One("ID", resultSetID, &rss); err != nil {
+		if errors.Is(err, storm.ErrNotFound) {
+			return nil, nil
+		} else {
+			return nil, errors.Wrap(err, "cannot get head")
+		}
+	}
+
+	return &rss, nil
+}
+
+func (s *ResultSetSnapshotStore) SetCurrentlyViewedSnapshot(resultSetID int64) error {
+	if resultSetID == 0 {
+		if err := s.ws.Delete("viewIds", "current"); err != nil {
+			return errors.Wrap(err, "cannot remove head")
+		}
+		return nil
+	}
+
+	if err := s.ws.Set("viewIds", "current", resultSetID); err != nil {
+		return errors.Wrap(err, "cannot set as head")
+	}
+	return nil
+}
+
+func (s *ResultSetSnapshotStore) Find(resultSetID int64) (*serialisable.ViewSnapshot, error) {
+	var rss serialisable.ViewSnapshot
+	if err := s.ws.One("ID", resultSetID, &rss); err != nil {
+		if errors.Is(err, storm.ErrNotFound) {
+			return nil, nil
+		} else {
+			return nil, errors.Wrap(err, "cannot get head")
+		}
+	}
+
+	return &rss, nil
+}
+
 func (s *ResultSetSnapshotStore) Head() (*serialisable.ViewSnapshot, error) {
 	var headResultSetID int64
 	if err := s.ws.Get("head", "id", &headResultSetID); err != nil && !errors.Is(err, storm.ErrNotFound) {
@@ -59,6 +108,23 @@ func (s *ResultSetSnapshotStore) Head() (*serialisable.ViewSnapshot, error) {
 	}
 
 	return &rss, nil
+}
+
+func (s *ResultSetSnapshotStore) Dehead(fromNode *serialisable.ViewSnapshot) error {
+	n := fromNode.ForeLink
+	for n != 0 {
+		node, err := s.Find(n)
+		if err != nil {
+			return errors.Wrapf(err, "cannot get node with ID: %v", n)
+		} else if node == nil {
+			return errors.Errorf("expected node with ID %v, but did not find it", n)
+		}
+		if err := s.Remove(node.ID); err != nil {
+			log.Printf("warn: cannot delete node with ID %v", node.ID)
+		}
+		n = node.ForeLink
+	}
+	return nil
 }
 
 func (s *ResultSetSnapshotStore) Remove(resultSetId int64) error {

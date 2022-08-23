@@ -77,7 +77,7 @@ func main() {
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
 
 	state := controllers.NewState()
-	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable, true)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
 
 	commandController := commandctrl.NewCommandController()

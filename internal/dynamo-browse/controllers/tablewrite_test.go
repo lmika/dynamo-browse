@@ -27,7 +27,7 @@ func TestTableWriteController_NewItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -91,7 +91,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 				service := tables.NewService(provider)
 
 				state := controllers.NewState()
-				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 				writeController := controllers.NewTableWriteController(state, service, readController)
 
 				invokeCommand(t, readController.Init())
@@ -111,7 +111,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -165,7 +165,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 		for _, scenario := range scenarios {
 			t.Run(fmt.Sprintf("should change the value of a field to type %v", scenario.attrType), func(t *testing.T) {
 				state := controllers.NewState()
-				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 				writeController := controllers.NewTableWriteController(state, service, readController)
 
 				invokeCommand(t, readController.Init())
@@ -186,7 +186,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 
 			t.Run(fmt.Sprintf("should change value of nested field to type %v", scenario.attrType), func(t *testing.T) {
 				state := controllers.NewState()
-				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 				writeController := controllers.NewTableWriteController(state, service, readController)
 
 				invokeCommand(t, readController.Init())
@@ -225,7 +225,7 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 
 	t.Run("should delete top level attribute", func(t *testing.T) {
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -241,7 +241,7 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 
 	t.Run("should delete attribute of map", func(t *testing.T) {
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -273,7 +273,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -300,7 +300,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -331,7 +331,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -356,7 +356,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -384,7 +384,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -420,7 +420,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		invokeCommand(t, readController.Init())
@@ -462,7 +462,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -488,7 +488,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -515,7 +515,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
@@ -541,7 +541,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		service := tables.NewService(provider)
 
 		state := controllers.NewState()
-		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table")
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
 		writeController := controllers.NewTableWriteController(state, service, readController)
 
 		// Read the table
