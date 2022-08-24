@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/common/ui/events"
@@ -45,6 +46,7 @@ type Model struct {
 	tableView *dynamotableview.Model
 	itemView  *dynamoitemview.Model
 	mainView  tea.Model
+	keyMap    *ViewKeyBindings
 }
 
 func NewModel(
@@ -52,6 +54,7 @@ func NewModel(
 	wc *controllers.TableWriteController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
+	defaultKeyMap *KeyBindings,
 ) Model {
 	uiStyles := styles.DefaultStyles
 
@@ -126,6 +129,10 @@ func NewModel(
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
 			},
 
+			//"rebind": func(args []string) tea.Msg {
+			//
+			//},
+
 			// Aliases
 			"sa": cc.Alias("set-attr"),
 			"da": cc.Alias("del-attr"),
@@ -147,6 +154,7 @@ func NewModel(
 		tableView:            dtv,
 		itemView:             div,
 		mainView:             mainView,
+		keyMap:               defaultKeyMap.View,
 	}
 }
 
@@ -163,40 +171,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.tableView.Refresh()
 	case tea.KeyMsg:
 		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() {
-			log.Printf("key = %+v", msg)
-			switch msg.String() {
-			case "m":
+			switch {
+			case key.Matches(msg, m.keyMap.Mark):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, func() tea.Msg { return m.tableWriteController.ToggleMark(idx) }
 				}
-			case "c":
+			case key.Matches(msg, m.keyMap.CopyItemToClipboard):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, func() tea.Msg { return m.tableReadController.CopyItemToClipboard(idx) }
 				}
-			case "R":
+			case key.Matches(msg, m.keyMap.Rescan):
 				return m, m.tableReadController.Rescan
-			case "?":
+			case key.Matches(msg, m.keyMap.PromptForQuery):
 				return m, m.tableReadController.PromptForQuery
-			case "/":
+			case key.Matches(msg, m.keyMap.PromptForFilter):
 				return m, m.tableReadController.Filter
-			case "backspace":
+			case key.Matches(msg, m.keyMap.ViewBack):
 				return m, m.tableReadController.ViewBack
-			case "\\":
+			case key.Matches(msg, m.keyMap.ViewForward):
 				return m, m.tableReadController.ViewForward
-			case "w":
+			case key.Matches(msg, m.keyMap.CycleLayoutForward):
 				return m, func() tea.Msg {
 					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)}
 				}
-			case "W":
+			case key.Matches(msg, m.keyMap.CycleLayoutBackwards):
 				return m, func() tea.Msg {
 					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)}
 				}
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
-			case ":":
+			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
-			case "ctrl+c", "esc":
+			case key.Matches(msg, m.keyMap.Quit):
 				return m, tea.Quit
 			}
 		}
