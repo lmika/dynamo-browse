@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
@@ -17,10 +16,11 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
-	"github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
+	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/gopkgs/cli"
 	"log"
@@ -81,24 +81,9 @@ func main() {
 	state := controllers.NewState()
 	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable, true)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
+	keyBindings := keybindings.Default()
 
-	defaultKeyBindings := &ui.KeyBindings{
-		View: &ui.ViewKeyBindings{
-			Mark:                 key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "mark")),
-			CopyItemToClipboard:  key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "copy item to clipboard")),
-			Rescan:               key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "rescan")),
-			PromptForQuery:       key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "prompt for query")),
-			PromptForFilter:      key.NewBinding(key.WithKeys("f"), key.WithHelp("/", "filter")),
-			ViewBack:             key.NewBinding(key.WithKeys("backspace"), key.WithHelp("backspace", "go back")),
-			ViewForward:          key.NewBinding(key.WithKeys("\\"), key.WithHelp("\\", "go forward")),
-			CycleLayoutForward:   key.NewBinding(key.WithKeys("w"), key.WithHelp("w", "cycle layout forward")),
-			CycleLayoutBackwards: key.NewBinding(key.WithKeys("W"), key.WithHelp("W", "cycle layout backward")),
-			PromptForCommand:     key.NewBinding(key.WithKeys(":"), key.WithHelp(":", "prompt for command")),
-			Quit:                 key.NewBinding(key.WithKeys("ctrl+c", "esc"), key.WithHelp("ctrl+c/esc", "quit")),
-		},
-	}
-
-	keyBindingService := keybindings.NewService(defaultKeyBindings)
+	keyBindingService := keybindings_service.NewService(keyBindings)
 	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
 
 	commandController := commandctrl.NewCommandController()
@@ -109,7 +94,7 @@ func main() {
 		itemRendererService,
 		commandController,
 		keyBindingController,
-		defaultKeyBindings,
+		keyBindings,
 	)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.

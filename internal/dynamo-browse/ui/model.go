@@ -8,6 +8,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -46,7 +47,7 @@ type Model struct {
 	tableView *dynamotableview.Model
 	itemView  *dynamoitemview.Model
 	mainView  tea.Model
-	keyMap    *ViewKeyBindings
+	keyMap    *keybindings.ViewKeyBindings
 }
 
 func NewModel(
@@ -55,11 +56,11 @@ func NewModel(
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
 	keyBindingController *controllers.KeyBindingController,
-	defaultKeyMap *KeyBindings,
+	defaultKeyMap *keybindings.KeyBindings,
 ) Model {
 	uiStyles := styles.DefaultStyles
 
-	dtv := dynamotableview.New(uiStyles)
+	dtv := dynamotableview.New(defaultKeyMap.TableView, uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 

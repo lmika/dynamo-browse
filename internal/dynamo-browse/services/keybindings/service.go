@@ -3,6 +3,7 @@ package keybindings
 import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/pkg/errors"
+	"log"
 	"reflect"
 	"strings"
 )
@@ -22,23 +23,28 @@ func NewService(keyBinding any) *Service {
 	}
 }
 
-func (s *Service) Rebind(newKey string, name string, force bool) error {
-	// Check if there already exists a binding
-	if !force {
-		var foundBinding = ""
-		s.walkBindingFields(func(bindingName string, binding key.Binding) bool {
-			for _, key := range binding.Keys() {
-				if key == newKey {
+func (s *Service) Rebind(name string, newKey string, force bool) error {
+	// Check if there already exists a binding (or clear it)
+	var foundBinding = ""
+	s.walkBindingFields(func(bindingName string, binding *key.Binding) bool {
+		for _, boundKey := range binding.Keys() {
+			if boundKey == newKey {
+				if force {
+					// TODO: only filter out "boundKey" rather clear
+					log.Printf("clearing binding of %v", bindingName)
+					*binding = key.NewBinding()
+					return true
+				} else {
 					foundBinding = bindingName
 					return false
 				}
 			}
-			return true
-		})
-
-		if foundBinding != "" {
-			return KeyAlreadyBoundError{Key: newKey, ExistingBindingName: foundBinding}
 		}
+		return true
+	})
+
+	if foundBinding != "" {
+		return KeyAlreadyBoundError{Key: newKey, ExistingBindingName: foundBinding}
 	}
 
 	// Rebind
@@ -80,11 +86,11 @@ func (s *Service) findFieldForBindingInGroup(group reflect.Value, name string) *
 	return nil
 }
 
-func (s *Service) walkBindingFields(fn func(name string, binding key.Binding) bool) {
+func (s *Service) walkBindingFields(fn func(name string, binding *key.Binding) bool) {
 	s.walkBindingFieldsInGroup(s.keyBindingValue, "", fn)
 }
 
-func (s *Service) walkBindingFieldsInGroup(group reflect.Value, prefix string, fn func(name string, binding key.Binding) bool) bool {
+func (s *Service) walkBindingFieldsInGroup(group reflect.Value, prefix string, fn func(name string, binding *key.Binding) bool) bool {
 	groupType := group.Type()
 	for i := 0; i < group.NumField(); i++ {
 		fieldType := groupType.Field(i)
@@ -108,7 +114,7 @@ func (s *Service) walkBindingFieldsInGroup(group reflect.Value, prefix string, f
 		if !isBinding {
 			continue
 		}
-		if !fn(fullName, *binding) {
+		if !fn(fullName, binding) {
 			return false
 		}
 	}

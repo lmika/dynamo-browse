@@ -1,9 +1,21 @@
-package ui
+package keybindings
 
 import "github.com/charmbracelet/bubbles/key"
 
 type KeyBindings struct {
-	View *ViewKeyBindings `keymap:"view"`
+	TableView *TableKeyBinding `keymap:"item-table"`
+	View      *ViewKeyBindings `keymap:"view"`
+}
+
+type TableKeyBinding struct {
+	MoveUp   key.Binding `keymap:"move-up"`
+	MoveDown key.Binding `keymap:"move-down"`
+	PageUp   key.Binding `keymap:"page-up"`
+	PageDown key.Binding `keymap:"page-down"`
+	Home     key.Binding `keymap:"goto-top"`
+	End      key.Binding `keymap:"goto-bottom"`
+	ColLeft  key.Binding `keymap:"move-left"`
+	ColRight key.Binding `keymap:"move-right"`
 }
 
 type ViewKeyBindings struct {
