@@ -3,7 +3,7 @@ package ui
 import "github.com/charmbracelet/bubbles/key"
 
 type KeyBindings struct {
-	View *ViewKeyBindings `keymap:"view,group"`
+	View *ViewKeyBindings `keymap:"view"`
 }
 
 type ViewKeyBindings struct {

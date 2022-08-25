@@ -54,6 +54,7 @@ func NewModel(
 	wc *controllers.TableWriteController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
+	keyBindingController *controllers.KeyBindingController,
 	defaultKeyMap *KeyBindings,
 ) Model {
 	uiStyles := styles.DefaultStyles
@@ -129,9 +130,12 @@ func NewModel(
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
 			},
 
-			//"rebind": func(args []string) tea.Msg {
-			//
-			//},
+			"rebind": func(args []string) tea.Msg {
+				if len(args) != 2 {
+					return events.Error(errors.New("expected: name newKey"))
+				}
+				return keyBindingController.Rebind(args[0], args[1])
+			},
 
 			// Aliases
 			"sa": cc.Alias("set-attr"),

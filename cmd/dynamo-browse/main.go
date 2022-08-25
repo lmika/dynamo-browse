@@ -98,15 +98,17 @@ func main() {
 		},
 	}
 
-	commandController := commandctrl.NewCommandController()
 	keyBindingService := keybindings.NewService(defaultKeyBindings)
-	_ = keyBindingService
+	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
+
+	commandController := commandctrl.NewCommandController()
 
 	model := ui.NewModel(
 		tableReadController,
 		tableWriteController,
 		itemRendererService,
 		commandController,
+		keyBindingController,
 		defaultKeyBindings,
 	)
 
