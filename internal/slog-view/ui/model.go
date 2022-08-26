@@ -65,6 +65,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return m.cmdController.Prompt() }
 			case "w":
 				return m, m.controller.ViewLogLineFullScreen(m.logLines.SelectedLogLine())
+			case "c":
+				return m, m.controller.CopyLogLineToClipboard(m.logLines.SelectedLogLine())
 			// END TEMP
 
 			case "ctrl+c", "q":

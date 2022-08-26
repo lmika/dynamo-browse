@@ -32,7 +32,7 @@ const (
 
 	ViewModeCount = 5
 
-	tablePrimaryItemRows     = 16
+	tablePrimaryItemRows     = 17
 	itemViewPrimaryTableRows = 7
 )
 

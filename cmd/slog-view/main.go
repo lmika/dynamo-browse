@@ -11,6 +11,8 @@ import (
 	"github.com/lmika/audax/internal/slog-view/services/logreader"
 	"github.com/lmika/audax/internal/slog-view/ui"
 	"github.com/lmika/gopkgs/cli"
+	"golang.design/x/clipboard"
+	"log"
 	"os"
 )
 
@@ -20,6 +22,10 @@ func main() {
 
 	if flag.NArg() == 0 {
 		cli.Fatal("usage: slog-view LOGFILE")
+	}
+
+	if err := clipboard.Init(); err != nil {
+		log.Fatalf("unable to enable clipboard: %v", err)
 	}
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.

@@ -13,6 +13,7 @@ import (
 type Model struct {
 	frameTitle frame.FrameTitle
 	table      table.Model
+	colNames   []string
 
 	logFile *models.LogFile
 
@@ -21,11 +22,18 @@ type Model struct {
 
 func New(style frame.Style) *Model {
 	frameTitle := frame.NewFrameTitle("File: ", true, style)
-	table := table.New(table.SimpleColumns{"level", "error", "message"}, 0, 0)
+
+	var colNames []string
+	for _, col := range columns {
+		colNames = append(colNames, col.field)
+	}
+
+	table := table.New(table.SimpleColumns(colNames), 0, 0)
 
 	return &Model{
 		frameTitle: frameTitle,
 		table:      table,
+		colNames:   colNames,
 	}
 }
 
@@ -33,7 +41,7 @@ func (m *Model) SetLogFile(newLogFile *models.LogFile) {
 	m.logFile = newLogFile
 	m.frameTitle.SetTitle("File: " + filepath.Base(newLogFile.Filename))
 
-	cols := table.SimpleColumns{"level", "error", "message"}
+	cols := table.SimpleColumns(m.colNames)
 
 	newTbl := table.New(cols, m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, len(newLogFile.Lines))
@@ -59,6 +67,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.emitNewSelectedParameter()
 		case "k", "down":
 			m.table.GoDown()
+			return m, m.emitNewSelectedParameter()
+		case "I", "pgup":
+			m.table.GoPageUp()
+			return m, m.emitNewSelectedParameter()
+		case "K", "pgdown":
+			m.table.GoPageDown()
 			return m, m.emitNewSelectedParameter()
 		}
 		//m.table, cmd = m.table.Update(msg)

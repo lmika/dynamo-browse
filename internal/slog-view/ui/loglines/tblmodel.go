@@ -2,38 +2,60 @@ package loglines
 
 import (
 	"fmt"
-	table "github.com/lmika/go-bubble-table"
 	"github.com/lmika/audax/internal/slog-view/models"
+	table "github.com/lmika/go-bubble-table"
 	"io"
 	"strings"
 )
 
+type column struct {
+	field  string
+	maxLen int
+}
+
+var columns = []column{
+	{field: "level", maxLen: 0},
+	{field: "subscription_schedule_id", maxLen: 0},
+	{field: "error", maxLen: 60},
+	{field: "message", maxLen: 0},
+}
+
 type itemTableRow struct {
-	item      models.LogLine
+	item models.LogLine
 }
 
 func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 	// TODO: these cols are fixed, they should be dynamic
-	level := mtr.renderFirstLineOfField(mtr.item.JSON, "level")
-	err := mtr.renderFirstLineOfField(mtr.item.JSON, "error")
-	msg := mtr.renderFirstLineOfField(mtr.item.JSON, "message")
-	line := fmt.Sprintf("%s\t%s\t%s", level, err, msg)
+	line := new(strings.Builder)
+
+	for i, col := range columns {
+		if i > 0 {
+			line.WriteRune('\t')
+		}
+		line.WriteString(mtr.renderFirstLineOfField(mtr.item.JSON, col))
+	}
 
 	if index == model.Cursor() {
-		fmt.Fprintln(w, model.Styles.SelectedRow.Render(line))
+		fmt.Fprintln(w, model.Styles.SelectedRow.Render(line.String()))
 	} else {
-		fmt.Fprintln(w, line)
+		fmt.Fprintln(w, line.String())
 	}
 }
 
 // TODO: this needs to be some form of path expression
-func (mtr itemTableRow) renderFirstLineOfField(d interface{}, field string) string {
+func (mtr itemTableRow) renderFirstLineOfField(d interface{}, col column) string {
+	var singleLine string
 	switch k := d.(type) {
 	case map[string]interface{}:
-		return mtr.renderFirstLineOfValue(k[field])
+		singleLine = mtr.renderFirstLineOfValue(k[col.field])
 	default:
-		return mtr.renderFirstLineOfValue(k)
+		singleLine = mtr.renderFirstLineOfValue(k)
 	}
+
+	if col.maxLen > 0 && len(singleLine) > col.maxLen {
+		singleLine = singleLine[:col.maxLen-1] + "…"
+	}
+	return singleLine
 }
 
 func (mtr itemTableRow) renderFirstLineOfValue(v interface{}) string {
