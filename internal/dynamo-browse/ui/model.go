@@ -20,6 +20,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
 	"github.com/pkg/errors"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -31,6 +32,8 @@ const (
 	ViewModeTableOnly      = 4
 
 	ViewModeCount = 5
+
+	initRCFilename = "$HOME/.config/audax/dynamo-browse/init.rc"
 )
 
 type Model struct {
@@ -69,17 +72,17 @@ func NewModel(
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
 
-	cc.AddCommands(&commandctrl.CommandContext{
+	cc.AddCommands(&commandctrl.CommandList{
 		Commands: map[string]commandctrl.Command{
 			"quit": commandctrl.NoArgCommand(tea.Quit),
-			"table": func(args []string) tea.Msg {
+			"table": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return rc.ListTables()
 				} else {
 					return rc.ScanTable(args[0])
 				}
 			},
-			"export": func(args []string) tea.Msg {
+			"export": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected filename"))
 				}
@@ -90,7 +93,7 @@ func NewModel(
 
 			// TEMP
 			"new-item": commandctrl.NoArgCommand(wc.NewItem),
-			"set-attr": func(args []string) tea.Msg {
+			"set-attr": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected field"))
 				}
@@ -114,28 +117,35 @@ func NewModel(
 
 				return wc.SetAttributeValue(dtv.SelectedItemIndex(), itemType, args[0])
 			},
-			"del-attr": func(args []string) tea.Msg {
+			"del-attr": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected field"))
 				}
 				return wc.DeleteAttribute(dtv.SelectedItemIndex(), args[0])
 			},
 
-			"put": func(args []string) tea.Msg {
+			"put": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				return wc.PutItems()
 			},
-			"touch": func(args []string) tea.Msg {
+			"touch": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				return wc.TouchItem(dtv.SelectedItemIndex())
 			},
-			"noisy-touch": func(args []string) tea.Msg {
+			"noisy-touch": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
 			},
 
-			"rebind": func(args []string) tea.Msg {
-				if len(args) != 2 {
-					return events.Error(errors.New("expected: name newKey"))
+			"echo": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				s := new(strings.Builder)
+				for _, arg := range args {
+					s.WriteString(arg)
 				}
-				return keyBindingController.Rebind(args[0], args[1])
+				return events.SetStatus(s.String())
+			},
+			"rebind": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				if len(args) != 2 {
+					return events.Error(errors.New("expected: bindingName newKey"))
+				}
+				return keyBindingController.Rebind(args[0], args[1], ctx.FromFile)
 			},
 
 			// Aliases
@@ -164,6 +174,12 @@ func NewModel(
 }
 
 func (m Model) Init() tea.Cmd {
+	// TODO: this should probably be moved somewhere else
+	rcFilename := os.ExpandEnv(initRCFilename)
+	if err := m.commandController.ExecuteFile(rcFilename); err != nil {
+		log.Println(err)
+	}
+
 	return m.tableReadController.Init
 }
 

@@ -30,7 +30,7 @@ func NewModel(controller *controllers.SSMController, cmdController *commandctrl.
 	statusAndPrompt := statusandprompt.New(
 		layout.NewVBox(layout.LastChildFixedAt(17), ssmList, ssmdDetails), "", defaultStyles.StatusAndPrompt)
 
-	cmdController.AddCommands(&commandctrl.CommandContext{
+	cmdController.AddCommands(&commandctrl.CommandList{
 		Commands: map[string]commandctrl.Command{
 			"clone": func(args []string) tea.Msg {
 				if currentParam := ssmList.CurrentParameter(); currentParam != nil {

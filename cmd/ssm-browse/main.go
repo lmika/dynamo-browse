@@ -48,7 +48,7 @@ func main() {
 	ctrl := controllers.New(service)
 
 	cmdController := commandctrl.NewCommandController()
-	cmdController.AddCommands(&commandctrl.CommandContext{
+	cmdController.AddCommands(&commandctrl.CommandList{
 		Commands: map[string]commandctrl.Command{
 			"cd": func(args []string) tea.Msg {
 				return ctrl.ChangePrefix(args[0])
