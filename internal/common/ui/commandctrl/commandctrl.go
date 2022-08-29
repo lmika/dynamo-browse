@@ -1,6 +1,8 @@
 package commandctrl
 
 import (
+	"bufio"
+	"bytes"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pkg/errors"
 	"log"
@@ -60,7 +62,7 @@ func (c *CommandController) execute(ctx ExecContext, commandInput string) tea.Ms
 	if c.missingCommand != nil {
 		command = c.missingCommand(tokens[0])
 		if command != nil {
-			return command(tokens[1:])
+			return command(ctx, tokens[1:])
 		}
 	}
 

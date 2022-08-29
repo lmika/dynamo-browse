@@ -4,7 +4,6 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/pkg/errors"
-	"log"
 	"time"
 )
 

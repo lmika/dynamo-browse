@@ -15,9 +15,9 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
-	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
+	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
@@ -98,6 +98,7 @@ func main() {
 		commandController,
 		keyBindingController,
 		keyBindings,
+		pluginRuntimeService,
 	)
 	state.SetUIStateProvider(model)
 
