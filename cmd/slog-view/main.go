@@ -39,7 +39,7 @@ func main() {
 	ctrl := controllers.NewLogFileController(service, flag.Arg(0))
 
 	cmdController := commandctrl.NewCommandController()
-	//cmdController.AddCommands(&commandctrl.CommandContext{
+	//cmdController.AddCommands(&commandctrl.CommandList{
 	//	Commands: map[string]commandctrl.Command{
 	//		"cd": func(args []string) tea.Cmd {
 	//			return ctrl.ChangePrefix(args[0])

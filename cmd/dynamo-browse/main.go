@@ -17,9 +17,11 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
+	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/gopkgs/cli"
 	"log"
@@ -78,13 +80,25 @@ func main() {
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
 
 	state := controllers.NewState()
-	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable, true)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
+	keyBindings := keybindings.Default()
+
+	keyBindingService := keybindings_service.NewService(keyBindings)
+	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
 
 	pluginRuntimeService := pluginruntime.New(state, tableService, workspaceService)
 
 	commandController := commandctrl.NewCommandController()
-	model := ui.NewModel(tableReadController, tableWriteController, itemRendererService, commandController, pluginRuntimeService)
+
+	model := ui.NewModel(
+		tableReadController,
+		tableWriteController,
+		itemRendererService,
+		commandController,
+		keyBindingController,
+		keyBindings,
+	)
 	state.SetUIStateProvider(model)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.

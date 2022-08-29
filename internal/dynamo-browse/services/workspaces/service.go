@@ -28,56 +28,89 @@ func (s *ViewSnapshotService) PushSnapshot(rs *models.ResultSet, filter string) 
 	}
 	newSnapshot.Filter = filter
 
-	head, err := s.store.Head()
+	oldHead, err := s.store.CurrentlyViewedSnapshot()
 	if err != nil {
-		return errors.Wrap(err, "cannot get head result set")
+		return errors.Wrap(err, "cannot get snapshot head")
 	}
 
-	if head != nil {
-		if newSnapshot.IsSameView(head) {
-			// Duplicate
-			return nil
-		}
+	if oldHead != nil {
+		newSnapshot.BackLink = oldHead.ID
 
-		newSnapshot.BackLink = head.ID
+		// Remove all nodes from this point on the head
+		if err := s.store.Dehead(oldHead); err != nil {
+			return errors.Wrap(err, "cannot remove head")
+		}
 	}
 
 	if err := s.store.Save(newSnapshot); err != nil {
 		return errors.Wrap(err, "cannot save snapshot")
 	}
+
+	if oldHead != nil {
+		oldHead.ForeLink = newSnapshot.ID
+		if err := s.store.Save(oldHead); err != nil {
+			return errors.Wrap(err, "cannot update old head")
+		}
+	}
+
 	if err := s.store.SetAsHead(newSnapshot.ID); err != nil {
+		return errors.Wrap(err, "cannot set new snapshot as head")
+	}
+	if err := s.store.SetCurrentlyViewedSnapshot(newSnapshot.ID); err != nil {
 		return errors.Wrap(err, "cannot set new snapshot as head")
 	}
 
 	return nil
 }
 
-func (s *ViewSnapshotService) PopSnapshot() (*serialisable.ViewSnapshot, error) {
-	vs, err := s.store.Head()
+func (s *ViewSnapshotService) ViewRestore() (*serialisable.ViewSnapshot, error) {
+	vs, err := s.store.CurrentlyViewedSnapshot()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get snapshot head")
-	} else if vs == nil {
+	}
+	return vs, nil
+}
+
+func (s *ViewSnapshotService) ViewBack() (*serialisable.ViewSnapshot, error) {
+	vs, err := s.store.CurrentlyViewedSnapshot()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get snapshot head")
+	} else if vs == nil || vs.BackLink == 0 {
 		return nil, nil
 	}
 
-	if vs.BackLink == 0 {
+	vsToReturn, err := s.store.Find(vs.BackLink)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get snapshot head")
+	} else if vsToReturn == nil {
 		return nil, nil
 	}
 
-	if err := s.store.SetAsHead(vs.BackLink); err != nil {
+	if err := s.store.SetCurrentlyViewedSnapshot(vsToReturn.ID); err != nil {
 		return nil, errors.Wrap(err, "cannot set new head")
 	}
-	if err := s.store.Remove(vs.ID); err != nil {
-		return nil, errors.Wrap(err, "cannot remove old ID")
-	}
 
-	vs, err = s.store.Head()
+	return vsToReturn, nil
+}
+
+func (s *ViewSnapshotService) ViewForward() (*serialisable.ViewSnapshot, error) {
+	vs, err := s.store.CurrentlyViewedSnapshot()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot get snapshot head")
-	} else if vs == nil {
+	} else if vs == nil || vs.ForeLink == 0 {
 		return nil, nil
 	}
 
-	log.Printf("returning backstack: table='%v', query='%v', filter='%v'", vs.TableName, vs.Query, vs.Filter)
-	return vs, nil
+	vsToReturn, err := s.store.Find(vs.ForeLink)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get snapshot head")
+	} else if vsToReturn == nil {
+		return nil, nil
+	}
+
+	if err := s.store.SetCurrentlyViewedSnapshot(vsToReturn.ID); err != nil {
+		return nil, errors.Wrap(err, "cannot set new head")
+	}
+
+	return vsToReturn, nil
 }

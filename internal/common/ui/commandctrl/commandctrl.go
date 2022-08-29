@@ -1,11 +1,11 @@
 package commandctrl
 
 import (
-	"bufio"
-	"bytes"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pkg/errors"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/lmika/audax/internal/common/ui/events"
@@ -13,7 +13,7 @@ import (
 )
 
 type CommandController struct {
-	commandList    *CommandContext
+	commandList    *CommandList
 	missingCommand MissingCommand
 }
 
@@ -23,7 +23,7 @@ func NewCommandController() *CommandController {
 	}
 }
 
-func (c *CommandController) AddCommands(ctx *CommandContext) {
+func (c *CommandController) AddCommands(ctx *CommandList) {
 	ctx.parent = c.commandList
 	c.commandList = ctx
 }
@@ -42,6 +42,10 @@ func (c *CommandController) Prompt() tea.Msg {
 }
 
 func (c *CommandController) Execute(commandInput string) tea.Msg {
+	return c.execute(ExecContext{FromFile: false}, commandInput)
+}
+
+func (c *CommandController) execute(ctx ExecContext, commandInput string) tea.Msg {
 	input := strings.TrimSpace(commandInput)
 	if input == "" {
 		return nil
@@ -49,8 +53,8 @@ func (c *CommandController) Execute(commandInput string) tea.Msg {
 
 	tokens := shellwords.Split(input)
 	command := c.lookupCommand(tokens[0])
-	if command != nil {
-		return command(tokens[1:])
+	if command == nil {
+		return events.Error(errors.New("no such command: " + tokens[0]))
 	}
 
 	if c.missingCommand != nil {
@@ -60,25 +64,22 @@ func (c *CommandController) Execute(commandInput string) tea.Msg {
 		}
 	}
 
-	log.Println("No such command: ", tokens)
-	return events.Error(errors.New("no such command: " + tokens[0]))
+	return command(ctx, tokens[1:])
 }
 
 func (c *CommandController) Alias(commandName string) Command {
-	return func(args []string) tea.Msg {
+	return func(ctx ExecContext, args []string) tea.Msg {
 		command := c.lookupCommand(commandName)
 		if command == nil {
-			log.Println("No such command: ", commandName)
 			return events.Error(errors.New("no such command: " + commandName))
 		}
 
-		return command(args)
+		return command(ctx, args)
 	}
 }
 
 func (c *CommandController) lookupCommand(name string) Command {
 	for ctx := c.commandList; ctx != nil; ctx = ctx.parent {
-		log.Printf("Looking in command list: %v", c.commandList)
 		if cmd, ok := ctx.Commands[name]; ok {
 			return cmd
 		}
@@ -86,9 +87,25 @@ func (c *CommandController) lookupCommand(name string) Command {
 	return nil
 }
 
-func (c *CommandController) ExecuteFile(file []byte, filename string) error {
+func (c *CommandController) ExecuteFile(filename string) error {
+	baseFilename := filepath.Base(filename)
+
+	if rcFile, err := os.ReadFile(filename); err == nil {
+		if err := c.executeFile(rcFile, baseFilename); err != nil {
+			return errors.Wrapf(err, "error executing %v", filename)
+		}
+	} else {
+		return errors.Wrapf(err, "error loading %v", filename)
+	}
+	return nil
+}
+
+func (c *CommandController) executeFile(file []byte, filename string) error {
 	scnr := bufio.NewScanner(bytes.NewReader(file))
+
+	lineNo := 0
 	for scnr.Scan() {
+		lineNo++
 		line := strings.TrimSpace(scnr.Text())
 		if line == "" {
 			continue
@@ -96,7 +113,13 @@ func (c *CommandController) ExecuteFile(file []byte, filename string) error {
 			continue
 		}
 
-		c.Execute(line) // TODO: deal with errors
+		msg := c.execute(ExecContext{FromFile: true}, line)
+		switch m := msg.(type) {
+		case events.ErrorMsg:
+			log.Printf("%v:%v: error - %v", filename, lineNo, m.Error())
+		case events.StatusMsg:
+			log.Printf("%v:%v: %v", filename, lineNo, string(m))
+		}
 	}
 	return scnr.Err()
 }
