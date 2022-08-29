@@ -50,7 +50,7 @@ func main() {
 	cmdController := commandctrl.NewCommandController()
 	cmdController.AddCommands(&commandctrl.CommandList{
 		Commands: map[string]commandctrl.Command{
-			"cd": func(args []string) tea.Msg {
+			"cd": func(ec commandctrl.ExecContext, args []string) tea.Msg {
 				return ctrl.ChangePrefix(args[0])
 			},
 		},

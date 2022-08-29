@@ -32,13 +32,13 @@ func NewModel(controller *controllers.SSMController, cmdController *commandctrl.
 
 	cmdController.AddCommands(&commandctrl.CommandList{
 		Commands: map[string]commandctrl.Command{
-			"clone": func(args []string) tea.Msg {
+			"clone": func(ec commandctrl.ExecContext, args []string) tea.Msg {
 				if currentParam := ssmList.CurrentParameter(); currentParam != nil {
 					return controller.Clone(*currentParam)
 				}
 				return events.Error(errors.New("no parameter selected"))
 			},
-			"delete": func(args []string) tea.Msg {
+			"delete": func(ec commandctrl.ExecContext, args []string) tea.Msg {
 				if currentParam := ssmList.CurrentParameter(); currentParam != nil {
 					return controller.DeleteParameter(*currentParam)
 				}
