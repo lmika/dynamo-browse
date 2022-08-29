@@ -16,9 +16,11 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
+	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/gopkgs/cli"
 	"log"
@@ -79,9 +81,21 @@ func main() {
 	state := controllers.NewState()
 	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable, true)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController)
+	keyBindings := keybindings.Default()
+
+	keyBindingService := keybindings_service.NewService(keyBindings)
+	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
 
 	commandController := commandctrl.NewCommandController()
-	model := ui.NewModel(tableReadController, tableWriteController, itemRendererService, commandController)
+
+	model := ui.NewModel(
+		tableReadController,
+		tableWriteController,
+		itemRendererService,
+		commandController,
+		keyBindingController,
+		keyBindings,
+	)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	lipgloss.HasDarkBackground()

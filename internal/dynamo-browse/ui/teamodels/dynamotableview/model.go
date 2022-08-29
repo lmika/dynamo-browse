@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
@@ -20,22 +21,11 @@ var (
 		Background(lipgloss.Color("#4479ff"))
 )
 
-type KeyBinding struct {
-	MoveUp   key.Binding
-	MoveDown key.Binding
-	PageUp   key.Binding
-	PageDown key.Binding
-	Home     key.Binding
-	End      key.Binding
-	ColLeft  key.Binding
-	ColRight key.Binding
-}
-
 type Model struct {
 	frameTitle frame.FrameTitle
 	table      table.Model
 	w, h       int
-	keyBinding KeyBinding
+	keyBinding *keybindings.TableKeyBinding
 
 	// model state
 	colOffset int
@@ -43,7 +33,7 @@ type Model struct {
 	resultSet *models.ResultSet
 }
 
-func New(uiStyles styles.Styles) *Model {
+func New(keyBinding *keybindings.TableKeyBinding, uiStyles styles.Styles) *Model {
 	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
@@ -53,16 +43,7 @@ func New(uiStyles styles.Styles) *Model {
 	return &Model{
 		frameTitle: frameTitle,
 		table:      tbl,
-		keyBinding: KeyBinding{
-			MoveUp:   key.NewBinding(key.WithKeys("i", "up")),
-			MoveDown: key.NewBinding(key.WithKeys("k", "down")),
-			PageUp:   key.NewBinding(key.WithKeys("I", "pgup")),
-			PageDown: key.NewBinding(key.WithKeys("K", "pgdown")),
-			Home:     key.NewBinding(key.WithKeys("0", "home")),
-			End:      key.NewBinding(key.WithKeys("$", "end")),
-			ColLeft:  key.NewBinding(key.WithKeys("j", "left")),
-			ColRight: key.NewBinding(key.WithKeys("l", "right")),
-		},
+		keyBinding: keyBinding,
 	}
 }
 

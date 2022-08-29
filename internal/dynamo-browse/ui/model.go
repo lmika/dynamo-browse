@@ -1,12 +1,14 @@
 package ui
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -18,6 +20,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
 	"github.com/pkg/errors"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -29,6 +32,8 @@ const (
 	ViewModeTableOnly      = 4
 
 	ViewModeCount = 5
+
+	initRCFilename = "$HOME/.config/audax/dynamo-browse/init.rc"
 )
 
 type Model struct {
@@ -45,6 +50,7 @@ type Model struct {
 	tableView *dynamotableview.Model
 	itemView  *dynamoitemview.Model
 	mainView  tea.Model
+	keyMap    *keybindings.ViewKeyBindings
 }
 
 func NewModel(
@@ -52,10 +58,12 @@ func NewModel(
 	wc *controllers.TableWriteController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
+	keyBindingController *controllers.KeyBindingController,
+	defaultKeyMap *keybindings.KeyBindings,
 ) Model {
 	uiStyles := styles.DefaultStyles
 
-	dtv := dynamotableview.New(uiStyles)
+	dtv := dynamotableview.New(defaultKeyMap.TableView, uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
@@ -64,17 +72,17 @@ func NewModel(
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
 
-	cc.AddCommands(&commandctrl.CommandContext{
+	cc.AddCommands(&commandctrl.CommandList{
 		Commands: map[string]commandctrl.Command{
 			"quit": commandctrl.NoArgCommand(tea.Quit),
-			"table": func(args []string) tea.Msg {
+			"table": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return rc.ListTables()
 				} else {
 					return rc.ScanTable(args[0])
 				}
 			},
-			"export": func(args []string) tea.Msg {
+			"export": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected filename"))
 				}
@@ -85,7 +93,7 @@ func NewModel(
 
 			// TEMP
 			"new-item": commandctrl.NoArgCommand(wc.NewItem),
-			"set-attr": func(args []string) tea.Msg {
+			"set-attr": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected field"))
 				}
@@ -109,21 +117,35 @@ func NewModel(
 
 				return wc.SetAttributeValue(dtv.SelectedItemIndex(), itemType, args[0])
 			},
-			"del-attr": func(args []string) tea.Msg {
+			"del-attr": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected field"))
 				}
 				return wc.DeleteAttribute(dtv.SelectedItemIndex(), args[0])
 			},
 
-			"put": func(args []string) tea.Msg {
+			"put": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				return wc.PutItems()
 			},
-			"touch": func(args []string) tea.Msg {
+			"touch": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				return wc.TouchItem(dtv.SelectedItemIndex())
 			},
-			"noisy-touch": func(args []string) tea.Msg {
+			"noisy-touch": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
+			},
+
+			"echo": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				s := new(strings.Builder)
+				for _, arg := range args {
+					s.WriteString(arg)
+				}
+				return events.SetStatus(s.String())
+			},
+			"rebind": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				if len(args) != 2 {
+					return events.Error(errors.New("expected: bindingName newKey"))
+				}
+				return keyBindingController.Rebind(args[0], args[1], ctx.FromFile)
 			},
 
 			// Aliases
@@ -147,10 +169,17 @@ func NewModel(
 		tableView:            dtv,
 		itemView:             div,
 		mainView:             mainView,
+		keyMap:               defaultKeyMap.View,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
+	// TODO: this should probably be moved somewhere else
+	rcFilename := os.ExpandEnv(initRCFilename)
+	if err := m.commandController.ExecuteFile(rcFilename); err != nil {
+		log.Println(err)
+	}
+
 	return m.tableReadController.Init
 }
 
@@ -163,40 +192,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.tableView.Refresh()
 	case tea.KeyMsg:
 		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() {
-			log.Printf("key = %+v", msg)
-			switch msg.String() {
-			case "m":
+			switch {
+			case key.Matches(msg, m.keyMap.Mark):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, func() tea.Msg { return m.tableWriteController.ToggleMark(idx) }
 				}
-			case "c":
+			case key.Matches(msg, m.keyMap.CopyItemToClipboard):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, func() tea.Msg { return m.tableReadController.CopyItemToClipboard(idx) }
 				}
-			case "R":
+			case key.Matches(msg, m.keyMap.Rescan):
 				return m, m.tableReadController.Rescan
-			case "?":
+			case key.Matches(msg, m.keyMap.PromptForQuery):
 				return m, m.tableReadController.PromptForQuery
-			case "/":
+			case key.Matches(msg, m.keyMap.PromptForFilter):
 				return m, m.tableReadController.Filter
-			case "backspace":
+			case key.Matches(msg, m.keyMap.ViewBack):
 				return m, m.tableReadController.ViewBack
-			case "\\":
+			case key.Matches(msg, m.keyMap.ViewForward):
 				return m, m.tableReadController.ViewForward
-			case "w":
+			case key.Matches(msg, m.keyMap.CycleLayoutForward):
 				return m, func() tea.Msg {
 					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)}
 				}
-			case "W":
+			case key.Matches(msg, m.keyMap.CycleLayoutBackwards):
 				return m, func() tea.Msg {
 					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)}
 				}
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
-			case ":":
+			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
-			case "ctrl+c", "esc":
+			case key.Matches(msg, m.keyMap.Quit):
 				return m, tea.Quit
 			}
 		}
