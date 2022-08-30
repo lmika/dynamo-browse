@@ -19,7 +19,7 @@ func Default() *KeyBindings {
 			CopyItemToClipboard:  key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "copy item to clipboard")),
 			Rescan:               key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "rescan")),
 			PromptForQuery:       key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "prompt for query")),
-			PromptForFilter:      key.NewBinding(key.WithKeys("f"), key.WithHelp("/", "filter")),
+			PromptForFilter:      key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
 			ViewBack:             key.NewBinding(key.WithKeys("backspace"), key.WithHelp("backspace", "go back")),
 			ViewForward:          key.NewBinding(key.WithKeys("\\"), key.WithHelp("\\", "go forward")),
 			CycleLayoutForward:   key.NewBinding(key.WithKeys("w"), key.WithHelp("w", "cycle layout forward")),
