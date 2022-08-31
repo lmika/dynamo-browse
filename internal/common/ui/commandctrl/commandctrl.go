@@ -55,8 +55,8 @@ func (c *CommandController) execute(ctx ExecContext, commandInput string) tea.Ms
 
 	tokens := shellwords.Split(input)
 	command := c.lookupCommand(tokens[0])
-	if command == nil {
-		return events.Error(errors.New("no such command: " + tokens[0]))
+	if command != nil {
+		return command(ctx, tokens[1:])
 	}
 
 	if c.missingCommand != nil {
@@ -66,7 +66,7 @@ func (c *CommandController) execute(ctx ExecContext, commandInput string) tea.Ms
 		}
 	}
 
-	return command(ctx, tokens[1:])
+	return events.Error(errors.New("no such command: " + tokens[0]))
 }
 
 func (c *CommandController) Alias(commandName string) Command {
