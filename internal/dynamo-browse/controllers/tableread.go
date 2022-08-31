@@ -152,7 +152,7 @@ func (c *TableReadController) doIfNoneDirty(cmd tea.Cmd) tea.Msg {
 		Prompt: "reset modified items? ",
 		OnDone: func(value string) tea.Msg {
 			if value != "y" {
-				return events.SetStatus("operation aborted")
+				return events.StatusMsg("operation aborted")
 			}
 
 			return cmd()
@@ -321,7 +321,7 @@ func (c *TableReadController) CopyItemToClipboard(idx int) tea.Msg {
 		clipboard.Write(clipboard.FmtText, []byte(sb.String()))
 	})
 
-	return events.SetStatus(applyToN("", itemCount, "item", "items", " copied to clipboard"))
+	return events.StatusMsg(applyToN("", itemCount, "item", "items", " copied to clipboard"))
 }
 
 func (c *TableReadController) initClipboard() error {

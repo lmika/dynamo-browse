@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
+	"log"
 )
 
 // StatusAndPrompt is a resizing model which displays a submodel and a status bar.  When the start prompt
@@ -67,7 +68,11 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				pendingInput := s.pendingInput
 				s.pendingInput = nil
 
-				return s, func() tea.Msg { return pendingInput.OnDone(s.textInput.Value()) }
+				return s, func() tea.Msg {
+					m := pendingInput.OnDone(s.textInput.Value())
+					log.Printf("return msg type = %T", m)
+					return m
+				}
 			default:
 				if msg.Type == tea.KeyRunes {
 					msg.Runes = sliceutils.Filter(msg.Runes, func(r rune) bool { return r != '\x0d' && r != '\x0a' })
