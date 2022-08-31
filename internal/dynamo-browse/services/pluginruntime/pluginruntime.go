@@ -39,7 +39,8 @@ func New(
 	}
 
 	srv.registry = new(require.Registry)
-	srv.registry.RegisterNativeModule("audax:dynamo-browse", audaxDynamoBrowse(srv))
+	srv.registry.RegisterNativeModule("audax:dynamo-browse/session", audaxDynamoSession(srv))
+	srv.registry.RegisterNativeModule("audax:dynamo-browse/ui", audaxDynamoUI(srv))
 	srv.registry.RegisterNativeModule("audax:x/exec", jsExecModule())
 
 	srv.eventLoop = eventloop.NewEventLoop(eventloop.WithRegistry(srv.registry))
