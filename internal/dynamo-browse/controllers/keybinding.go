@@ -19,7 +19,7 @@ func NewKeyBindingController(service *keybindings.Service) *KeyBindingController
 func (kb *KeyBindingController) Rebind(bindingName string, newKey string, force bool) tea.Msg {
 	err := kb.service.Rebind(bindingName, newKey, force)
 	if err == nil {
-		return events.SetStatus(fmt.Sprintf("Binding '%v' now bound to '%v'", bindingName, newKey))
+		return events.StatusMsg(fmt.Sprintf("Binding '%v' now bound to '%v'", bindingName, newKey))
 	} else if force {
 		return events.Error(errors.Wrapf(err, "cannot bind '%v' to '%v'", bindingName, newKey))
 	}
@@ -32,7 +32,7 @@ func (kb *KeyBindingController) Rebind(bindingName string, newKey string, force 
 			if err != nil {
 				return events.Error(err)
 			}
-			return events.SetStatus(fmt.Sprintf("Binding '%v' now bound to '%v'", bindingName, newKey))
+			return events.StatusMsg(fmt.Sprintf("Binding '%v' now bound to '%v'", bindingName, newKey))
 		})
 	}
 

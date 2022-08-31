@@ -288,7 +288,7 @@ func (twc *TableWriteController) PutItems() tea.Msg {
 		Prompt: promptMessage,
 		OnDone: func(value string) tea.Msg {
 			if value != "y" {
-				return events.SetStatus("operation aborted")
+				return events.StatusMsg("operation aborted")
 			}
 
 			if err := twc.state.withResultSetReturningError(func(rs *models.ResultSet) error {
@@ -370,7 +370,7 @@ func (twc *TableWriteController) DeleteMarked() tea.Msg {
 		Prompt: applyToN("delete ", len(markedItems), "item", "items", "? "),
 		OnDone: func(value string) tea.Msg {
 			if value != "y" {
-				return events.SetStatus("operation aborted")
+				return events.StatusMsg("operation aborted")
 			}
 
 			ctx := context.Background()

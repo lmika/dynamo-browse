@@ -145,7 +145,7 @@ func NewModel(
 				for _, arg := range args {
 					s.WriteString(arg)
 				}
-				return events.SetStatus(s.String())
+				return events.StatusMsg(s.String())
 			},
 			"rebind": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) != 2 {
@@ -210,7 +210,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := m.setMainViewIndex(msg.ViewIndex)
 		return m, cmd
 	case controllers.ResultSetUpdated:
-		return m, m.tableView.Refresh()
+		return m, tea.Batch(
+			m.tableView.Refresh(),
+			events.SetStatus(msg.StatusMessage()),
+		)
 	case tea.KeyMsg:
 		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() {
 			switch {
