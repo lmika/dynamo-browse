@@ -27,7 +27,7 @@ func (rs NewResultSet) ModeMessage() string {
 	}
 
 	if rs.currentFilter != "" {
-		modeLine = fmt.Sprintf("%v - PromptForFilter: '%v'", modeLine, rs.currentFilter)
+		modeLine = fmt.Sprintf("%v - Filter: '%v'", modeLine, rs.currentFilter)
 	}
 	return modeLine
 }

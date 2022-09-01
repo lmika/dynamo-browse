@@ -10,8 +10,10 @@ func Error(err error) tea.Msg {
 	return ErrorMsg(err)
 }
 
-func SetStatus(msg string) tea.Msg {
-	return StatusMsg(msg)
+func SetStatus(msg string) tea.Cmd {
+	return func() tea.Msg {
+		return StatusMsg(msg)
+	}
 }
 
 func PromptForInput(prompt string, onDone func(value string) tea.Msg) tea.Msg {
