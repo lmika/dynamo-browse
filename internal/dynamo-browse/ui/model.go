@@ -227,6 +227,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			//	return m, nil
 			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
+			case key.Matches(msg, m.keyMap.PromptForTable):
+				return m, func() tea.Msg {
+					return m.tableReadController.ListTables()
+				}
 			case key.Matches(msg, m.keyMap.Quit):
 				return m, tea.Quit
 			}
