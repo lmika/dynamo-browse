@@ -24,6 +24,7 @@ type ViewKeyBindings struct {
 	Rescan               key.Binding `keymap:"rescan"`
 	PromptForQuery       key.Binding `keymap:"prompt-for-query"`
 	PromptForFilter      key.Binding `keymap:"prompt-for-filter"`
+	PromptForTable       key.Binding `keymap:"prompt-for-table"`
 	ViewBack             key.Binding `keymap:"view-back"`
 	ViewForward          key.Binding `keymap:"view-forward"`
 	CycleLayoutForward   key.Binding `keymap:"cycle-layout-forward"`
