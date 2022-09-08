@@ -11,6 +11,7 @@ import (
 type TableProvider interface {
 	ListTables(ctx context.Context) ([]string, error)
 	DescribeTable(ctx context.Context, tableName string) (*models.TableInfo, error)
+	QueryItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error)
 	ScanItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error)
 	DeleteItem(ctx context.Context, tableName string, key map[string]types.AttributeValue) error
 	PutItem(ctx context.Context, name string, item models.Item) error

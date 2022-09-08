@@ -127,6 +127,40 @@ outer:
 	return items, nil
 }
 
+func (p *Provider) QueryItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error) {
+	input := &dynamodb.QueryInput{
+		TableName: aws.String(tableName),
+		Limit:     aws.Int32(int32(maxItems)),
+	}
+	if filterExpr != nil {
+		input.KeyConditionExpression = filterExpr.KeyCondition()
+		input.FilterExpression = filterExpr.Filter()
+		input.ExpressionAttributeNames = filterExpr.Names()
+		input.ExpressionAttributeValues = filterExpr.Values()
+	}
+
+	paginator := dynamodb.NewQueryPaginator(p.client, input)
+
+	items := make([]models.Item, 0)
+
+outer:
+	for paginator.HasMorePages() {
+		res, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot execute query on table %v", tableName)
+		}
+
+		for _, itm := range res.Items {
+			items = append(items, itm)
+			if len(items) >= maxItems {
+				break outer
+			}
+		}
+	}
+
+	return items, nil
+}
+
 func (p *Provider) DeleteItem(ctx context.Context, tableName string, key map[string]types.AttributeValue) error {
 	_, err := p.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(tableName),

@@ -13,3 +13,7 @@ func (md *QueryExpr) Plan(tableInfo *models.TableInfo) (*models.QueryExecutionPl
 func (md *QueryExpr) String() string {
 	return md.ast.String()
 }
+
+func (a *astExpr) String() string {
+	return a.Root.String()
+}

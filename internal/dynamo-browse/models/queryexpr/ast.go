@@ -5,8 +5,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Modelled on the expression language here
+// https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
+
 type astExpr struct {
-	Equality *astBinOp `parser:"@@"`
+	Root *astDisjunction `parser:"@@"`
+}
+
+type astDisjunction struct {
+	Operands []*astBinOp `parser:"@@ ('or' @@)*"`
 }
 
 type astBinOp struct {
