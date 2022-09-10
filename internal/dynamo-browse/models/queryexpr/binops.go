@@ -6,51 +6,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *astBinOp) calcQuery(info *models.TableInfo) (*models.QueryExecutionPlan, error) {
-	if a.canBeExecutedAsQuery(info) {
-		ke, err := a.calcQueryForQuery(info)
-		if err != nil {
-			return nil, err
-		}
-
-		builder := expression.NewBuilder()
-		builder = builder.WithKeyCondition(ke)
-
-		expr, err := builder.Build()
-		if err != nil {
-			return nil, err
-		}
-
-		return &models.QueryExecutionPlan{
-			CanQuery:   true,
-			Expression: expr,
-		}, nil
-	}
-
-	// TODO: check if can be a query
-	cb, err := a.calcQueryForScan(info)
-	if err != nil {
-		return nil, err
-	}
-
-	builder := expression.NewBuilder()
-	builder = builder.WithFilter(cb)
-
-	expr, err := builder.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return &models.QueryExecutionPlan{
-		CanQuery:   false,
-		Expression: expr,
-	}, nil
-}
-
-func (a *astBinOp) canBeExecutedAsQuery(info *models.TableInfo) bool {
+func (a *astBinOp) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	// If this is the partition key, then the op must be equals
-	if a.Name == info.Keys.PartitionKey {
-		return a.Op == "="
+	if a.Name == info.Keys.PartitionKey && a.Op == "=" {
+		return qci.addKey(info, a.Name)
+	}
+
+	// If this is sort key, then the op must be equals (and others)
+	if a.Name == info.Keys.SortKey && (a.Op == "=" || a.Op == "^=") {
+		return qci.addKey(info, a.Name)
 	}
 
 	return false
@@ -94,6 +58,10 @@ func (a *astBinOp) calcQueryForQuery(info *models.TableInfo) (expression.KeyCond
 	}
 
 	return expression.KeyConditionBuilder{}, errors.Errorf("unrecognised operator: %v", a.Op)
+}
+
+func (a *astBinOp) queryKeyName() string {
+	return a.Name
 }
 
 func (a *astBinOp) String() string {

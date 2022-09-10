@@ -13,7 +13,11 @@ type astExpr struct {
 }
 
 type astDisjunction struct {
-	Operands []*astBinOp `parser:"@@ ('or' @@)*"`
+	Operands []*astConjunction `parser:"@@ ('or' @@)*"`
+}
+
+type astConjunction struct {
+	Operands []*astBinOp `parser:"@@ ('and' @@)*"`
 }
 
 type astBinOp struct {

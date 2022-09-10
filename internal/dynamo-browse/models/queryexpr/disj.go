@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-func (d *astDisjunction) canBeExecutedAsQuery(info *models.TableInfo) bool {
+func (d *astDisjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	// TODO: not entire accurate, as filter expressions are also possible
 	if len(d.Operands) == 1 {
-		return d.Operands[0].canBeExecutedAsQuery(info)
+		return d.Operands[0].canBeExecutedAsQuery(info, qci)
 	}
 	return false
 }

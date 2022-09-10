@@ -8,7 +8,8 @@ import (
 func (a *astExpr) calcQuery(info *models.TableInfo) (*models.QueryExecutionPlan, error) {
 	root := a.Root
 
-	if root.canBeExecutedAsQuery(info) {
+	var qci queryCalcInfo
+	if root.canBeExecutedAsQuery(info, &qci) {
 		ke, err := root.calcQueryForQuery(info)
 		if err != nil {
 			return nil, err
