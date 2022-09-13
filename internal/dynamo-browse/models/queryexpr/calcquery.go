@@ -5,12 +5,10 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
-func (a *astExpr) calcQuery(info *models.TableInfo) (*models.QueryExecutionPlan, error) {
-	root := a.Root
-
+func (a *irDisjunction) calcQuery(info *models.TableInfo) (*models.QueryExecutionPlan, error) {
 	var qci queryCalcInfo
-	if root.canBeExecutedAsQuery(info, &qci) {
-		ke, err := root.calcQueryForQuery(info)
+	if a.canBeExecutedAsQuery(info, &qci) {
+		ke, err := a.calcQueryForQuery(info)
 		if err != nil {
 			return nil, err
 		}
@@ -29,7 +27,7 @@ func (a *astExpr) calcQuery(info *models.TableInfo) (*models.QueryExecutionPlan,
 		}, nil
 	}
 
-	cb, err := root.calcQueryForScan(info)
+	cb, err := a.calcQueryForScan(info)
 	if err != nil {
 		return nil, err
 	}

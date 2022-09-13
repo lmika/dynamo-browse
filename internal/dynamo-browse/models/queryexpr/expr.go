@@ -7,7 +7,12 @@ type QueryExpr struct {
 }
 
 func (md *QueryExpr) Plan(tableInfo *models.TableInfo) (*models.QueryExecutionPlan, error) {
-	return md.ast.calcQuery(tableInfo)
+	ir, err := md.ast.evalToIR(tableInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return ir.calcQuery(tableInfo)
 }
 
 func (md *QueryExpr) String() string {

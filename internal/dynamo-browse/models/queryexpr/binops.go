@@ -6,64 +6,76 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *astBinOp) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	// If this is the partition key, then the op must be equals
-	if a.Name == info.Keys.PartitionKey && a.Op == "=" {
-		return qci.addKey(info, a.Name)
+func (a *astBinOp) evalToIR(info *models.TableInfo) (irAtom, error) {
+	v, err := a.Value.goValue()
+	if err != nil {
+		return nil, err
 	}
 
-	// If this is sort key, then the op must be equals (and others)
-	if a.Name == info.Keys.SortKey && (a.Op == "=" || a.Op == "^=") {
-		return qci.addKey(info, a.Name)
+	switch a.Op {
+	case "=":
+		return irFieldEq{name: a.Name, value: v}, nil
+	case "^=":
+		strValue, isStrValue := v.(string)
+		if !isStrValue {
+			return nil, errors.New("operand '^=' must be string")
+		}
+		return irFieldBeginsWith{name: a.Name, prefix: strValue}, nil
+	}
+
+	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
+}
+
+func (a *astBinOp) String() string {
+	return a.Name + a.Op + a.Value.String()
+}
+
+type irFieldEq struct {
+	name  string
+	value any
+}
+
+func (a irFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	if a.name == info.Keys.PartitionKey || a.name == info.Keys.SortKey {
+		return qci.addKey(info, a.name)
 	}
 
 	return false
 }
 
-func (a *astBinOp) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	v, err := a.Value.goValue()
-	if err != nil {
-		return expression.ConditionBuilder{}, err
-	}
-
-	switch a.Op {
-	case "=":
-		return expression.Name(a.Name).Equal(expression.Value(v)), nil
-	case "^=":
-		strValue, isStrValue := v.(string)
-		if !isStrValue {
-			return expression.ConditionBuilder{}, errors.New("operand '^=' must be string")
-		}
-		return expression.Name(a.Name).BeginsWith(strValue), nil
-	}
-
-	return expression.ConditionBuilder{}, errors.Errorf("unrecognised operator: %v", a.Op)
+func (a irFieldEq) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	return expression.Name(a.name).Equal(expression.Value(a.value)), nil
 }
 
-func (a *astBinOp) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	v, err := a.Value.goValue()
-	if err != nil {
-		return expression.KeyConditionBuilder{}, err
-	}
-
-	switch a.Op {
-	case "=":
-		return expression.Key(a.Name).Equal(expression.Value(v)), nil
-	case "^=":
-		strValue, isStrValue := v.(string)
-		if !isStrValue {
-			return expression.KeyConditionBuilder{}, errors.New("operand '^=' must be string")
-		}
-		return expression.Key(a.Name).BeginsWith(strValue), nil
-	}
-
-	return expression.KeyConditionBuilder{}, errors.Errorf("unrecognised operator: %v", a.Op)
+func (a irFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	return expression.Key(a.name).Equal(expression.Value(a.value)), nil
 }
 
-func (a *astBinOp) queryKeyName() string {
-	return a.Name
+func (a irFieldEq) operandFieldName() string {
+	return a.name
 }
 
-func (a *astBinOp) String() string {
-	return a.Name + a.Op + a.Value.String()
+type irFieldBeginsWith struct {
+	name   string
+	prefix string
+}
+
+func (a irFieldBeginsWith) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	if a.name == info.Keys.SortKey {
+		return qci.addKey(info, a.name)
+	}
+
+	return false
+}
+
+func (a irFieldBeginsWith) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	return expression.Name(a.name).BeginsWith(a.prefix), nil
+}
+
+func (a irFieldBeginsWith) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	return expression.Key(a.name).BeginsWith(a.prefix), nil
+}
+
+func (a irFieldBeginsWith) operandFieldName() string {
+	return a.name
 }

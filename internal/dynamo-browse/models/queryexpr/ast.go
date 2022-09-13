@@ -2,6 +2,7 @@ package queryexpr
 
 import (
 	"github.com/alecthomas/participle/v2"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
 
@@ -10,6 +11,10 @@ import (
 
 type astExpr struct {
 	Root *astDisjunction `parser:"@@"`
+}
+
+func (a *astExpr) evalToIR(tableInfo *models.TableInfo) (*irDisjunction, error) {
+	return a.Root.evalToIR(tableInfo)
 }
 
 type astDisjunction struct {
