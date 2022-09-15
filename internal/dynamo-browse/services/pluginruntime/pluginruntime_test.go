@@ -9,22 +9,8 @@ import (
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
 	"github.com/lmika/audax/test/testworkspace"
-	"github.com/stretchr/testify/assert"
 	"testing"
 )
-
-func TestPluginRuntime_MissingCommand(t *testing.T) {
-	srv := setupTestService(t)
-
-	pluginChan, err := srv.LoadScript("test.js", `
-		console.log("Hello, world");
-	`)
-	assert.NoError(t, err)
-
-	plugin, err := (<-pluginChan).Get()
-	assert.NoError(t, err)
-	_ = plugin
-}
 
 type testService struct {
 	*pluginruntime.Service

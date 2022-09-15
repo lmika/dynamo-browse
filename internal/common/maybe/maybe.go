@@ -20,3 +20,8 @@ func (m Maybe[T]) Get() (T, error) {
 	}
 	return m.val, nil
 }
+
+func (m Maybe[T]) Err() error {
+	_, err := m.Get()
+	return err
+}
