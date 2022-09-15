@@ -5,6 +5,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
 	"github.com/dop251/goja_nodejs/require"
+	"github.com/lmika/audax/internal/common/maybe"
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
@@ -41,6 +42,7 @@ func New(
 	srv.registry = new(require.Registry)
 	srv.registry.RegisterNativeModule("audax:dynamo-browse/session", audaxDynamoSession(srv))
 	srv.registry.RegisterNativeModule("audax:dynamo-browse/ui", audaxDynamoUI(srv))
+	srv.registry.RegisterNativeModule("audax:dynamo-browse/ext", audaxDynamoExt(srv))
 	srv.registry.RegisterNativeModule("audax:x/exec", jsExecModule())
 
 	srv.eventLoop = eventloop.NewEventLoop(eventloop.WithRegistry(srv.registry))
@@ -62,29 +64,39 @@ func (s *Service) Start() {
 	s.eventLoop.Start()
 }
 
-func (s *Service) Load(filename string) (*Plugin, error) {
+func (s *Service) Load(filename string) (chan maybe.Maybe[*Plugin], error) {
 	f, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to load plugin %v", filename)
 	}
 
-	pgrm, err := goja.Compile(filename, string(f), true)
+	return s.LoadScript(filename, string(f))
+}
+
+func (s *Service) LoadScript(filename string, code string) (chan maybe.Maybe[*Plugin], error) {
+	pgrm, err := goja.Compile(filename, code, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "compile error %v", filename)
 	}
 
-	//rt := goja.New()
-	//s.registry.Enable(rt)
-	//console.Enable(rt)
+	pluginRet := make(chan maybe.Maybe[*Plugin])
 
 	plugin := &Plugin{pgrm: pgrm}
 	s.eventLoop.RunOnLoop(func(rt *goja.Runtime) {
 		if err := plugin.Run(rt); err != nil {
-			log.Printf("error: %v", err)
+			select {
+			case pluginRet <- maybe.Err[*Plugin](err):
+			default:
+			}
+		}
+
+		select {
+		case pluginRet <- maybe.Just(plugin):
+		default:
 		}
 	})
 
-	return nil, nil
+	return pluginRet, nil
 }
 
 func (s *Service) MissingCommand(name string) commandctrl.Command {

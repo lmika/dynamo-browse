@@ -4,7 +4,6 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/common/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
@@ -12,6 +11,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
+	"github.com/lmika/audax/test/testworkspace"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
@@ -21,7 +21,7 @@ import (
 func TestTableReadController_InitTable(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testworkspace.New(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
@@ -48,7 +48,7 @@ func TestTableReadController_InitTable(t *testing.T) {
 func TestTableReadController_ListTables(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testworkspace.New(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
@@ -73,7 +73,7 @@ func TestTableReadController_ListTables(t *testing.T) {
 func TestTableReadController_Rescan(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testworkspace.New(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
@@ -111,7 +111,7 @@ func TestTableReadController_Rescan(t *testing.T) {
 func TestTableReadController_ExportCSV(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testworkspace.New(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
@@ -150,7 +150,7 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 func TestTableReadController_Query(t *testing.T) {
 	client := testdynamo.SetupTestTable(t, testData)
 
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testworkspace.New(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
@@ -197,18 +197,19 @@ func tempFile(t *testing.T) string {
 	return tempFile.Name()
 }
 
-func testWorkspace(t *testing.T) *workspaces.Workspace {
-	wsTempFile := tempFile(t)
-
-	wsManager := workspaces.New(workspaces.MetaInfo{Command: "dynamo-browse"})
-	ws, err := wsManager.Open(wsTempFile)
-	if err != nil {
-		t.Fatalf("cannot create workspace manager: %v", err)
-	}
-	t.Cleanup(func() { ws.Close() })
-
-	return ws
-}
+//
+//func testWorkspace(t *testing.T) *workspaces.Workspace {
+//	wsTempFile := tempFile(t)
+//
+//	wsManager := workspaces.New(workspaces.MetaInfo{Command: "dynamo-browse"})
+//	ws, err := wsManager.Open(wsTempFile)
+//	if err != nil {
+//		t.Fatalf("cannot create workspace manager: %v", err)
+//	}
+//	t.Cleanup(func() { ws.Close() })
+//
+//	return ws
+//}
 
 func invokeCommand(t *testing.T, msg tea.Msg) tea.Msg {
 	err, isErr := msg.(events.ErrorMsg)
