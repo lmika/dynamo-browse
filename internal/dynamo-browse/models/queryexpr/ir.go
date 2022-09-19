@@ -5,14 +5,6 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
-//type irDisjunction struct {
-//	conj []*irConjunction
-//}
-
-//type irConjunction struct {
-//	atoms []irAtom
-//}
-
 type irAtom interface {
 	// operandFieldName returns the field that this atom operates on.  For example,
 	// if this IR node represents 'a = "b"', this should return "a".
@@ -28,13 +20,3 @@ type irAtom interface {
 	// calcQueryForScan returns the condition builder for this atom to include in a scan
 	calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error)
 }
-
-//type irFieldEq struct {
-//	name  string
-//	value any
-//}
-//
-//type irFieldBeginsWith struct {
-//	name   string
-//	prefix string
-//}
