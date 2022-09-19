@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/lmika/audax/internal/common/sliceutils"
+	"log"
 	"strings"
 
 	"github.com/lmika/audax/internal/dynamo-browse/models"
@@ -33,66 +34,39 @@ func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*model
 }
 
 func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable) (*models.ResultSet, error) {
-	var filterExpr *expression.Expression
-
+	var (
+		filterExpr *expression.Expression
+		runAsQuery bool
+		err        error
+	)
 	if expr != nil {
 		plan, err := expr.Plan(tableInfo)
 		if err != nil {
 			return nil, err
 		}
 
-		// TEMP
-		if plan.CanQuery {
-			return nil, errors.Errorf("queries not yet supported")
-		}
-
+		runAsQuery = plan.CanQuery
 		filterExpr = &plan.Expression
 	}
 
-	results, err := s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, 1000)
+	var results []models.Item
+	if runAsQuery {
+		log.Printf("executing query")
+		results, err = s.provider.QueryItems(ctx, tableInfo.Name, filterExpr, 1000)
+	} else {
+		log.Printf("executing scan")
+		results, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, 1000)
+	}
+
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
-
-	// Get the columns
-	//seenColumns := make(map[string]int)
-	//seenColumns[tableInfo.Keys.PartitionKey] = 0
-	//if tableInfo.Keys.SortKey != "" {
-	//	seenColumns[tableInfo.Keys.SortKey] = 1
-	//}
-	//
-	//for _, definedAttribute := range tableInfo.DefinedAttributes {
-	//	if _, seen := seenColumns[definedAttribute]; !seen {
-	//		seenColumns[definedAttribute] = len(seenColumns)
-	//	}
-	//}
-	//
-	//otherColsRank := len(seenColumns)
-	//for _, result := range results {
-	//	for k := range result {
-	//		if _, isSeen := seenColumns[k]; !isSeen {
-	//			seenColumns[k] = otherColsRank
-	//		}
-	//	}
-	//}
-	//
-	//columns := make([]string, 0, len(seenColumns))
-	//for k := range seenColumns {
-	//	columns = append(columns, k)
-	//}
-	//sort.Slice(columns, func(i, j int) bool {
-	//	if seenColumns[columns[i]] == seenColumns[columns[j]] {
-	//		return columns[i] < columns[j]
-	//	}
-	//	return seenColumns[columns[i]] < seenColumns[columns[j]]
-	//})
 
 	models.Sort(results, tableInfo)
 
 	resultSet := &models.ResultSet{
 		TableInfo: tableInfo,
 		Query:     expr,
-		//Columns:   columns,
 	}
 	resultSet.SetItems(results)
 	resultSet.RefreshColumns()

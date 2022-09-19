@@ -7,9 +7,38 @@ type QueryExpr struct {
 }
 
 func (md *QueryExpr) Plan(tableInfo *models.TableInfo) (*models.QueryExecutionPlan, error) {
-	return md.ast.calcQuery(tableInfo)
+	ir, err := md.ast.evalToIR(tableInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return ir.calcQuery(tableInfo)
 }
 
 func (md *QueryExpr) String() string {
 	return md.ast.String()
+}
+
+func (a *astExpr) String() string {
+	return a.Root.String()
+}
+
+type queryCalcInfo struct {
+	seenKeys map[string]struct{}
+}
+
+func (qc *queryCalcInfo) addKey(tableInfo *models.TableInfo, key string) bool {
+	if tableInfo.Keys.PartitionKey != key && tableInfo.Keys.SortKey != key {
+		return false
+	}
+
+	if qc.seenKeys == nil {
+		qc.seenKeys = make(map[string]struct{})
+	}
+	if _, hasSeenKey := qc.seenKeys[key]; hasSeenKey {
+		return false
+	}
+
+	qc.seenKeys[key] = struct{}{}
+	return true
 }
