@@ -9,6 +9,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/colselector"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -67,7 +68,8 @@ func NewModel(
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
-	itemEdit := dynamoitemedit.NewModel(mainView)
+	colSelector := colselector.New(mainView)
+	itemEdit := dynamoitemedit.NewModel(colSelector)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
