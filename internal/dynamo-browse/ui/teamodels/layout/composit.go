@@ -4,6 +4,8 @@ import (
 	"bufio"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
+	"github.com/muesli/ansi"
 	"github.com/muesli/reflow/truncate"
 	"strings"
 )
@@ -68,10 +70,11 @@ func (c *Compositor) View() string {
 				compositeOutput.WriteString(lipgloss.PlaceHorizontal(c.foreW, lipgloss.Left, displayLine, lipgloss.WithWhitespaceChars(" ")))
 			}
 
-			rightStr := truncate.String(line, uint(c.foreX+c.foreW))
+			//rightStr := truncate.String(line, uint(c.foreX+c.foreW))
+			rightStr := c.renderBackgroundUpTo(line, c.foreX+c.foreW)
 
 			// Need to find a way to cut the string here
-			compositeOutput.WriteString(line[len(rightStr):])
+			compositeOutput.WriteString(rightStr)
 		} else {
 			compositeOutput.WriteString(line)
 		}
@@ -87,4 +90,28 @@ func (c *Compositor) Resize(w, h int) ResizingModel {
 		c.foreground = c.foreground.Resize(c.foreW, c.foreH)
 	}
 	return c
+}
+
+func (c *Compositor) renderBackgroundUpTo(line string, x int) string {
+	ansiSequences := new(strings.Builder)
+	posX := 0
+	inAnsi := false
+
+	for i, c := range line {
+		if c == ansi.Marker {
+			ansiSequences.WriteRune(c)
+			inAnsi = true
+		} else if inAnsi {
+			ansiSequences.WriteRune(c)
+			if ansi.IsTerminator(c) {
+				inAnsi = false
+			}
+		} else {
+			if posX >= x {
+				return ansiSequences.String() + line[i:]
+			}
+			posX += runewidth.RuneWidth(c)
+		}
+	}
+	return ""
 }
