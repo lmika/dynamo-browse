@@ -13,7 +13,7 @@ import (
 type Compositor struct {
 	background tea.Model
 
-	foreground   ResizingModel
+	foreground   tea.Model
 	foreX, foreY int
 	foreW, foreH int
 }
@@ -29,9 +29,12 @@ func (c *Compositor) Init() tea.Cmd {
 }
 
 func (c *Compositor) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// TODO: allow the compositor the
-	newM, cmd := c.background.Update(msg)
-	c.background = newM
+	var cmd tea.Cmd
+	if c.foreground != nil {
+		c.foreground, cmd = c.foreground.Update(msg)
+	} else {
+		c.background, cmd = c.background.Update(msg)
+	}
 	return c, cmd
 }
 
@@ -70,7 +73,6 @@ func (c *Compositor) View() string {
 				compositeOutput.WriteString(lipgloss.PlaceHorizontal(c.foreW, lipgloss.Left, displayLine, lipgloss.WithWhitespaceChars(" ")))
 			}
 
-			//rightStr := truncate.String(line, uint(c.foreX+c.foreW))
 			rightStr := c.renderBackgroundUpTo(line, c.foreX+c.foreW)
 
 			// Need to find a way to cut the string here
@@ -87,7 +89,7 @@ func (c *Compositor) View() string {
 func (c *Compositor) Resize(w, h int) ResizingModel {
 	c.background = Resize(c.background, w, h)
 	if c.foreground != nil {
-		c.foreground = c.foreground.Resize(c.foreW, c.foreH)
+		c.foreground = Resize(c.foreground, c.foreW, c.foreH)
 	}
 	return c
 }

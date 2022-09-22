@@ -68,7 +68,7 @@ func NewModel(
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
-	colSelector := colselector.New(mainView)
+	colSelector := colselector.New(mainView, defaultKeyMap.TableView)
 	itemEdit := dynamoitemedit.NewModel(colSelector)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
@@ -200,11 +200,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, m.keyMap.Mark):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
-					return m, func() tea.Msg { return m.tableWriteController.ToggleMark(idx) }
+					return m, events.SetTeaMessage(m.tableWriteController.ToggleMark(idx))
 				}
 			case key.Matches(msg, m.keyMap.CopyItemToClipboard):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
-					return m, func() tea.Msg { return m.tableReadController.CopyItemToClipboard(idx) }
+					return m, events.SetTeaMessage(m.tableReadController.CopyItemToClipboard(idx))
 				}
 			case key.Matches(msg, m.keyMap.Rescan):
 				return m, m.tableReadController.Rescan
@@ -217,22 +217,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keyMap.ViewForward):
 				return m, m.tableReadController.ViewForward
 			case key.Matches(msg, m.keyMap.CycleLayoutForward):
-				return m, func() tea.Msg {
-					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)}
-				}
+				return m, events.SetTeaMessage(controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)})
 			case key.Matches(msg, m.keyMap.CycleLayoutBackwards):
-				return m, func() tea.Msg {
-					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)}
-				}
+				return m, events.SetTeaMessage(controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)})
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
+			case key.Matches(msg, m.keyMap.ShowColumnOverlay):
+				return m, events.SetTeaMessage(m.tableReadController.ShowColumnOverlay())
 			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
 			case key.Matches(msg, m.keyMap.PromptForTable):
-				return m, func() tea.Msg {
-					return m.tableReadController.ListTables()
-				}
+				return m, events.SetTeaMessage(m.tableReadController.ListTables())
 			case key.Matches(msg, m.keyMap.Quit):
 				return m, tea.Quit
 			}

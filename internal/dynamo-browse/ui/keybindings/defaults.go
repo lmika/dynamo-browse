@@ -25,6 +25,7 @@ func Default() *KeyBindings {
 			CycleLayoutForward:   key.NewBinding(key.WithKeys("w"), key.WithHelp("w", "cycle layout forward")),
 			CycleLayoutBackwards: key.NewBinding(key.WithKeys("W"), key.WithHelp("W", "cycle layout backward")),
 			PromptForCommand:     key.NewBinding(key.WithKeys(":"), key.WithHelp(":", "prompt for command")),
+			ShowColumnOverlay:    key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "show column overlay")),
 			Quit:                 key.NewBinding(key.WithKeys("ctrl+c", "esc"), key.WithHelp("ctrl+c/esc", "quit")),
 		},
 	}

@@ -60,3 +60,7 @@ type ResultSetUpdated struct {
 func (rs ResultSetUpdated) StatusMessage() string {
 	return rs.statusMessage
 }
+
+type ShowColumnOverlay struct {
+	ResultSet *models.ResultSet
+}
