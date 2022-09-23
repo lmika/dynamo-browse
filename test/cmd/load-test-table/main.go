@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/google/uuid"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
@@ -18,9 +18,13 @@ import (
 )
 
 func main() {
+	var flagSeed = flag.Int64("seed", 0, "random seed to use")
+	var flagCount = flag.Int("count", 500, "number of items to produce")
+	flag.Parse()
+
 	ctx := context.Background()
 	tableName := "business-addresses"
-	totalItems := 500
+	totalItems := *flagCount
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -53,8 +57,11 @@ func main() {
 
 	_, _ = tableService, tableInfo
 
+	log.Printf("using seed: %v", *flagSeed)
+	gofakeit.Seed(*flagSeed)
+
 	for i := 0; i < totalItems; i++ {
-		key := uuid.New().String()
+		key := gofakeit.UUID()
 		if err := tableService.Put(ctx, tableInfo, models.Item{
 			"pk":           &types.AttributeValueMemberS{Value: key},
 			"sk":           &types.AttributeValueMemberS{Value: key},
