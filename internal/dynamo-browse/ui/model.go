@@ -39,6 +39,7 @@ const (
 type Model struct {
 	tableReadController  *controllers.TableReadController
 	tableWriteController *controllers.TableWriteController
+	settingsController   *controllers.SettingsController
 	commandController    *commandctrl.CommandController
 	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
@@ -56,6 +57,7 @@ type Model struct {
 func NewModel(
 	rc *controllers.TableReadController,
 	wc *controllers.TableWriteController,
+	settingsController *controllers.SettingsController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
 	keyBindingController *controllers.KeyBindingController,
@@ -63,7 +65,7 @@ func NewModel(
 ) Model {
 	uiStyles := styles.DefaultStyles
 
-	dtv := dynamotableview.New(defaultKeyMap.TableView, uiStyles)
+	dtv := dynamotableview.New(defaultKeyMap.TableView, settingsController, uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	table "github.com/lmika/go-bubble-table"
+	"strings"
 )
 
 var (
@@ -21,29 +22,38 @@ var (
 		Background(lipgloss.Color("#4479ff"))
 )
 
+type Setting interface {
+	IsReadOnly() bool
+}
+
 type Model struct {
 	frameTitle frame.FrameTitle
 	table      table.Model
 	w, h       int
 	keyBinding *keybindings.TableKeyBinding
+	setting    Setting
 
 	// model state
-	colOffset int
-	rows      []table.Row
-	resultSet *models.ResultSet
+	isReadOnly bool
+	colOffset  int
+	rows       []table.Row
+	resultSet  *models.ResultSet
 }
 
-func New(keyBinding *keybindings.TableKeyBinding, uiStyles styles.Styles) *Model {
+func New(keyBinding *keybindings.TableKeyBinding, setting Setting, uiStyles styles.Styles) *Model {
 	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
 
 	frameTitle := frame.NewFrameTitle("No table", true, uiStyles.Frames)
+	isReadOnly := setting.IsReadOnly()
 
 	return &Model{
+		isReadOnly: isReadOnly,
 		frameTitle: frameTitle,
 		table:      tbl,
 		keyBinding: keyBinding,
+		setting:    setting,
 	}
 }
 
@@ -116,7 +126,13 @@ func (m *Model) Resize(w, h int) layout.ResizingModel {
 func (m *Model) updateTable() {
 	m.colOffset = 0
 
-	m.frameTitle.SetTitle("Table: " + m.resultSet.TableInfo.Name)
+	tableName := new(strings.Builder)
+	tableName.WriteString("Table: " + m.resultSet.TableInfo.Name)
+	if m.setting.IsReadOnly() {
+		tableName.WriteString(" [RO]")
+	}
+
+	m.frameTitle.SetTitle(tableName.String())
 	m.rebuildTable()
 }
 

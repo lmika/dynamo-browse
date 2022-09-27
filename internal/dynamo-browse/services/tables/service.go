@@ -12,12 +12,14 @@ import (
 )
 
 type Service struct {
-	provider TableProvider
+	provider   TableProvider
+	roProvider ROProvider
 }
 
-func NewService(provider TableProvider) *Service {
+func NewService(provider TableProvider, roProvider ROProvider) *Service {
 	return &Service{
-		provider: provider,
+		provider:   provider,
+		roProvider: roProvider,
 	}
 }
 
@@ -75,10 +77,18 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr 
 }
 
 func (s *Service) Put(ctx context.Context, tableInfo *models.TableInfo, item models.Item) error {
+	if err := s.assertReadWrite(); err != nil {
+		return err
+	}
+
 	return s.provider.PutItem(ctx, tableInfo.Name, item)
 }
 
 func (s *Service) PutItemAt(ctx context.Context, resultSet *models.ResultSet, index int) error {
+	if err := s.assertReadWrite(); err != nil {
+		return err
+	}
+
 	item := resultSet.Items()[index]
 	if err := s.provider.PutItem(ctx, resultSet.TableInfo.Name, item); err != nil {
 		return err
@@ -90,6 +100,10 @@ func (s *Service) PutItemAt(ctx context.Context, resultSet *models.ResultSet, in
 }
 
 func (s *Service) PutSelectedItems(ctx context.Context, resultSet *models.ResultSet, markedItems []models.ItemIndex) error {
+	if err := s.assertReadWrite(); err != nil {
+		return err
+	}
+
 	if len(markedItems) == 0 {
 		return nil
 	}
@@ -108,6 +122,10 @@ func (s *Service) PutSelectedItems(ctx context.Context, resultSet *models.Result
 }
 
 func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items []models.Item) error {
+	if err := s.assertReadWrite(); err != nil {
+		return err
+	}
+
 	for _, item := range items {
 		if err := s.provider.DeleteItem(ctx, tableInfo.Name, item.KeyValue(tableInfo)); err != nil {
 			return errors.Wrapf(err, "cannot delete item")
@@ -118,6 +136,16 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 
 func (s *Service) ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable) (*models.ResultSet, error) {
 	return s.doScan(ctx, tableInfo, expr)
+}
+
+func (s *Service) assertReadWrite() error {
+	b, err := s.roProvider.IsReadOnly()
+	if err != nil {
+		return err
+	} else if b {
+		return models.ErrReadOnly
+	}
+	return nil
 }
 
 // TODO: move into a new service

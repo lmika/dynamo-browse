@@ -12,3 +12,7 @@ type TableReadService interface {
 	Filter(resultSet *models.ResultSet, filter string) *models.ResultSet
 	ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, query models.Queryable) (*models.ResultSet, error)
 }
+
+type SettingsProvider interface {
+	IsReadOnly() (bool, error)
+}

@@ -17,13 +17,15 @@ type TableWriteController struct {
 	state                *State
 	tableService         *tables.Service
 	tableReadControllers *TableReadController
+	settingProvider      SettingsProvider
 }
 
-func NewTableWriteController(state *State, tableService *tables.Service, tableReadControllers *TableReadController) *TableWriteController {
+func NewTableWriteController(state *State, tableService *tables.Service, tableReadControllers *TableReadController, settingProvider SettingsProvider) *TableWriteController {
 	return &TableWriteController{
 		state:                state,
 		tableService:         tableService,
 		tableReadControllers: tableReadControllers,
+		settingProvider:      settingProvider,
 	}
 }
 
@@ -36,6 +38,10 @@ func (twc *TableWriteController) ToggleMark(idx int) tea.Msg {
 }
 
 func (twc *TableWriteController) NewItem() tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	// Work out which keys we need to prompt for
 	rs := twc.state.ResultSet()
 
@@ -383,6 +389,16 @@ func (twc *TableWriteController) DeleteMarked() tea.Msg {
 			return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query, false)
 		},
 	}
+}
+
+func (twc *TableWriteController) assertReadWrite() error {
+	b, err := twc.settingProvider.IsReadOnly()
+	if err != nil {
+		return err
+	} else if b {
+		return models.ErrReadOnly
+	}
+	return nil
 }
 
 func applyToN(prefix string, n int, singular, plural, suffix string) string {

@@ -24,11 +24,11 @@ func TestTableWriteController_NewItem(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		invokeCommand(t, readController.Init())
 		assert.Len(t, state.ResultSet().Items(), 3)
@@ -46,6 +46,29 @@ func TestTableWriteController_NewItem(t *testing.T) {
 		assert.Equal(t, "sk-value", sk)
 		assert.True(t, newResultSet.IsNew(3))
 		assert.True(t, newResultSet.IsDirty(3))
+	})
+
+	t.Run("should do nothing when in read-only mode", func(t *testing.T) {
+		client := testdynamo.SetupTestTable(t, testData)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: true})
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{isReadOnly: true})
+
+		invokeCommand(t, readController.Init())
+		assert.Len(t, state.ResultSet().Items(), 3)
+
+		// Prompt for keys
+		invokeCommandExpectingError(t, writeController.NewItem())
+
+		// Confirm no changes
+		invokeCommand(t, readController.Rescan())
+
+		newResultSet := state.ResultSet()
+		assert.Len(t, newResultSet.Items(), 3)
 	})
 }
 
@@ -88,11 +111,11 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 				client := testdynamo.SetupTestTable(t, testData)
 
 				provider := dynamo.NewProvider(client)
-				service := tables.NewService(provider)
+				service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 				state := controllers.NewState()
 				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-				writeController := controllers.NewTableWriteController(state, service, readController)
+				writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 				invokeCommand(t, readController.Init())
 				invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.UnsetItemType, scenario.attrKey), scenario.attrValue)
@@ -108,11 +131,11 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		invokeCommand(t, readController.Init())
 		invokeCommand(t, writeController.ToggleMark(0))
@@ -128,7 +151,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		scenarios := []struct {
 			attrType  models.ItemType
@@ -166,7 +189,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 			t.Run(fmt.Sprintf("should change the value of a field to type %v", scenario.attrType), func(t *testing.T) {
 				state := controllers.NewState()
 				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-				writeController := controllers.NewTableWriteController(state, service, readController)
+				writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 				invokeCommand(t, readController.Init())
 				before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
@@ -187,7 +210,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 			t.Run(fmt.Sprintf("should change value of nested field to type %v", scenario.attrType), func(t *testing.T) {
 				state := controllers.NewState()
 				readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-				writeController := controllers.NewTableWriteController(state, service, readController)
+				writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 				invokeCommand(t, readController.Init())
 
@@ -221,12 +244,12 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
+	service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 	t.Run("should delete top level attribute", func(t *testing.T) {
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		invokeCommand(t, readController.Init())
 		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("age")
@@ -242,7 +265,7 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 	t.Run("should delete attribute of map", func(t *testing.T) {
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		invokeCommand(t, readController.Init())
 
@@ -270,11 +293,11 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		// Read the table
 		invokeCommand(t, readController.Init())
@@ -297,11 +320,11 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		// Read the table
 		invokeCommand(t, readController.Init())
@@ -328,11 +351,11 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		// Read the table
 		invokeCommand(t, readController.Init())
@@ -353,11 +376,11 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		invokeCommand(t, readController.Init())
 
@@ -381,11 +404,11 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		invokeCommand(t, readController.Init())
 
@@ -417,11 +440,11 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		invokeCommand(t, readController.Init())
 
@@ -459,11 +482,11 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		// Read the table
 		invokeCommand(t, readController.Init())
@@ -485,11 +508,11 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		// Read the table
 		invokeCommand(t, readController.Init())
@@ -512,11 +535,11 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		// Read the table
 		invokeCommand(t, readController.Init())
@@ -538,11 +561,11 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: false})
 
 		state := controllers.NewState()
 		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-		writeController := controllers.NewTableWriteController(state, service, readController)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{})
 
 		// Read the table
 		invokeCommand(t, readController.Init())
@@ -554,4 +577,12 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
 		invokeCommandExpectingError(t, writeController.NoisyTouchItem(0))
 	})
+}
+
+type mockedSetting struct {
+	isReadOnly bool
+}
+
+func (ms mockedSetting) IsReadOnly() (bool, error) {
+	return ms.isReadOnly, nil
 }
