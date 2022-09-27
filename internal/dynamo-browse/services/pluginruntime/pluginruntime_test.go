@@ -1,6 +1,7 @@
 package pluginruntime_test
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
@@ -16,7 +17,7 @@ type testService struct {
 	*pluginruntime.Service
 }
 
-func setupTestService(t *testing.T) *testService {
+func setupTestService(t *testing.T, msgs chan tea.Msg) *testService {
 	client := testdynamo.SetupTestTable(t, testData)
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testworkspace.New(t))
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
@@ -25,6 +26,9 @@ func setupTestService(t *testing.T) *testService {
 	service := tables.NewService(dynamo.NewProvider(client))
 
 	srv := pluginruntime.New(state, service, workspaceService)
+	srv.SetMessageSender(func(msg tea.Msg) {
+		msgs <- msg
+	})
 	srv.Start()
 
 	return &testService{srv}
