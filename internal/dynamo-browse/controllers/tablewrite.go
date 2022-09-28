@@ -232,6 +232,10 @@ func (twc *TableWriteController) DeleteAttribute(idx int, key string) tea.Msg {
 }
 
 func (twc *TableWriteController) PutItem(idx int) tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	resultSet := twc.state.ResultSet()
 	if !resultSet.IsDirty(idx) {
 		return events.Error(errors.New("item is not dirty"))
@@ -253,6 +257,10 @@ func (twc *TableWriteController) PutItem(idx int) tea.Msg {
 }
 
 func (twc *TableWriteController) PutItems() tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	var (
 		markedItemCount int
 	)
@@ -315,6 +323,10 @@ func (twc *TableWriteController) PutItems() tea.Msg {
 }
 
 func (twc *TableWriteController) TouchItem(idx int) tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	resultSet := twc.state.ResultSet()
 	if resultSet.IsDirty(idx) {
 		return events.Error(errors.New("cannot touch dirty items"))
@@ -336,6 +348,10 @@ func (twc *TableWriteController) TouchItem(idx int) tea.Msg {
 }
 
 func (twc *TableWriteController) NoisyTouchItem(idx int) tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	resultSet := twc.state.ResultSet()
 	if resultSet.IsDirty(idx) {
 		return events.Error(errors.New("cannot noisy touch dirty items"))
@@ -365,6 +381,10 @@ func (twc *TableWriteController) NoisyTouchItem(idx int) tea.Msg {
 }
 
 func (twc *TableWriteController) DeleteMarked() tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	resultSet := twc.state.ResultSet()
 	markedItems := resultSet.MarkedItems()
 

@@ -365,6 +365,37 @@ func TestTableWriteController_PutItem(t *testing.T) {
 
 		invokeCommandExpectingError(t, writeController.PutItem(0))
 	})
+
+	t.Run("should not put the selected item if in read-only mode", func(t *testing.T) {
+		client := testdynamo.SetupTestTable(t, testData)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: true})
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{isReadOnly: true})
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item but do not put it
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
+		invokeCommandExpectingError(t, writeController.PutItem(0))
+
+		current, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "a new value", current)
+		assert.True(t, state.ResultSet().IsDirty(0))
+
+		// Rescan the table to confirm item is not modified
+		invokeCommandWithPrompt(t, readController.Rescan(), "y")
+		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", after)
+		assert.False(t, state.ResultSet().IsDirty(0))
+	})
 }
 
 func TestTableWriteController_PutItems(t *testing.T) {
@@ -436,7 +467,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		assert.False(t, state.ResultSet().IsDirty(2))
 	})
 
-	t.Run("do not put marked items which are not diry", func(t *testing.T) {
+	t.Run("do not put marked items which are not dirty", func(t *testing.T) {
 		client := testdynamo.SetupTestTable(t, testData)
 
 		provider := dynamo.NewProvider(client)
@@ -454,6 +485,42 @@ func TestTableWriteController_PutItems(t *testing.T) {
 		invokeCommand(t, writeController.ToggleMark(1))
 
 		invokeCommand(t, writeController.PutItems())
+
+		// Verify dirty items are unchanged
+		assert.Equal(t, "a new value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "another new value", state.ResultSet().Items()[2]["alpha"].(*types.AttributeValueMemberS).Value)
+
+		assert.True(t, state.ResultSet().IsDirty(0))
+		assert.True(t, state.ResultSet().IsDirty(2))
+
+		// Rescan the table and verify dirty items were not written
+		invokeCommandWithPrompt(t, readController.Rescan(), "y")
+
+		assert.Equal(t, "This is some value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Nil(t, state.ResultSet().Items()[2]["alpha"])
+
+		assert.False(t, state.ResultSet().IsDirty(0))
+		assert.False(t, state.ResultSet().IsDirty(2))
+	})
+
+	t.Run("do nothing if in read-only mode", func(t *testing.T) {
+		client := testdynamo.SetupTestTable(t, testData)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: true})
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{isReadOnly: true})
+
+		invokeCommand(t, readController.Init())
+
+		// Modify the item and put it
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
+		invokeCommandWithPrompt(t, writeController.SetAttributeValue(2, models.StringItemType, "alpha"), "another new value")
+		invokeCommand(t, writeController.ToggleMark(0))
+
+		invokeCommandExpectingError(t, writeController.PutItems())
 
 		// Verify dirty items are unchanged
 		assert.Equal(t, "a new value", state.ResultSet().Items()[0]["alpha"].(*types.AttributeValueMemberS).Value)
@@ -524,6 +591,32 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
 		invokeCommandExpectingError(t, writeController.TouchItem(0))
 	})
+
+	t.Run("should not put the selected item if in read-only mode", func(t *testing.T) {
+		client := testdynamo.SetupTestTable(t, testData)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: true})
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{isReadOnly: true})
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item and put it
+		invokeCommandExpectingError(t, writeController.TouchItem(0))
+
+		// Rescan the table
+		invokeCommand(t, readController.Rescan())
+		after, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", after)
+		assert.False(t, state.ResultSet().IsDirty(0))
+	})
 }
 
 func TestTableWriteController_NoisyTouchItem(t *testing.T) {
@@ -577,6 +670,97 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 		invokeCommandWithPrompt(t, writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
 		invokeCommandExpectingError(t, writeController.NoisyTouchItem(0))
 	})
+
+	t.Run("should not put the selected item if in read-only mode", func(t *testing.T) {
+		client := testdynamo.SetupTestTable(t, testData)
+
+		provider := dynamo.NewProvider(client)
+		service := tables.NewService(provider, mockedSetting{isReadOnly: true})
+
+		state := controllers.NewState()
+		readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
+		writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{isReadOnly: true})
+
+		// Read the table
+		invokeCommand(t, readController.Init())
+		before, _ := state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", before)
+		assert.False(t, state.ResultSet().IsDirty(0))
+
+		// Modify the item and put it
+		invokeCommandExpectingError(t, writeController.NoisyTouchItem(0))
+	})
+}
+
+func TestTableWriteController_DeleteMarked(t *testing.T) {
+	t.Run("should delete marked items", func(t *testing.T) {
+		srv := newService(t, false)
+
+		// Read the table
+		invokeCommand(t, srv.readController.Init())
+		assert.Len(t, srv.state.ResultSet().Items(), 3)
+
+		// Mark some items
+		invokeCommand(t, srv.writeController.ToggleMark(0))
+		invokeCommand(t, srv.writeController.ToggleMark(2))
+
+		// Delete it
+		invokeCommandWithPrompt(t, srv.writeController.DeleteMarked(), "y")
+
+		// Rescan and confirm marked items are deleted
+		invokeCommand(t, srv.readController.Init())
+		assert.Len(t, srv.state.ResultSet().Items(), 1)
+		after, _ := srv.state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is another some value", after)
+	})
+
+	t.Run("should not delete marked items if in read-only mode", func(t *testing.T) {
+		srv := newService(t, true)
+
+		// Read the table
+		invokeCommand(t, srv.readController.Init())
+		assert.Len(t, srv.state.ResultSet().Items(), 3)
+
+		// Mark some items
+		invokeCommand(t, srv.writeController.ToggleMark(0))
+		invokeCommand(t, srv.writeController.ToggleMark(2))
+
+		// Delete it
+		invokeCommandExpectingError(t, srv.writeController.DeleteMarked())
+
+		// Rescan and confirm marked items are not deleted
+		invokeCommand(t, srv.readController.Init())
+		assert.Len(t, srv.state.ResultSet().Items(), 3)
+		after, _ := srv.state.ResultSet().Items()[0].AttributeValueAsString("alpha")
+		assert.Equal(t, "This is some value", after)
+	})
+}
+
+type services struct {
+	state           *controllers.State
+	readController  *controllers.TableReadController
+	writeController *controllers.TableWriteController
+}
+
+func newService(t *testing.T, isReadOnly bool) *services {
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
+
+	client := testdynamo.SetupTestTable(t, testData)
+
+	provider := dynamo.NewProvider(client)
+	service := tables.NewService(provider, mockedSetting{isReadOnly: isReadOnly})
+
+	state := controllers.NewState()
+	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
+	writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{isReadOnly: isReadOnly})
+
+	return &services{
+		state:           state,
+		readController:  readController,
+		writeController: writeController,
+	}
 }
 
 type mockedSetting struct {
