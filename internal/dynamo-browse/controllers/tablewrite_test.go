@@ -565,9 +565,10 @@ func TestTableWriteController_DeleteMarked(t *testing.T) {
 }
 
 type services struct {
-	state           *controllers.State
-	readController  *controllers.TableReadController
-	writeController *controllers.TableWriteController
+	state              *controllers.State
+	readController     *controllers.TableReadController
+	writeController    *controllers.TableWriteController
+	settingsController *controllers.SettingsController
 }
 
 func newService(t *testing.T, isReadOnly bool) *services {
@@ -577,17 +578,20 @@ func newService(t *testing.T, isReadOnly bool) *services {
 
 	client := testdynamo.SetupTestTable(t, testData)
 
+	settingProvider := &mockedSetting{isReadOnly: isReadOnly}
 	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider, mockedSetting{isReadOnly: isReadOnly})
+	service := tables.NewService(provider, settingProvider)
 
 	state := controllers.NewState()
 	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-	writeController := controllers.NewTableWriteController(state, service, readController, mockedSetting{isReadOnly: isReadOnly})
+	writeController := controllers.NewTableWriteController(state, service, readController, settingProvider)
+	settingsController := controllers.NewSettingsController(settingProvider)
 
 	return &services{
-		state:           state,
-		readController:  readController,
-		writeController: writeController,
+		state:              state,
+		readController:     readController,
+		writeController:    writeController,
+		settingsController: settingsController,
 	}
 }
 
@@ -595,6 +599,11 @@ type mockedSetting struct {
 	isReadOnly bool
 }
 
-func (ms mockedSetting) IsReadOnly() (bool, error) {
+func (ms *mockedSetting) SetReadOnly(ro bool) error {
+	ms.isReadOnly = ro
+	return nil
+}
+
+func (ms *mockedSetting) IsReadOnly() (bool, error) {
 	return ms.isReadOnly, nil
 }

@@ -67,6 +67,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resultSet = msg.ResultSet
 		m.updateTable()
 		return m, m.postSelectedItemChanged
+	case controllers.SettingsUpdated:
+		m.updateTableHeading()
+		return m, nil
 	case tea.KeyMsg:
 		switch {
 		// Table nav
@@ -123,9 +126,7 @@ func (m *Model) Resize(w, h int) layout.ResizingModel {
 	return m
 }
 
-func (m *Model) updateTable() {
-	m.colOffset = 0
-
+func (m *Model) updateTableHeading() {
 	tableName := new(strings.Builder)
 	tableName.WriteString("Table: " + m.resultSet.TableInfo.Name)
 	if m.setting.IsReadOnly() {
@@ -133,6 +134,11 @@ func (m *Model) updateTable() {
 	}
 
 	m.frameTitle.SetTitle(tableName.String())
+}
+
+func (m *Model) updateTable() {
+	m.updateTableHeading()
+	m.colOffset = 0
 	m.rebuildTable()
 }
 

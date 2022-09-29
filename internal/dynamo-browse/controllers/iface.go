@@ -15,4 +15,5 @@ type TableReadService interface {
 
 type SettingsProvider interface {
 	IsReadOnly() (bool, error)
+	SetReadOnly(ro bool) error
 }

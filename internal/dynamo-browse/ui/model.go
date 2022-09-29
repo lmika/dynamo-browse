@@ -143,6 +143,15 @@ func NewModel(
 				}
 				return events.StatusMsg(s.String())
 			},
+			"set": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				switch len(args) {
+				case 1:
+					return settingsController.SetSetting(args[0], "")
+				case 2:
+					return settingsController.SetSetting(args[0], args[1])
+				}
+				return events.Error(errors.New("expected: settingName [value]"))
+			},
 			"rebind": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) != 2 {
 					return events.Error(errors.New("expected: bindingName newKey"))
