@@ -23,7 +23,7 @@ func setupTestService(t *testing.T, msgs chan tea.Msg) *testService {
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 
 	state := controllers.NewState()
-	service := tables.NewService(dynamo.NewProvider(client))
+	service := tables.NewService(dynamo.NewProvider(client), &mockedSetting{})
 
 	srv := pluginruntime.New(state, service, workspaceService)
 	srv.SetMessageSender(func(msg tea.Msg) {
@@ -85,4 +85,17 @@ var testData = []testdynamo.TestData{
 			},
 		},
 	},
+}
+
+type mockedSetting struct {
+	isReadOnly bool
+}
+
+func (ms *mockedSetting) SetReadOnly(ro bool) error {
+	ms.isReadOnly = ro
+	return nil
+}
+
+func (ms *mockedSetting) IsReadOnly() (bool, error) {
+	return ms.isReadOnly, nil
 }
