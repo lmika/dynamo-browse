@@ -22,3 +22,7 @@ func (a *astLiteralValue) goValue() (any, error) {
 	}
 	return s, nil
 }
+
+func (a *astLiteralValue) String() string {
+	return a.StringVal
+}

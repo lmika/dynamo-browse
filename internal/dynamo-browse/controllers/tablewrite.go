@@ -17,13 +17,15 @@ type TableWriteController struct {
 	state                *State
 	tableService         *tables.Service
 	tableReadControllers *TableReadController
+	settingProvider      SettingsProvider
 }
 
-func NewTableWriteController(state *State, tableService *tables.Service, tableReadControllers *TableReadController) *TableWriteController {
+func NewTableWriteController(state *State, tableService *tables.Service, tableReadControllers *TableReadController, settingProvider SettingsProvider) *TableWriteController {
 	return &TableWriteController{
 		state:                state,
 		tableService:         tableService,
 		tableReadControllers: tableReadControllers,
+		settingProvider:      settingProvider,
 	}
 }
 
@@ -36,6 +38,10 @@ func (twc *TableWriteController) ToggleMark(idx int) tea.Msg {
 }
 
 func (twc *TableWriteController) NewItem() tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	// Work out which keys we need to prompt for
 	rs := twc.state.ResultSet()
 
@@ -226,6 +232,10 @@ func (twc *TableWriteController) DeleteAttribute(idx int, key string) tea.Msg {
 }
 
 func (twc *TableWriteController) PutItem(idx int) tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	resultSet := twc.state.ResultSet()
 	if !resultSet.IsDirty(idx) {
 		return events.Error(errors.New("item is not dirty"))
@@ -247,6 +257,10 @@ func (twc *TableWriteController) PutItem(idx int) tea.Msg {
 }
 
 func (twc *TableWriteController) PutItems() tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	var (
 		markedItemCount int
 	)
@@ -309,6 +323,10 @@ func (twc *TableWriteController) PutItems() tea.Msg {
 }
 
 func (twc *TableWriteController) TouchItem(idx int) tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	resultSet := twc.state.ResultSet()
 	if resultSet.IsDirty(idx) {
 		return events.Error(errors.New("cannot touch dirty items"))
@@ -330,6 +348,10 @@ func (twc *TableWriteController) TouchItem(idx int) tea.Msg {
 }
 
 func (twc *TableWriteController) NoisyTouchItem(idx int) tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	resultSet := twc.state.ResultSet()
 	if resultSet.IsDirty(idx) {
 		return events.Error(errors.New("cannot noisy touch dirty items"))
@@ -359,6 +381,10 @@ func (twc *TableWriteController) NoisyTouchItem(idx int) tea.Msg {
 }
 
 func (twc *TableWriteController) DeleteMarked() tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
 	resultSet := twc.state.ResultSet()
 	markedItems := resultSet.MarkedItems()
 
@@ -383,6 +409,16 @@ func (twc *TableWriteController) DeleteMarked() tea.Msg {
 			return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query, false)
 		},
 	}
+}
+
+func (twc *TableWriteController) assertReadWrite() error {
+	b, err := twc.settingProvider.IsReadOnly()
+	if err != nil {
+		return err
+	} else if b {
+		return models.ErrReadOnly
+	}
+	return nil
 }
 
 func applyToN(prefix string, n int, singular, plural, suffix string) string {

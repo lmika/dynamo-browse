@@ -26,7 +26,7 @@ func TestTableReadController_InitTable(t *testing.T) {
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
+	service := tables.NewService(provider, &mockedSetting{})
 
 	t.Run("should prompt for table if no table name provided", func(t *testing.T) {
 		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "", false)
@@ -53,7 +53,7 @@ func TestTableReadController_ListTables(t *testing.T) {
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
+	service := tables.NewService(provider, &mockedSetting{})
 	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "", false)
 
 	t.Run("returns a list of tables", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestTableReadController_Rescan(t *testing.T) {
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
+	service := tables.NewService(provider, &mockedSetting{})
 	state := controllers.NewState()
 	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "bravo-table", false)
 
@@ -116,7 +116,7 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
+	service := tables.NewService(provider, &mockedSetting{})
 	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "bravo-table", false)
 
 	t.Run("should export result set to CSV file", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestTableReadController_Query(t *testing.T) {
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider)
+	service := tables.NewService(provider, &mockedSetting{})
 	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "bravo-table", false)
 
 	t.Run("should run scan with filter based on user query", func(t *testing.T) {

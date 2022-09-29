@@ -10,6 +10,11 @@ type ErrorMsg error
 // Message indicates that a message should be shown to the user
 type StatusMsg string
 
+type WrappedStatusMsg struct {
+	Message StatusMsg
+	Next    tea.Msg
+}
+
 // ModeMessage indicates that the mode should be changed to the following
 type ModeMessage string
 
