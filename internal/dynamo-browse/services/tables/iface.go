@@ -17,3 +17,7 @@ type TableProvider interface {
 	PutItem(ctx context.Context, name string, item models.Item) error
 	PutItems(ctx context.Context, name string, items []models.Item) error
 }
+
+type ROProvider interface {
+	IsReadOnly() (bool, error)
+}

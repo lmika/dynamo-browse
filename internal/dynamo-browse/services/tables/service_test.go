@@ -19,7 +19,7 @@ func TestService_Describe(t *testing.T) {
 	t.Run("return details of the table", func(t *testing.T) {
 		ctx := context.Background()
 
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedReadOnlyProvider{readOnly: false})
 		ti, err := service.Describe(ctx, tableName)
 		assert.NoError(t, err)
 
@@ -40,7 +40,7 @@ func TestService_Scan(t *testing.T) {
 	t.Run("return all columns and fields in sorted order", func(t *testing.T) {
 		ctx := context.Background()
 
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedReadOnlyProvider{readOnly: false})
 		ti, err := service.Describe(ctx, tableName)
 		assert.NoError(t, err)
 
@@ -76,4 +76,12 @@ var testData = []testdynamo.TestData{
 			},
 		},
 	},
+}
+
+type mockedReadOnlyProvider struct {
+	readOnly bool
+}
+
+func (m mockedReadOnlyProvider) IsReadOnly() (bool, error) {
+	return m.readOnly, nil
 }

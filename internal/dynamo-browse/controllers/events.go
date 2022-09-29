@@ -10,6 +10,9 @@ type SetTableItemView struct {
 	ViewIndex int
 }
 
+type SettingsUpdated struct {
+}
+
 type NewResultSet struct {
 	ResultSet     *models.ResultSet
 	currentFilter string
@@ -42,10 +45,6 @@ func (rs NewResultSet) StatusMessage() string {
 	} else {
 		return fmt.Sprintf("%d items returned", len(rs.ResultSet.Items()))
 	}
-}
-
-type SetReadWrite struct {
-	NewValue bool
 }
 
 type PromptForTableMsg struct {
