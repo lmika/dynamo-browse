@@ -12,14 +12,14 @@ import (
 )
 
 type Service struct {
-	provider   TableProvider
-	roProvider ROProvider
+	provider       TableProvider
+	configProvider ConfigProvider
 }
 
-func NewService(provider TableProvider, roProvider ROProvider) *Service {
+func NewService(provider TableProvider, roProvider ConfigProvider) *Service {
 	return &Service{
-		provider:   provider,
-		roProvider: roProvider,
+		provider:       provider,
+		configProvider: roProvider,
 	}
 }
 
@@ -32,10 +32,10 @@ func (s *Service) Describe(ctx context.Context, table string) (*models.TableInfo
 }
 
 func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*models.ResultSet, error) {
-	return s.doScan(ctx, tableInfo, nil)
+	return s.doScan(ctx, tableInfo, nil, s.configProvider.DefaultLimit())
 }
 
-func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable) (*models.ResultSet, error) {
+func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable, limit int) (*models.ResultSet, error) {
 	var (
 		filterExpr *expression.Expression
 		runAsQuery bool
@@ -54,10 +54,10 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr 
 	var results []models.Item
 	if runAsQuery {
 		log.Printf("executing query")
-		results, err = s.provider.QueryItems(ctx, tableInfo.Name, filterExpr, 1000)
+		results, err = s.provider.QueryItems(ctx, tableInfo.Name, filterExpr, limit)
 	} else {
 		log.Printf("executing scan")
-		results, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, 1000)
+		results, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, limit)
 	}
 
 	if err != nil {
@@ -135,11 +135,11 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 }
 
 func (s *Service) ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable) (*models.ResultSet, error) {
-	return s.doScan(ctx, tableInfo, expr)
+	return s.doScan(ctx, tableInfo, expr, s.configProvider.DefaultLimit())
 }
 
 func (s *Service) assertReadWrite() error {
-	b, err := s.roProvider.IsReadOnly()
+	b, err := s.configProvider.IsReadOnly()
 	if err != nil {
 		return err
 	} else if b {

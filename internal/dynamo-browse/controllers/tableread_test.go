@@ -6,11 +6,6 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/common/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
-	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
-	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
-	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
-	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
-	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -19,45 +14,28 @@ import (
 )
 
 func TestTableReadController_InitTable(t *testing.T) {
-	client := testdynamo.SetupTestTable(t, testData)
-
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
-	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
-	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
-
-	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider, &mockedSetting{})
-
 	t.Run("should prompt for table if no table name provided", func(t *testing.T) {
-		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "", false)
+		srv := newService(t, serviceConfig{})
 
-		event := readController.Init()
+		event := srv.readController.Init()
 
 		assert.IsType(t, controllers.PromptForTableMsg{}, event)
 	})
 
 	t.Run("should scan table if table name provided", func(t *testing.T) {
-		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "", false)
+		srv := newService(t, serviceConfig{})
 
-		event := readController.Init()
+		event := srv.readController.Init()
 
 		assert.IsType(t, controllers.PromptForTableMsg{}, event)
 	})
 }
 
 func TestTableReadController_ListTables(t *testing.T) {
-	client := testdynamo.SetupTestTable(t, testData)
-
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
-	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
-	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
-
-	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider, &mockedSetting{})
-	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "", false)
-
 	t.Run("returns a list of tables", func(t *testing.T) {
-		event := readController.ListTables().(controllers.PromptForTableMsg)
+		srv := newService(t, serviceConfig{})
+
+		event := srv.readController.ListTables().(controllers.PromptForTableMsg)
 
 		assert.Equal(t, []string{"alpha-table", "bravo-table"}, event.Tables)
 
@@ -71,59 +49,46 @@ func TestTableReadController_ListTables(t *testing.T) {
 }
 
 func TestTableReadController_Rescan(t *testing.T) {
-	client := testdynamo.SetupTestTable(t, testData)
-
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
-	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
-	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
-
-	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider, &mockedSetting{})
-	state := controllers.NewState()
-	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "bravo-table", false)
-
 	t.Run("should perform a rescan", func(t *testing.T) {
-		invokeCommand(t, readController.Init())
-		invokeCommand(t, readController.Rescan())
+		srv := newService(t, serviceConfig{tableName: "bravo-table"})
+
+		invokeCommand(t, srv.readController.Init())
+		invokeCommand(t, srv.readController.Rescan())
 	})
 
 	t.Run("should prompt to rescan if any dirty rows", func(t *testing.T) {
-		invokeCommand(t, readController.Init())
+		srv := newService(t, serviceConfig{tableName: "bravo-table"})
 
-		state.ResultSet().SetDirty(0, true)
+		invokeCommand(t, srv.readController.Init())
 
-		invokeCommandWithPrompt(t, readController.Rescan(), "y")
+		srv.state.ResultSet().SetDirty(0, true)
 
-		assert.False(t, state.ResultSet().IsDirty(0))
+		invokeCommandWithPrompt(t, srv.readController.Rescan(), "y")
+
+		assert.False(t, srv.state.ResultSet().IsDirty(0))
 	})
 
 	t.Run("should not rescan if any dirty rows", func(t *testing.T) {
-		invokeCommand(t, readController.Init())
+		srv := newService(t, serviceConfig{tableName: "bravo-table"})
 
-		state.ResultSet().SetDirty(0, true)
+		invokeCommand(t, srv.readController.Init())
 
-		invokeCommandWithPrompt(t, readController.Rescan(), "n")
+		srv.state.ResultSet().SetDirty(0, true)
 
-		assert.True(t, state.ResultSet().IsDirty(0))
+		invokeCommandWithPrompt(t, srv.readController.Rescan(), "n")
+
+		assert.True(t, srv.state.ResultSet().IsDirty(0))
 	})
 }
 
 func TestTableReadController_ExportCSV(t *testing.T) {
-	client := testdynamo.SetupTestTable(t, testData)
-
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
-	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
-	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
-
-	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider, &mockedSetting{})
-	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "bravo-table", false)
-
 	t.Run("should export result set to CSV file", func(t *testing.T) {
+		srv := newService(t, serviceConfig{tableName: "bravo-table"})
+
 		tempFile := tempFile(t)
 
-		invokeCommand(t, readController.Init())
-		invokeCommand(t, readController.ExportCSV(tempFile))
+		invokeCommand(t, srv.readController.Init())
+		invokeCommand(t, srv.readController.ExportCSV(tempFile))
 
 		bts, err := os.ReadFile(tempFile)
 		assert.NoError(t, err)
@@ -137,33 +102,26 @@ func TestTableReadController_ExportCSV(t *testing.T) {
 	})
 
 	t.Run("should return error if result set is not set", func(t *testing.T) {
-		tempFile := tempFile(t)
-		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "non-existant-table", false)
+		srv := newService(t, serviceConfig{tableName: "non-existant-table"})
 
-		invokeCommandExpectingError(t, readController.Init())
-		invokeCommandExpectingError(t, readController.ExportCSV(tempFile))
+		tempFile := tempFile(t)
+
+		invokeCommandExpectingError(t, srv.readController.Init())
+		invokeCommandExpectingError(t, srv.readController.ExportCSV(tempFile))
 	})
 
 	// Hidden items?
 }
 
 func TestTableReadController_Query(t *testing.T) {
-	client := testdynamo.SetupTestTable(t, testData)
-
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
-	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
-	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
-
-	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider, &mockedSetting{})
-	readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "bravo-table", false)
-
 	t.Run("should run scan with filter based on user query", func(t *testing.T) {
+		srv := newService(t, serviceConfig{tableName: "bravo-table"})
+
 		tempFile := tempFile(t)
 
-		invokeCommand(t, readController.Init())
-		invokeCommandWithPrompts(t, readController.PromptForQuery(), `pk ^= "abc"`)
-		invokeCommand(t, readController.ExportCSV(tempFile))
+		invokeCommand(t, srv.readController.Init())
+		invokeCommandWithPrompts(t, srv.readController.PromptForQuery(), `pk ^= "abc"`)
+		invokeCommand(t, srv.readController.ExportCSV(tempFile))
 
 		bts, err := os.ReadFile(tempFile)
 		assert.NoError(t, err)
@@ -175,11 +133,12 @@ func TestTableReadController_Query(t *testing.T) {
 	})
 
 	t.Run("should return error if result set is not set", func(t *testing.T) {
-		tempFile := tempFile(t)
-		readController := controllers.NewTableReadController(controllers.NewState(), service, workspaceService, itemRendererService, "non-existant-table", false)
+		srv := newService(t, serviceConfig{tableName: "non-existant-table"})
 
-		invokeCommandExpectingError(t, readController.Init())
-		invokeCommandExpectingError(t, readController.ExportCSV(tempFile))
+		tempFile := tempFile(t)
+
+		invokeCommandExpectingError(t, srv.readController.Init())
+		invokeCommandExpectingError(t, srv.readController.ExportCSV(tempFile))
 	})
 }
 

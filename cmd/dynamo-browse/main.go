@@ -34,6 +34,7 @@ func main() {
 	var flagLocal = flag.String("local", "", "local endpoint")
 	var flagDebug = flag.String("debug", "", "file to log debug messages")
 	var flagRO = flag.Bool("ro", false, "enable readonly mode")
+	var flagDefaultLimit = flag.Int("default-limit", 0, "default limit for queries and scans")
 	var flagWorkspace = flag.String("w", "", "workspace file")
 	flag.Parse()
 
@@ -80,6 +81,11 @@ func main() {
 	if *flagRO {
 		if err := settingStore.SetReadOnly(*flagRO); err != nil {
 			cli.Fatalf("unable to set read-only mode: %v", err)
+		}
+	}
+	if *flagDefaultLimit > 0 {
+		if err := settingStore.SetDefaultLimit(*flagDefaultLimit); err != nil {
+			cli.Fatalf("unable to set default limit: %v", err)
 		}
 	}
 

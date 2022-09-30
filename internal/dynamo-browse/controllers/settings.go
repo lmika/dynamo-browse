@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/pkg/errors"
 	"log"
+	"strconv"
 )
 
 type SettingsController struct {
@@ -35,7 +37,21 @@ func (sc *SettingsController) SetSetting(name string, value string) tea.Msg {
 			Message: "In read-write mode",
 			Next:    SettingsUpdated{},
 		}
+	case "default-limit":
+		newLimit, err := strconv.Atoi(value)
+		if err != nil {
+			return errors.Wrapf(err, "bad value: %v", value)
+		}
+
+		if err := sc.settings.SetDefaultLimit(newLimit); err != nil {
+			return events.Error(err)
+		}
+		return events.WrappedStatusMsg{
+			Message: events.StatusMsg(fmt.Sprintf("Default query limit now %v", newLimit)),
+			Next:    SettingsUpdated{},
+		}
 	}
+
 	return events.Error(errors.Errorf("unrecognised setting: %v", name))
 }
 
