@@ -106,6 +106,10 @@ func createTable(ctx context.Context, dynamoClient *dynamodb.Client, tableName s
 
 type notROService struct{}
 
+func (n notROService) DefaultLimit() int {
+	return 1000
+}
+
 func (n notROService) IsReadOnly() (bool, error) {
 	return false, nil
 }
