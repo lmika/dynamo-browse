@@ -53,7 +53,7 @@ func main() {
 	}
 
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
-	tableService := tables.NewService(dynamoProvider)
+	tableService := tables.NewService(dynamoProvider, notROService{})
 
 	_, _ = tableService, tableInfo
 
@@ -109,4 +109,14 @@ func createTable(ctx context.Context, dynamoClient *dynamodb.Client, tableName s
 		return errors.Wrapf(err, "cannot create table: %v", tableName)
 	}
 	return nil
+}
+
+type notROService struct{}
+
+func (n notROService) DefaultLimit() int {
+	return 1000
+}
+
+func (n notROService) IsReadOnly() (bool, error) {
+	return false, nil
 }

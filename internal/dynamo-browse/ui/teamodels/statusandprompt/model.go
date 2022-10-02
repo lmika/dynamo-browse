@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
 	"log"
 )
 
@@ -36,11 +37,16 @@ func (s *StatusAndPrompt) Init() tea.Cmd {
 }
 
 func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cc utils.CmdCollector
+
 	switch msg := msg.(type) {
 	case events.ErrorMsg:
 		s.statusMessage = "Error: " + msg.Error()
 	case events.StatusMsg:
 		s.statusMessage = string(msg)
+	case events.WrappedStatusMsg:
+		s.statusMessage = string(msg.Message)
+		cc.Add(func() tea.Msg { return msg.Next })
 	case events.ModeMessage:
 		s.modeLine = string(msg)
 	case events.MessageWithStatus:
@@ -86,9 +92,9 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	newModel, cmd := s.model.Update(msg)
+	newModel := cc.Collect(s.model.Update(msg))
 	s.model = newModel.(layout.ResizingModel)
-	return s, cmd
+	return s, cc.Cmd()
 }
 
 func (s *StatusAndPrompt) InPrompt() bool {

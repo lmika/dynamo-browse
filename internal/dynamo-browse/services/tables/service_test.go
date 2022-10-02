@@ -19,7 +19,7 @@ func TestService_Describe(t *testing.T) {
 	t.Run("return details of the table", func(t *testing.T) {
 		ctx := context.Background()
 
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedConfigProvider{readOnly: false})
 		ti, err := service.Describe(ctx, tableName)
 		assert.NoError(t, err)
 
@@ -40,16 +40,29 @@ func TestService_Scan(t *testing.T) {
 	t.Run("return all columns and fields in sorted order", func(t *testing.T) {
 		ctx := context.Background()
 
-		service := tables.NewService(provider)
+		service := tables.NewService(provider, mockedConfigProvider{readOnly: false})
 		ti, err := service.Describe(ctx, tableName)
 		assert.NoError(t, err)
 
 		rs, err := service.Scan(ctx, ti)
 		assert.NoError(t, err)
+		assert.Len(t, rs.Items(), 3)
 
 		// Hash first, then range, then columns in alphabetic order
 		assert.Equal(t, rs.TableInfo, ti)
 		assert.Equal(t, rs.Columns(), []string{"pk", "sk", "alpha", "beta", "gamma"})
+	})
+
+	t.Run("should honour default limits", func(t *testing.T) {
+		ctx := context.Background()
+
+		service := tables.NewService(provider, mockedConfigProvider{readOnly: false, defaultLimit: 2})
+		ti, err := service.Describe(ctx, tableName)
+		assert.NoError(t, err)
+
+		rs, err := service.Scan(ctx, ti)
+		assert.NoError(t, err)
+		assert.Len(t, rs.Items(), 2)
 	})
 }
 
@@ -76,4 +89,20 @@ var testData = []testdynamo.TestData{
 			},
 		},
 	},
+}
+
+type mockedConfigProvider struct {
+	readOnly     bool
+	defaultLimit int
+}
+
+func (m mockedConfigProvider) IsReadOnly() (bool, error) {
+	return m.readOnly, nil
+}
+
+func (m mockedConfigProvider) DefaultLimit() int {
+	if m.defaultLimit == 0 {
+		return 1000
+	}
+	return m.defaultLimit
 }
