@@ -74,11 +74,10 @@ func (c *colListModel) Resize(w, h int) layout.ResizingModel {
 	return c
 }
 
-func (c *colListModel) setColumnsFromResultSet(rs *models.ResultSet) {
-	cols := rs.Columns()
-	colNames := make([]table.Row, len(cols))
-	for i := range cols {
-		colNames[i] = table.SimpleRow{".", cols[i]}
+func (c *colListModel) setColumnsFromModel(cols *models.Columns) {
+	colNames := make([]table.Row, len(cols.Columns))
+	for i := range cols.Columns {
+		colNames[i] = table.SimpleRow{".", cols.Columns[i]}
 	}
 	c.table.SetRows(colNames)
 }

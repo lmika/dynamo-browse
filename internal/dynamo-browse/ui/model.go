@@ -58,6 +58,7 @@ type Model struct {
 func NewModel(
 	rc *controllers.TableReadController,
 	wc *controllers.TableWriteController,
+	columnsController *controllers.ColumnsController,
 	settingsController *controllers.SettingsController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
@@ -66,11 +67,11 @@ func NewModel(
 ) Model {
 	uiStyles := styles.DefaultStyles
 
-	dtv := dynamotableview.New(defaultKeyMap.TableView, settingsController, uiStyles)
+	dtv := dynamotableview.New(defaultKeyMap.TableView, columnsController, settingsController, uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
-	colSelector := colselector.New(mainView, defaultKeyMap.TableView)
+	colSelector := colselector.New(mainView, defaultKeyMap.TableView, columnsController)
 	itemEdit := dynamoitemedit.NewModel(colSelector)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
@@ -235,7 +236,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			//	m.itemEdit.Visible()
 			//	return m, nil
 			case key.Matches(msg, m.keyMap.ShowColumnOverlay):
-				return m, events.SetTeaMessage(m.tableReadController.ShowColumnOverlay())
+				return m, events.SetTeaMessage(controllers.ShowColumnOverlay{})
 			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
 			case key.Matches(msg, m.keyMap.PromptForTable):

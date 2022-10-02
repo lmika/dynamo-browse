@@ -9,22 +9,24 @@ import (
 )
 
 type Model struct {
-	keyBinding   *keybindings.TableKeyBinding
-	subModel     tea.Model
-	colListModel *colListModel
-	compositor   *layout.Compositor
+	keyBinding        *keybindings.TableKeyBinding
+	columnsController *controllers.ColumnsController
+	subModel          tea.Model
+	colListModel      *colListModel
+	compositor        *layout.Compositor
 }
 
-func New(submodel tea.Model, keyBinding *keybindings.TableKeyBinding) *Model {
+func New(submodel tea.Model, keyBinding *keybindings.TableKeyBinding, columnsController *controllers.ColumnsController) *Model {
 	colListModel := newColListModel(keyBinding)
 
 	compositor := layout.NewCompositor(submodel)
 
 	return &Model{
-		keyBinding:   keyBinding,
-		subModel:     submodel,
-		compositor:   compositor,
-		colListModel: colListModel,
+		keyBinding:        keyBinding,
+		columnsController: columnsController,
+		subModel:          submodel,
+		compositor:        compositor,
+		colListModel:      colListModel,
 	}
 }
 
@@ -36,7 +38,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cc utils.CmdCollector
 	switch msg := msg.(type) {
 	case controllers.ShowColumnOverlay:
-		m.colListModel.setColumnsFromResultSet(msg.ResultSet)
+		m.colListModel.setColumnsFromModel(m.columnsController.Columns())
 		m.compositor.SetOverlay(m.colListModel, 6, 5, 50, 20)
 	case tea.KeyMsg:
 		m.compositor = cc.Collect(m.compositor.Update(msg)).(*layout.Compositor)

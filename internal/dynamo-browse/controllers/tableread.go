@@ -338,8 +338,3 @@ func (c *TableReadController) initClipboard() error {
 	c.clipboardInit = true
 	return nil
 }
-
-func (c *TableReadController) ShowColumnOverlay() tea.Msg {
-	rs := c.state.ResultSet()
-	return ShowColumnOverlay{ResultSet: rs}
-}

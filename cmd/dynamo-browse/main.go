@@ -96,6 +96,7 @@ func main() {
 	state := controllers.NewState()
 	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable, true)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController, settingStore)
+	columnsController := controllers.NewColumnsController()
 	settingsController := controllers.NewSettingsController(settingStore)
 	keyBindings := keybindings.Default()
 
@@ -107,6 +108,7 @@ func main() {
 	model := ui.NewModel(
 		tableReadController,
 		tableWriteController,
+		columnsController,
 		settingsController,
 		itemRendererService,
 		commandController,

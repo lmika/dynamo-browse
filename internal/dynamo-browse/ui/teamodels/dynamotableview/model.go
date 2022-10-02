@@ -26,12 +26,17 @@ type Setting interface {
 	IsReadOnly() bool
 }
 
+type ColumnsProvider interface {
+	Columns() *models.Columns
+}
+
 type Model struct {
-	frameTitle frame.FrameTitle
-	table      table.Model
-	w, h       int
-	keyBinding *keybindings.TableKeyBinding
-	setting    Setting
+	frameTitle      frame.FrameTitle
+	table           table.Model
+	w, h            int
+	keyBinding      *keybindings.TableKeyBinding
+	setting         Setting
+	columnsProvider ColumnsProvider
 
 	// model state
 	isReadOnly bool
@@ -40,7 +45,7 @@ type Model struct {
 	resultSet  *models.ResultSet
 }
 
-func New(keyBinding *keybindings.TableKeyBinding, setting Setting, uiStyles styles.Styles) *Model {
+func New(keyBinding *keybindings.TableKeyBinding, columnsProvider ColumnsProvider, setting Setting, uiStyles styles.Styles) *Model {
 	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
 	rows := make([]table.Row, 0)
 	tbl.SetRows(rows)
@@ -49,11 +54,12 @@ func New(keyBinding *keybindings.TableKeyBinding, setting Setting, uiStyles styl
 	isReadOnly := setting.IsReadOnly()
 
 	return &Model{
-		isReadOnly: isReadOnly,
-		frameTitle: frameTitle,
-		table:      tbl,
-		keyBinding: keyBinding,
-		setting:    setting,
+		isReadOnly:      isReadOnly,
+		frameTitle:      frameTitle,
+		table:           tbl,
+		keyBinding:      keyBinding,
+		setting:         setting,
+		columnsProvider: columnsProvider,
 	}
 }
 
@@ -65,6 +71,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case controllers.NewResultSet:
 		m.resultSet = msg.ResultSet
+		// TEMP
+		// Also, this should only change when the table changes.
+		//m.columns = &models.Columns{
+		//	TableInfo: msg.ResultSet.TableInfo,
+		//	Columns:   []string{"city", "pk", "sk"},
+		//}
+		// TODO: should controller be notified of new result sets, or this?
 		m.updateTable()
 		return m, m.postSelectedItemChanged
 	case controllers.SettingsUpdated:
@@ -106,8 +119,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) setLeftmostDisplayedColumn(newCol int) {
 	if newCol < 0 {
 		m.colOffset = 0
-	} else if newCol >= len(m.resultSet.Columns()) {
-		m.colOffset = len(m.resultSet.Columns()) - 1
+	} else if newCol >= len(m.columnsProvider.Columns().Columns) {
+		m.colOffset = len(m.columnsProvider.Columns().Columns) - 1
 	} else {
 		m.colOffset = newCol
 	}
