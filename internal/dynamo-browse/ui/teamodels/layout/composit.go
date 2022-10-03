@@ -44,6 +44,14 @@ func (c *Compositor) SetOverlay(m ResizingModel, x, y, w, h int) {
 	c.foreW, c.foreH = w, h
 }
 
+func (c *Compositor) ClearOverlay() {
+	c.foreground = nil
+}
+
+func (c *Compositor) HasOverlay() bool {
+	return c.foreground != nil
+}
+
 func (c *Compositor) View() string {
 	if c.foreground == nil {
 		return c.background.View()

@@ -39,7 +39,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case controllers.ShowColumnOverlay:
 		m.colListModel.setColumnsFromModel(m.columnsController.Columns())
-		m.compositor.SetOverlay(m.colListModel, 6, 5, 50, 20)
+		m.compositor.SetOverlay(m.colListModel, 6, 4, 50, 20)
+	case controllers.HideColumnOverlay:
+		m.compositor.ClearOverlay()
 	case controllers.ColumnsUpdated:
 		m.colListModel.refreshTable()
 		m.subModel = cc.Collect(m.subModel.Update(msg))
@@ -59,4 +61,8 @@ func (m *Model) Resize(w, h int) layout.ResizingModel {
 	m.subModel = layout.Resize(m.subModel, w, h)
 	m.colListModel = layout.Resize(m.colListModel, w, h).(*colListModel)
 	return m
+}
+
+func (m *Model) ColSelectorVisible() bool {
+	return m.compositor.HasOverlay()
 }

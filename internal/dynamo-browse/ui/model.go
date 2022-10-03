@@ -42,6 +42,7 @@ type Model struct {
 	tableWriteController *controllers.TableWriteController
 	settingsController   *controllers.SettingsController
 	commandController    *commandctrl.CommandController
+	colSelector          *colselector.Model
 	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
@@ -177,6 +178,7 @@ func NewModel(
 		tableWriteController: wc,
 		commandController:    cc,
 		itemEdit:             itemEdit,
+		colSelector:          colSelector,
 		statusAndPrompt:      statusAndPrompt,
 		tableSelect:          tableSelect,
 		root:                 root,
@@ -185,16 +187,6 @@ func NewModel(
 		mainView:             mainView,
 		keyMap:               defaultKeyMap.View,
 	}
-}
-
-func (m Model) Init() tea.Cmd {
-	// TODO: this should probably be moved somewhere else
-	rcFilename := os.ExpandEnv(initRCFilename)
-	if err := m.commandController.ExecuteFile(rcFilename); err != nil {
-		log.Println(err)
-	}
-
-	return m.tableReadController.Init
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -208,7 +200,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			events.SetStatus(msg.StatusMessage()),
 		)
 	case tea.KeyMsg:
-		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() {
+		// TODO: use modes here
+		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() && !m.colSelector.ColSelectorVisible() {
 			switch {
 			case key.Matches(msg, m.keyMap.Mark):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
@@ -250,6 +243,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.root, cmd = m.root.Update(msg)
 	return m, cmd
+}
+
+func (m Model) Init() tea.Cmd {
+	// TODO: this should probably be moved somewhere else
+	rcFilename := os.ExpandEnv(initRCFilename)
+	if err := m.commandController.ExecuteFile(rcFilename); err != nil {
+		log.Println(err)
+	}
+
+	return m.tableReadController.Init
 }
 
 func (m Model) View() string {

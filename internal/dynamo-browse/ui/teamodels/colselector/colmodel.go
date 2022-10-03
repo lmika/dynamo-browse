@@ -49,6 +49,10 @@ func (m *colListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, events.SetTeaMessage(m.shiftColumnDown(m.table.Cursor()))
 		case msg.String() == " ":
 			return m, events.SetTeaMessage(m.colController.ToggleVisible(m.table.Cursor()))
+		case msg.String() == "esc":
+			return m, events.SetTeaMessage(controllers.HideColumnOverlay{})
+		case msg.String() == "R":
+			return m, events.SetTeaMessage(m.colController.SetColumnsToResultSet())
 
 		// Table nav
 		case key.Matches(msg, m.keyBinding.MoveUp):

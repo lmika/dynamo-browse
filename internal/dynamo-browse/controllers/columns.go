@@ -8,7 +8,8 @@ import (
 
 type ColumnsController struct {
 	// State
-	colModel *models.Columns
+	colModel  *models.Columns
+	resultSet *models.ResultSet
 }
 
 func NewColumnsController(eventBus *bus.Bus) *ColumnsController {
@@ -49,8 +50,15 @@ func (cc *ColumnsController) ShiftColumnRight(idx int) tea.Msg {
 	return ColumnsUpdated{}
 }
 
+func (cc *ColumnsController) SetColumnsToResultSet() tea.Msg {
+	cc.colModel = models.NewColumnsFromResultSet(cc.resultSet)
+	return ColumnsUpdated{}
+}
+
 func (cc *ColumnsController) onNewResultSet(rs *models.ResultSet) {
-	if cc.colModel == nil || cc.colModel.TableInfo.Equal(rs.TableInfo) {
+	cc.resultSet = rs
+
+	if cc.colModel == nil || !cc.colModel.TableInfo.Equal(rs.TableInfo) {
 		cc.colModel = models.NewColumnsFromResultSet(rs)
 	}
 }

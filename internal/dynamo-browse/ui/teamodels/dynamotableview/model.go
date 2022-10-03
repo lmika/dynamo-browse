@@ -47,21 +47,21 @@ type Model struct {
 }
 
 func New(keyBinding *keybindings.TableKeyBinding, columnsProvider ColumnsProvider, setting Setting, uiStyles styles.Styles) *Model {
-	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
-	rows := make([]table.Row, 0)
-	tbl.SetRows(rows)
-
 	frameTitle := frame.NewFrameTitle("No table", true, uiStyles.Frames)
 	isReadOnly := setting.IsReadOnly()
 
-	return &Model{
+	model := &Model{
 		isReadOnly:      isReadOnly,
 		frameTitle:      frameTitle,
-		table:           tbl,
 		keyBinding:      keyBinding,
 		setting:         setting,
 		columnsProvider: columnsProvider,
 	}
+
+	model.table = table.New(columnModel{model}, 100, 100)
+	model.table.SetRows([]table.Row{})
+
+	return model
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -75,7 +75,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateTable()
 		return m, m.postSelectedItemChanged
 	case controllers.ColumnsUpdated:
-		m.updateTable()
+		m.rebuildTable(&m.table)
 		return m, m.postSelectedItemChanged
 	case controllers.SettingsUpdated:
 		m.updateTableHeading()
@@ -149,15 +149,29 @@ func (m *Model) updateTableHeading() {
 func (m *Model) updateTable() {
 	m.updateTableHeading()
 	m.colOffset = 0
-	m.rebuildTable()
+	m.rebuildTable(nil)
 }
 
-func (m *Model) rebuildTable() {
+func (m *Model) rebuildTable(targetTbl *table.Model) {
+	var tbl table.Model
+
 	resultSet := m.resultSet
 
+	// Use the target table model if you can, but if it's nil or the number of rows is smaller than the
+	// existing table, create a new one
+	if targetTbl == nil || len(resultSet.Items()) > len(m.rows) {
+		tbl = table.New(columnModel{m}, m.w, m.h-m.frameTitle.HeaderHeight())
+		if targetTbl != nil {
+			tbl.GoBottom()
+		}
+	} else {
+		tbl = *targetTbl
+	}
+
 	m.columns = m.columnsProvider.Columns().VisibleColumns()
-	newTbl := table.New(columnModel{m}, m.w, m.h-m.frameTitle.HeaderHeight())
+
 	newRows := make([]table.Row, 0)
+
 	for i, r := range resultSet.Items() {
 		if resultSet.Hidden(i) {
 			continue
@@ -172,8 +186,9 @@ func (m *Model) rebuildTable() {
 	}
 
 	m.rows = newRows
-	newTbl.SetRows(newRows)
-	m.table = newTbl
+	tbl.SetRows(newRows)
+
+	m.table = tbl
 }
 
 func (m *Model) SelectedItemIndex() int {

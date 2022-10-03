@@ -63,6 +63,5 @@ func (rs ResultSetUpdated) StatusMessage() string {
 	return rs.statusMessage
 }
 
-type ShowColumnOverlay struct {
-	//ResultSet *models.ResultSet
-}
+type ShowColumnOverlay struct{}
+type HideColumnOverlay struct{}
