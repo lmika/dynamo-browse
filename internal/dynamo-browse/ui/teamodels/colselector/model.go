@@ -17,7 +17,7 @@ type Model struct {
 }
 
 func New(submodel tea.Model, keyBinding *keybindings.TableKeyBinding, columnsController *controllers.ColumnsController) *Model {
-	colListModel := newColListModel(keyBinding)
+	colListModel := newColListModel(keyBinding, columnsController)
 
 	compositor := layout.NewCompositor(submodel)
 
@@ -40,6 +40,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case controllers.ShowColumnOverlay:
 		m.colListModel.setColumnsFromModel(m.columnsController.Columns())
 		m.compositor.SetOverlay(m.colListModel, 6, 5, 50, 20)
+	case controllers.ColumnsUpdated:
+		m.colListModel.refreshTable()
+		m.subModel = cc.Collect(m.subModel.Update(msg))
 	case tea.KeyMsg:
 		m.compositor = cc.Collect(m.compositor.Update(msg)).(*layout.Compositor)
 	default:

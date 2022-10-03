@@ -42,6 +42,7 @@ type Model struct {
 	isReadOnly bool
 	colOffset  int
 	rows       []table.Row
+	columns    []models.Column
 	resultSet  *models.ResultSet
 }
 
@@ -71,13 +72,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case controllers.NewResultSet:
 		m.resultSet = msg.ResultSet
-		// TEMP
-		// Also, this should only change when the table changes.
-		//m.columns = &models.Columns{
-		//	TableInfo: msg.ResultSet.TableInfo,
-		//	Columns:   []string{"city", "pk", "sk"},
-		//}
-		// TODO: should controller be notified of new result sets, or this?
+		m.updateTable()
+		return m, m.postSelectedItemChanged
+	case controllers.ColumnsUpdated:
 		m.updateTable()
 		return m, m.postSelectedItemChanged
 	case controllers.SettingsUpdated:
@@ -158,6 +155,7 @@ func (m *Model) updateTable() {
 func (m *Model) rebuildTable() {
 	resultSet := m.resultSet
 
+	m.columns = m.columnsProvider.Columns().VisibleColumns()
 	newTbl := table.New(columnModel{m}, m.w, m.h-m.frameTitle.HeaderHeight())
 	newRows := make([]table.Row, 0)
 	for i, r := range resultSet.Items() {

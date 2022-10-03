@@ -13,6 +13,9 @@ type SetTableItemView struct {
 type SettingsUpdated struct {
 }
 
+type ColumnsUpdated struct {
+}
+
 type NewResultSet struct {
 	ResultSet     *models.ResultSet
 	currentFilter string

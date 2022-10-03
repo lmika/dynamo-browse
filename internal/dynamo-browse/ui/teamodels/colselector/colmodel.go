@@ -4,6 +4,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
@@ -15,18 +17,20 @@ var style = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("63"))
 
 type colListModel struct {
-	keyBinding *keybindings.TableKeyBinding
+	keyBinding    *keybindings.TableKeyBinding
+	colController *controllers.ColumnsController
 
 	table table.Model
 }
 
-func newColListModel(keyBinding *keybindings.TableKeyBinding) *colListModel {
+func newColListModel(keyBinding *keybindings.TableKeyBinding, colController *controllers.ColumnsController) *colListModel {
 	tbl := table.New(table.SimpleColumns([]string{"", "Name"}), 100, 100)
 	tbl.SetRows([]table.Row{})
 
 	return &colListModel{
-		keyBinding: keyBinding,
-		table:      tbl,
+		keyBinding:    keyBinding,
+		colController: colController,
+		table:         tbl,
 	}
 }
 
@@ -38,6 +42,14 @@ func (m *colListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		// Column operations
+		case msg.String() == "I":
+			return m, events.SetTeaMessage(m.shiftColumnUp(m.table.Cursor()))
+		case msg.String() == "K":
+			return m, events.SetTeaMessage(m.shiftColumnDown(m.table.Cursor()))
+		case msg.String() == " ":
+			return m, events.SetTeaMessage(m.colController.ToggleVisible(m.table.Cursor()))
+
 		// Table nav
 		case key.Matches(msg, m.keyBinding.MoveUp):
 			m.table.GoUp()
@@ -74,10 +86,30 @@ func (c *colListModel) Resize(w, h int) layout.ResizingModel {
 	return c
 }
 
+func (c *colListModel) refreshTable() {
+	c.table.UpdateView()
+}
+
 func (c *colListModel) setColumnsFromModel(cols *models.Columns) {
 	colNames := make([]table.Row, len(cols.Columns))
 	for i := range cols.Columns {
-		colNames[i] = table.SimpleRow{".", cols.Columns[i]}
+		colNames[i] = colListRowModel{c}
 	}
 	c.table.SetRows(colNames)
+}
+
+func (c *colListModel) shiftColumnUp(cursor int) tea.Msg {
+	msg := c.colController.ShiftColumnLeft(cursor)
+	if msg != nil {
+		c.table.GoUp()
+	}
+	return msg
+}
+
+func (c *colListModel) shiftColumnDown(cursor int) tea.Msg {
+	msg := c.colController.ShiftColumnRight(cursor)
+	if msg != nil {
+		c.table.GoDown()
+	}
+	return msg
 }
