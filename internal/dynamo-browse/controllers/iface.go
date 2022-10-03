@@ -16,6 +16,8 @@ type TableReadService interface {
 type SettingsProvider interface {
 	IsReadOnly() (bool, error)
 	SetReadOnly(ro bool) error
+	DefaultLimit() (limit int)
+	SetDefaultLimit(limit int) error
 }
 
 type UIStateProvider interface {

@@ -6,6 +6,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/providers/settingstore"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
@@ -17,7 +18,7 @@ import (
 
 func TestTableWriteController_NewItem(t *testing.T) {
 	t.Run("should add an item with pk and sk set at the end of the result set", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		invokeCommand(t, srv.readController.Init())
 		assert.Len(t, srv.state.ResultSet().Items(), 3)
@@ -38,7 +39,7 @@ func TestTableWriteController_NewItem(t *testing.T) {
 	})
 
 	t.Run("should do nothing when in read-only mode", func(t *testing.T) {
-		srv := newService(t, true)
+		srv := newService(t, serviceConfig{tableName: "alpha-table", isReadOnly: true})
 
 		invokeCommand(t, srv.readController.Init())
 		assert.Len(t, srv.state.ResultSet().Items(), 3)
@@ -86,7 +87,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 
 		for _, scenario := range scenarios {
 			t.Run(fmt.Sprintf("should set value of field: %v", scenario.attrKey), func(t *testing.T) {
-				srv := newService(t, false)
+				srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 				invokeCommand(t, srv.readController.Init())
 				invokeCommandWithPrompt(t, srv.writeController.SetAttributeValue(0, models.UnsetItemType, scenario.attrKey), scenario.attrValue)
@@ -99,7 +100,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 	})
 
 	t.Run("should use type of selected item for marked fields if unspecified", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		invokeCommand(t, srv.readController.Init())
 		invokeCommand(t, srv.writeController.ToggleMark(0))
@@ -146,7 +147,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 
 		for _, scenario := range scenarios {
 			t.Run(fmt.Sprintf("should change the value of a field to type %v", scenario.attrType), func(t *testing.T) {
-				srv := newService(t, false)
+				srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 				invokeCommand(t, srv.readController.Init())
 				before, _ := srv.state.ResultSet().Items()[0].AttributeValueAsString("alpha")
@@ -165,7 +166,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 			})
 
 			t.Run(fmt.Sprintf("should change value of nested field to type %v", scenario.attrType), func(t *testing.T) {
-				srv := newService(t, false)
+				srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 				invokeCommand(t, srv.readController.Init())
 
@@ -193,7 +194,7 @@ func TestTableWriteController_SetAttributeValue(t *testing.T) {
 
 func TestTableWriteController_DeleteAttribute(t *testing.T) {
 	t.Run("should delete top level attribute", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		invokeCommand(t, srv.readController.Init())
 		before, _ := srv.state.ResultSet().Items()[0].AttributeValueAsString("age")
@@ -207,7 +208,7 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 	})
 
 	t.Run("should delete attribute of map", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		invokeCommand(t, srv.readController.Init())
 
@@ -228,7 +229,7 @@ func TestTableWriteController_DeleteAttribute(t *testing.T) {
 
 func TestTableWriteController_PutItem(t *testing.T) {
 	t.Run("should put the selected item if dirty", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -248,7 +249,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if user does not confirm", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -272,7 +273,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if not dirty", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -284,7 +285,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if in read-only mode", func(t *testing.T) {
-		srv := newService(t, true)
+		srv := newService(t, serviceConfig{tableName: "alpha-table", isReadOnly: true})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -310,7 +311,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 
 func TestTableWriteController_PutItems(t *testing.T) {
 	t.Run("should put all dirty items if none are marked", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		invokeCommand(t, srv.readController.Init())
 
@@ -331,7 +332,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 	})
 
 	t.Run("only put marked items", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		invokeCommand(t, srv.readController.Init())
 
@@ -360,7 +361,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 	})
 
 	t.Run("do not put marked items which are not dirty", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		invokeCommand(t, srv.readController.Init())
 
@@ -389,7 +390,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 	})
 
 	t.Run("do nothing if in read-only mode", func(t *testing.T) {
-		srv := newService(t, true)
+		srv := newService(t, serviceConfig{tableName: "alpha-table", isReadOnly: true})
 
 		invokeCommand(t, srv.readController.Init())
 
@@ -420,7 +421,7 @@ func TestTableWriteController_PutItems(t *testing.T) {
 
 func TestTableWriteController_TouchItem(t *testing.T) {
 	t.Run("should put the selected item if unmodified", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -439,7 +440,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if modified", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -453,7 +454,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if in read-only mode", func(t *testing.T) {
-		srv := newService(t, true)
+		srv := newService(t, serviceConfig{tableName: "alpha-table", isReadOnly: true})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -474,7 +475,7 @@ func TestTableWriteController_TouchItem(t *testing.T) {
 
 func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 	t.Run("should delete and put the selected item if unmodified", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -493,7 +494,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if modified", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -507,7 +508,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 	})
 
 	t.Run("should not put the selected item if in read-only mode", func(t *testing.T) {
-		srv := newService(t, true)
+		srv := newService(t, serviceConfig{tableName: "alpha-table", isReadOnly: true})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -522,7 +523,7 @@ func TestTableWriteController_NoisyTouchItem(t *testing.T) {
 
 func TestTableWriteController_DeleteMarked(t *testing.T) {
 	t.Run("should delete marked items", func(t *testing.T) {
-		srv := newService(t, false)
+		srv := newService(t, serviceConfig{tableName: "alpha-table"})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -543,7 +544,7 @@ func TestTableWriteController_DeleteMarked(t *testing.T) {
 	})
 
 	t.Run("should not delete marked items if in read-only mode", func(t *testing.T) {
-		srv := newService(t, true)
+		srv := newService(t, serviceConfig{tableName: "alpha-table", isReadOnly: true})
 
 		// Read the table
 		invokeCommand(t, srv.readController.Init())
@@ -566,44 +567,46 @@ func TestTableWriteController_DeleteMarked(t *testing.T) {
 
 type services struct {
 	state              *controllers.State
+	settingProvider    controllers.SettingsProvider
 	readController     *controllers.TableReadController
 	writeController    *controllers.TableWriteController
 	settingsController *controllers.SettingsController
 }
 
-func newService(t *testing.T, isReadOnly bool) *services {
-	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(testWorkspace(t))
+type serviceConfig struct {
+	tableName  string
+	isReadOnly bool
+}
+
+func newService(t *testing.T, cfg serviceConfig) *services {
+	ws := testWorkspace(t)
+
+	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
+	settingStore := settingstore.New(ws)
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	client := testdynamo.SetupTestTable(t, testData)
 
-	settingProvider := &mockedSetting{isReadOnly: isReadOnly}
 	provider := dynamo.NewProvider(client)
-	service := tables.NewService(provider, settingProvider)
+	service := tables.NewService(provider, settingStore)
 
 	state := controllers.NewState()
-	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, "alpha-table", false)
-	writeController := controllers.NewTableWriteController(state, service, readController, settingProvider)
-	settingsController := controllers.NewSettingsController(settingProvider)
+	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, cfg.tableName, false)
+	writeController := controllers.NewTableWriteController(state, service, readController, settingStore)
+	settingsController := controllers.NewSettingsController(settingStore)
+
+	if cfg.isReadOnly {
+		if err := settingStore.SetReadOnly(cfg.isReadOnly); err != nil {
+			t.Errorf("cannot set ro: %v", err)
+		}
+	}
 
 	return &services{
 		state:              state,
+		settingProvider:    settingStore,
 		readController:     readController,
 		writeController:    writeController,
 		settingsController: settingsController,
 	}
-}
-
-type mockedSetting struct {
-	isReadOnly bool
-}
-
-func (ms *mockedSetting) SetReadOnly(ro bool) error {
-	ms.isReadOnly = ro
-	return nil
-}
-
-func (ms *mockedSetting) IsReadOnly() (bool, error) {
-	return ms.isReadOnly, nil
 }
