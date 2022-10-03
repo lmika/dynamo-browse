@@ -91,6 +91,11 @@ func (c *colListModel) refreshTable() {
 }
 
 func (c *colListModel) setColumnsFromModel(cols *models.Columns) {
+	if cols == nil {
+		c.table.SetRows([]table.Row{})
+		return
+	}
+
 	colNames := make([]table.Row, len(cols.Columns))
 	for i := range cols.Columns {
 		colNames[i] = colListRowModel{c}

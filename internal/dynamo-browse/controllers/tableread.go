@@ -11,6 +11,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
+	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
 	"golang.design/x/clipboard"
 	"log"
@@ -23,6 +24,7 @@ type TableReadController struct {
 	tableService        TableReadService
 	workspaceService    *workspaces.ViewSnapshotService
 	itemRendererService *itemrenderer.Service
+	eventBus            *bus.Bus
 	tableName           string
 	loadFromLastView    bool
 
@@ -37,14 +39,15 @@ func NewTableReadController(
 	tableService TableReadService,
 	workspaceService *workspaces.ViewSnapshotService,
 	itemRendererService *itemrenderer.Service,
+	eventBus *bus.Bus,
 	tableName string,
-	loadFromLastView bool,
 ) *TableReadController {
 	return &TableReadController{
 		state:               state,
 		tableService:        tableService,
 		workspaceService:    workspaceService,
 		itemRendererService: itemRendererService,
+		eventBus:            eventBus,
 		tableName:           tableName,
 		mutex:               new(sync.Mutex),
 	}
@@ -219,6 +222,9 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 	}
 
 	c.state.setResultSetAndFilter(resultSet, filter)
+
+	c.eventBus.Fire(newResultSetEvent, resultSet)
+
 	return c.state.buildNewResultSetMessage("")
 }
 

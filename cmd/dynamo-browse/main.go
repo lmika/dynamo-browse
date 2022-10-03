@@ -23,6 +23,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
+	bus "github.com/lmika/events"
 	"github.com/lmika/gopkgs/cli"
 	"log"
 	"net"
@@ -73,6 +74,8 @@ func main() {
 		dynamoClient = dynamodb.NewFromConfig(cfg)
 	}
 
+	eventBus := bus.New()
+
 	uiStyles := styles.DefaultStyles
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
@@ -94,9 +97,9 @@ func main() {
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
 
 	state := controllers.NewState()
-	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, *flagTable, true)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, eventBus, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController, settingStore)
-	columnsController := controllers.NewColumnsController()
+	columnsController := controllers.NewColumnsController(eventBus)
 	settingsController := controllers.NewSettingsController(settingStore)
 	keyBindings := keybindings.Default()
 

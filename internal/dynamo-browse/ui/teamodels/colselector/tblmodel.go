@@ -12,8 +12,12 @@ type colListRowModel struct {
 }
 
 func (clr colListRowModel) Render(w io.Writer, model table.Model, index int) {
-	var style lipgloss.Style
+	cols := clr.m.colController.Columns()
+	if cols == nil {
+		return
+	}
 
+	var style lipgloss.Style
 	if index == model.Cursor() {
 		style = model.Styles.SelectedRow
 	}
