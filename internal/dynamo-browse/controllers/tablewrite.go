@@ -375,7 +375,7 @@ func (twc *TableWriteController) NoisyTouchItem(idx int) tea.Msg {
 				return events.Error(err)
 			}
 
-			return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query, false)
+			return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query, false, resultSetUpdateTouch)
 		},
 	}
 }
@@ -406,7 +406,7 @@ func (twc *TableWriteController) DeleteMarked() tea.Msg {
 				return events.Error(err)
 			}
 
-			return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query, false)
+			return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query, false, resultSetUpdateTouch)
 		},
 	}
 }

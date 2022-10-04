@@ -1,6 +1,9 @@
 package queryexpr
 
-import "github.com/lmika/audax/internal/dynamo-browse/models"
+import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
+)
 
 type QueryExpr struct {
 	ast *astExpr
@@ -13,6 +16,10 @@ func (md *QueryExpr) Plan(tableInfo *models.TableInfo) (*models.QueryExecutionPl
 	}
 
 	return ir.calcQuery(tableInfo)
+}
+
+func (md *QueryExpr) EvalItem(item models.Item) (types.AttributeValue, error) {
+	return md.ast.evalItem(item)
 }
 
 func (md *QueryExpr) String() string {

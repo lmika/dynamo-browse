@@ -146,3 +146,67 @@ func TestModExpr_Query(t *testing.T) {
 		assert.Equal(t, "prefix", plan.Expression.Values()[":1"].(*types.AttributeValueMemberS).Value)
 	})
 }
+
+func TestQueryExpr_EvalItem(t *testing.T) {
+	var (
+		item = models.Item{
+			"alpha": &types.AttributeValueMemberS{Value: "alpha"},
+			"bravo": &types.AttributeValueMemberN{Value: "123"},
+			"charlie": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"door": &types.AttributeValueMemberS{Value: "red"},
+					"tree": &types.AttributeValueMemberS{Value: "green"},
+				},
+			},
+		}
+	)
+
+	t.Run("simple values", func(t *testing.T) {
+		scenarios := []struct {
+			expr     string
+			expected types.AttributeValue
+		}{
+			// Simple values
+			{expr: `alpha`, expected: &types.AttributeValueMemberS{Value: "alpha"}},
+			{expr: `bravo`, expected: &types.AttributeValueMemberN{Value: "123"}},
+			{expr: `charlie`, expected: item["charlie"]},
+
+			// Dot values
+			{expr: `charlie.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
+			{expr: `charlie.tree`, expected: &types.AttributeValueMemberS{Value: "green"}},
+		}
+		for _, scenario := range scenarios {
+			t.Run(scenario.expr, func(t *testing.T) {
+				modExpr, err := queryexpr.Parse(scenario.expr)
+				assert.NoError(t, err)
+
+				res, err := modExpr.EvalItem(item)
+				assert.NoError(t, err)
+
+				assert.Equal(t, scenario.expected, res)
+			})
+		}
+	})
+
+	t.Run("expression errors", func(t *testing.T) {
+		scenarios := []struct {
+			expr          string
+			expectedError error
+		}{
+			{expr: `not_present`, expectedError: queryexpr.NameNotFoundError("not_present")},
+			{expr: `alpha.bravo`, expectedError: queryexpr.ValueNotAMapError([]string{"alpha", "bravo"})},
+			{expr: `charlie.tree.bla`, expectedError: queryexpr.ValueNotAMapError([]string{"charlie", "tree", "bla"})},
+		}
+
+		for _, scenario := range scenarios {
+			t.Run(scenario.expr, func(t *testing.T) {
+				modExpr, err := queryexpr.Parse(scenario.expr)
+				assert.NoError(t, err)
+
+				res, err := modExpr.EvalItem(item)
+				assert.Nil(t, res)
+				assert.Equal(t, scenario.expectedError, err)
+			})
+		}
+	})
+}

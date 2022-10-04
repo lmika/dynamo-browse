@@ -4,6 +4,15 @@ import "github.com/charmbracelet/bubbles/key"
 
 func Default() *KeyBindings {
 	return &KeyBindings{
+		ColumnPopup: &FieldsPopupBinding{
+			Close:            key.NewBinding(key.WithKeys("ctrl+c", "esc"), key.WithHelp("ctrl+c/esc", "close popup")),
+			ShiftColumnLeft:  key.NewBinding(key.WithKeys("I", "shift column left")),
+			ShiftColumnRight: key.NewBinding(key.WithKeys("K", "shift column right")),
+			ToggleVisible:    key.NewBinding(key.WithKeys(" ", "toggle column visible")),
+			ResetColumns:     key.NewBinding(key.WithKeys("R", "reset columns")),
+			AddColumn:        key.NewBinding(key.WithKeys("a", "add new column")),
+			DeleteColumn:     key.NewBinding(key.WithKeys("d", "delete column")),
+		},
 		TableView: &TableKeyBinding{
 			MoveUp:   key.NewBinding(key.WithKeys("i", "up")),
 			MoveDown: key.NewBinding(key.WithKeys("k", "down")),
@@ -25,6 +34,7 @@ func Default() *KeyBindings {
 			CycleLayoutForward:   key.NewBinding(key.WithKeys("w"), key.WithHelp("w", "cycle layout forward")),
 			CycleLayoutBackwards: key.NewBinding(key.WithKeys("W"), key.WithHelp("W", "cycle layout backward")),
 			PromptForCommand:     key.NewBinding(key.WithKeys(":"), key.WithHelp(":", "prompt for command")),
+			ShowColumnOverlay:    key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "show column overlay")),
 			Quit:                 key.NewBinding(key.WithKeys("ctrl+c", "esc"), key.WithHelp("ctrl+c/esc", "quit")),
 		},
 	}

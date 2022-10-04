@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/columns"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
@@ -26,35 +27,42 @@ type Setting interface {
 	IsReadOnly() bool
 }
 
+type ColumnsProvider interface {
+	Columns() *columns.Columns
+}
+
 type Model struct {
-	frameTitle frame.FrameTitle
-	table      table.Model
-	w, h       int
-	keyBinding *keybindings.TableKeyBinding
-	setting    Setting
+	frameTitle      frame.FrameTitle
+	table           table.Model
+	w, h            int
+	keyBinding      *keybindings.TableKeyBinding
+	setting         Setting
+	columnsProvider ColumnsProvider
 
 	// model state
 	isReadOnly bool
 	colOffset  int
 	rows       []table.Row
+	columns    []columns.Column
 	resultSet  *models.ResultSet
 }
 
-func New(keyBinding *keybindings.TableKeyBinding, setting Setting, uiStyles styles.Styles) *Model {
-	tbl := table.New(table.SimpleColumns([]string{"pk", "sk"}), 100, 100)
-	rows := make([]table.Row, 0)
-	tbl.SetRows(rows)
-
+func New(keyBinding *keybindings.TableKeyBinding, columnsProvider ColumnsProvider, setting Setting, uiStyles styles.Styles) *Model {
 	frameTitle := frame.NewFrameTitle("No table", true, uiStyles.Frames)
 	isReadOnly := setting.IsReadOnly()
 
-	return &Model{
-		isReadOnly: isReadOnly,
-		frameTitle: frameTitle,
-		table:      tbl,
-		keyBinding: keyBinding,
-		setting:    setting,
+	model := &Model{
+		isReadOnly:      isReadOnly,
+		frameTitle:      frameTitle,
+		keyBinding:      keyBinding,
+		setting:         setting,
+		columnsProvider: columnsProvider,
 	}
+
+	model.table = table.New(columnModel{model}, 100, 100)
+	model.table.SetRows([]table.Row{})
+
+	return model
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -67,8 +75,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resultSet = msg.ResultSet
 		m.updateTable()
 		return m, m.postSelectedItemChanged
+	case controllers.ColumnsUpdated:
+		m.rebuildTable(&m.table)
+		return m, m.postSelectedItemChanged
 	case controllers.SettingsUpdated:
 		m.updateTableHeading()
+		return m, nil
+	case controllers.MoveLeftmostDisplayedColumnInTableViewBy:
+		m.setLeftmostDisplayedColumn(m.colOffset + int(msg))
 		return m, nil
 	case tea.KeyMsg:
 		switch {
@@ -106,8 +120,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) setLeftmostDisplayedColumn(newCol int) {
 	if newCol < 0 {
 		m.colOffset = 0
-	} else if newCol >= len(m.resultSet.Columns()) {
-		m.colOffset = len(m.resultSet.Columns()) - 1
+	} else if newCol >= len(m.columnsProvider.Columns().Columns) {
+		m.colOffset = len(m.columnsProvider.Columns().Columns) - 1
 	} else {
 		m.colOffset = newCol
 	}
@@ -139,14 +153,29 @@ func (m *Model) updateTableHeading() {
 func (m *Model) updateTable() {
 	m.updateTableHeading()
 	m.colOffset = 0
-	m.rebuildTable()
+	m.rebuildTable(nil)
 }
 
-func (m *Model) rebuildTable() {
+func (m *Model) rebuildTable(targetTbl *table.Model) {
+	var tbl table.Model
+
 	resultSet := m.resultSet
 
-	newTbl := table.New(columnModel{m}, m.w, m.h-m.frameTitle.HeaderHeight())
+	// Use the target table model if you can, but if it's nil or the number of rows is smaller than the
+	// existing table, create a new one
+	if targetTbl == nil || len(resultSet.Items()) > len(m.rows) {
+		tbl = table.New(columnModel{m}, m.w, m.h-m.frameTitle.HeaderHeight())
+		if targetTbl != nil {
+			tbl.GoBottom()
+		}
+	} else {
+		tbl = *targetTbl
+	}
+
+	m.columns = m.columnsProvider.Columns().VisibleColumns()
+
 	newRows := make([]table.Row, 0)
+
 	for i, r := range resultSet.Items() {
 		if resultSet.Hidden(i) {
 			continue
@@ -161,8 +190,9 @@ func (m *Model) rebuildTable() {
 	}
 
 	m.rows = newRows
-	newTbl.SetRows(newRows)
-	m.table = newTbl
+	tbl.SetRows(newRows)
+
+	m.table = tbl
 }
 
 func (m *Model) SelectedItemIndex() int {

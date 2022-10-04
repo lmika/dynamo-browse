@@ -32,13 +32,13 @@ func (s *Service) RenderItem(w io.Writer, item models.Item, resultSet *models.Re
 	seenColumns := make(map[string]struct{})
 	for _, colName := range resultSet.Columns() {
 		seenColumns[colName] = struct{}{}
-		if r := item.Renderer(colName); r != nil {
+		if r := itemrender.ToRenderer(item[colName]); r != nil {
 			s.renderItem(tabWriter, "", colName, r, styles)
 		}
 	}
 	for k, _ := range item {
 		if _, seen := seenColumns[k]; !seen {
-			if r := item.Renderer(k); r != nil {
+			if r := itemrender.ToRenderer(item[k]); r != nil {
 				s.renderItem(tabWriter, "", k, r, styles)
 			}
 		}

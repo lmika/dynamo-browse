@@ -2,6 +2,7 @@ package queryexpr
 
 import (
 	"github.com/alecthomas/participle/v2"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
@@ -17,6 +18,10 @@ func (a *astExpr) evalToIR(tableInfo *models.TableInfo) (*irDisjunction, error) 
 	return a.Root.evalToIR(tableInfo)
 }
 
+func (a *astExpr) evalItem(item models.Item) (types.AttributeValue, error) {
+	return a.Root.evalItem(item)
+}
+
 type astDisjunction struct {
 	Operands []*astConjunction `parser:"@@ ('or' @@)*"`
 }
@@ -25,10 +30,16 @@ type astConjunction struct {
 	Operands []*astBinOp `parser:"@@ ('and' @@)*"`
 }
 
+// TODO: do this properly
 type astBinOp struct {
-	Name  string           `parser:"@Ident"`
-	Op    string           `parser:"@('^' '=' | '=')"`
-	Value *astLiteralValue `parser:"@@"`
+	Ref   *astDot          `parser:"@@"`
+	Op    string           `parser:"( @('^' '=' | '=')"`
+	Value *astLiteralValue `parser:"@@ )?"`
+}
+
+type astDot struct {
+	Name  string   `parser:"@Ident"`
+	Quals []string `parser:"('.' @Ident)*"`
 }
 
 type astLiteralValue struct {

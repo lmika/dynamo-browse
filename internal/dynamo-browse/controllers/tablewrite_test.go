@@ -12,6 +12,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
+	bus "github.com/lmika/events"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -571,6 +572,8 @@ type services struct {
 	readController     *controllers.TableReadController
 	writeController    *controllers.TableWriteController
 	settingsController *controllers.SettingsController
+	columnsController  *controllers.ColumnsController
+	exportController   *controllers.ExportController
 }
 
 type serviceConfig struct {
@@ -590,11 +593,14 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 
 	provider := dynamo.NewProvider(client)
 	service := tables.NewService(provider, settingStore)
+	eventBus := bus.New()
 
 	state := controllers.NewState()
-	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, cfg.tableName, false)
+	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, eventBus, cfg.tableName)
 	writeController := controllers.NewTableWriteController(state, service, readController, settingStore)
 	settingsController := controllers.NewSettingsController(settingStore)
+	columnsController := controllers.NewColumnsController(eventBus)
+	exportController := controllers.NewExportController(state, columnsController)
 
 	if cfg.isReadOnly {
 		if err := settingStore.SetReadOnly(cfg.isReadOnly); err != nil {
@@ -608,5 +614,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 		readController:     readController,
 		writeController:    writeController,
 		settingsController: settingsController,
+		columnsController:  columnsController,
+		exportController:   exportController,
 	}
 }

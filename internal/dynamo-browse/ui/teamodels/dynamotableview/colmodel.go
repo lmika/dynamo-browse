@@ -5,7 +5,7 @@ type columnModel struct {
 }
 
 func (cm columnModel) Len() int {
-	return len(cm.m.resultSet.Columns()[cm.m.colOffset:]) + 1
+	return len(cm.m.columns[cm.m.colOffset:]) + 1
 }
 
 func (cm columnModel) Header(index int) string {
@@ -13,5 +13,5 @@ func (cm columnModel) Header(index int) string {
 		return ""
 	}
 
-	return cm.m.resultSet.Columns()[cm.m.colOffset+index-1]
+	return cm.m.columns[cm.m.colOffset+index-1].Name
 }
