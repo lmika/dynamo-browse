@@ -69,8 +69,7 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 			sb.WriteString(style.Render("\t"))
 		}
 
-		colValue, _ := col.Evaluator.EvaluateForItem(mtr.item)
-		if r := itemrender.ToRenderer(colValue); r != nil {
+		if r := itemrender.ToRenderer(col.Evaluator.EvaluateForItem(mtr.item)); r != nil {
 			sb.WriteString(style.Render(r.StringValue()))
 			if mi := r.MetaInfo(); mi != "" {
 				sb.WriteString(metaInfoStyle.Render(mi))

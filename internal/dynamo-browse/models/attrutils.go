@@ -34,7 +34,7 @@ func compareScalarAttributes(x, y types.AttributeValue) (int, bool) {
 	return 0, false
 }
 
-func attributeToString(x types.AttributeValue) (string, bool) {
+func AttributeToString(x types.AttributeValue) (string, bool) {
 	switch xVal := x.(type) {
 	case *types.AttributeValueMemberS:
 		return xVal.Value, true

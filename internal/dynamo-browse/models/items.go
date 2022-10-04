@@ -33,7 +33,7 @@ func (i Item) KeyValue(info *TableInfo) map[string]types.AttributeValue {
 }
 
 func (i Item) AttributeValueAsString(key string) (string, bool) {
-	return attributeToString(i[key])
+	return AttributeToString(i[key])
 }
 
 //func (i Item) Renderer(key string) itemrender.Renderer {

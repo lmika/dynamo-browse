@@ -572,6 +572,8 @@ type services struct {
 	readController     *controllers.TableReadController
 	writeController    *controllers.TableWriteController
 	settingsController *controllers.SettingsController
+	columnsController  *controllers.ColumnsController
+	exportController   *controllers.ExportController
 }
 
 type serviceConfig struct {
@@ -594,9 +596,11 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	eventBus := bus.New()
 
 	state := controllers.NewState()
-	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, eventBus, cfg.tableName, false)
+	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, eventBus, cfg.tableName)
 	writeController := controllers.NewTableWriteController(state, service, readController, settingStore)
 	settingsController := controllers.NewSettingsController(settingStore)
+	columnsController := controllers.NewColumnsController(eventBus)
+	exportController := controllers.NewExportController(state, columnsController)
 
 	if cfg.isReadOnly {
 		if err := settingStore.SetReadOnly(cfg.isReadOnly); err != nil {
@@ -610,5 +614,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 		readController:     readController,
 		writeController:    writeController,
 		settingsController: settingsController,
+		columnsController:  columnsController,
+		exportController:   exportController,
 	}
 }

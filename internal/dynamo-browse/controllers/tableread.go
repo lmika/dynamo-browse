@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/csv"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
@@ -15,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.design/x/clipboard"
 	"log"
-	"os"
 	"strings"
 	"sync"
 )
@@ -170,38 +168,38 @@ func (c *TableReadController) Rescan() tea.Msg {
 	})
 }
 
-func (c *TableReadController) ExportCSV(filename string) tea.Msg {
-	resultSet := c.state.ResultSet()
-	if resultSet == nil {
-		return events.Error(errors.New("no result set"))
-	}
-
-	f, err := os.Create(filename)
-	if err != nil {
-		return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-	}
-	defer f.Close()
-
-	cw := csv.NewWriter(f)
-	defer cw.Flush()
-
-	columns := resultSet.Columns()
-	if err := cw.Write(columns); err != nil {
-		return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-	}
-
-	row := make([]string, len(columns))
-	for _, item := range resultSet.Items() {
-		for i, col := range columns {
-			row[i], _ = item.AttributeValueAsString(col)
-		}
-		if err := cw.Write(row); err != nil {
-			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-		}
-	}
-
-	return nil
-}
+//func (c *TableReadController) ExportCSV(filename string) tea.Msg {
+//	resultSet := c.state.ResultSet()
+//	if resultSet == nil {
+//		return events.Error(errors.New("no result set"))
+//	}
+//
+//	f, err := os.Create(filename)
+//	if err != nil {
+//		return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+//	}
+//	defer f.Close()
+//
+//	cw := csv.NewWriter(f)
+//	defer cw.Flush()
+//
+//	columns := resultSet.Columns()
+//	if err := cw.Write(columns); err != nil {
+//		return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+//	}
+//
+//	row := make([]string, len(columns))
+//	for _, item := range resultSet.Items() {
+//		for i, col := range columns {
+//			row[i], _ = item.AttributeValueAsString(col)
+//		}
+//		if err := cw.Write(row); err != nil {
+//			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
+//		}
+//	}
+//
+//	return nil
+//}
 
 func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable, pushBackstack bool) tea.Msg {
 	newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)

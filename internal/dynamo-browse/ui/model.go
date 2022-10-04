@@ -41,6 +41,7 @@ type Model struct {
 	tableReadController  *controllers.TableReadController
 	tableWriteController *controllers.TableWriteController
 	settingsController   *controllers.SettingsController
+	exportController     *controllers.ExportController
 	commandController    *commandctrl.CommandController
 	colSelector          *colselector.Model
 	itemEdit             *dynamoitemedit.Model
@@ -60,6 +61,7 @@ func NewModel(
 	rc *controllers.TableReadController,
 	wc *controllers.TableWriteController,
 	columnsController *controllers.ColumnsController,
+	exportController *controllers.ExportController,
 	settingsController *controllers.SettingsController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
@@ -92,7 +94,7 @@ func NewModel(
 				if len(args) == 0 {
 					return events.Error(errors.New("expected filename"))
 				}
-				return rc.ExportCSV(args[0])
+				return exportController.ExportCSV(args[0])
 			},
 			"unmark": commandctrl.NoArgCommand(rc.Unmark),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked),
