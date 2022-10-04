@@ -9,7 +9,6 @@ import (
 type NameNotFoundError string
 
 func (n NameNotFoundError) Error() string {
-	// TODO: which name?
 	return fmt.Sprintf("%v: name not found", string(n))
 }
 
@@ -17,6 +16,5 @@ func (n NameNotFoundError) Error() string {
 type ValueNotAMapError []string
 
 func (n ValueNotAMapError) Error() string {
-	// TODO: which value?
 	return fmt.Sprintf("%v: name is not a map", strings.Join(n, "."))
 }
