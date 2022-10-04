@@ -6,6 +6,13 @@ type TableInfo struct {
 	DefinedAttributes []string
 }
 
+func (ti *TableInfo) Equal(other *TableInfo) bool {
+	return ti.Name == other.Name &&
+		ti.Keys.PartitionKey == other.Keys.PartitionKey &&
+		ti.Keys.SortKey == other.Keys.SortKey &&
+		len(ti.DefinedAttributes) == len(other.DefinedAttributes) // Probably should be all
+}
+
 type KeyAttribute struct {
 	PartitionKey string
 	SortKey      string

@@ -9,6 +9,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
+	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/colselector"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dialogprompt"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemedit"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
@@ -40,7 +41,9 @@ type Model struct {
 	tableReadController  *controllers.TableReadController
 	tableWriteController *controllers.TableWriteController
 	settingsController   *controllers.SettingsController
+	exportController     *controllers.ExportController
 	commandController    *commandctrl.CommandController
+	colSelector          *colselector.Model
 	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
@@ -57,6 +60,8 @@ type Model struct {
 func NewModel(
 	rc *controllers.TableReadController,
 	wc *controllers.TableWriteController,
+	columnsController *controllers.ColumnsController,
+	exportController *controllers.ExportController,
 	settingsController *controllers.SettingsController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
@@ -65,11 +70,12 @@ func NewModel(
 ) Model {
 	uiStyles := styles.DefaultStyles
 
-	dtv := dynamotableview.New(defaultKeyMap.TableView, settingsController, uiStyles)
+	dtv := dynamotableview.New(defaultKeyMap.TableView, columnsController, settingsController, uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
-	itemEdit := dynamoitemedit.NewModel(mainView)
+	colSelector := colselector.New(mainView, defaultKeyMap, columnsController)
+	itemEdit := dynamoitemedit.NewModel(colSelector)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
@@ -88,7 +94,7 @@ func NewModel(
 				if len(args) == 0 {
 					return events.Error(errors.New("expected filename"))
 				}
-				return rc.ExportCSV(args[0])
+				return exportController.ExportCSV(args[0])
 			},
 			"unmark": commandctrl.NoArgCommand(rc.Unmark),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked),
@@ -174,6 +180,7 @@ func NewModel(
 		tableWriteController: wc,
 		commandController:    cc,
 		itemEdit:             itemEdit,
+		colSelector:          colSelector,
 		statusAndPrompt:      statusAndPrompt,
 		tableSelect:          tableSelect,
 		root:                 root,
@@ -182,16 +189,6 @@ func NewModel(
 		mainView:             mainView,
 		keyMap:               defaultKeyMap.View,
 	}
-}
-
-func (m Model) Init() tea.Cmd {
-	// TODO: this should probably be moved somewhere else
-	rcFilename := os.ExpandEnv(initRCFilename)
-	if err := m.commandController.ExecuteFile(rcFilename); err != nil {
-		log.Println(err)
-	}
-
-	return m.tableReadController.Init
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -205,15 +202,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			events.SetStatus(msg.StatusMessage()),
 		)
 	case tea.KeyMsg:
-		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() {
+		// TODO: use modes here
+		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() && !m.colSelector.ColSelectorVisible() {
 			switch {
 			case key.Matches(msg, m.keyMap.Mark):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
-					return m, func() tea.Msg { return m.tableWriteController.ToggleMark(idx) }
+					return m, events.SetTeaMessage(m.tableWriteController.ToggleMark(idx))
 				}
 			case key.Matches(msg, m.keyMap.CopyItemToClipboard):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
-					return m, func() tea.Msg { return m.tableReadController.CopyItemToClipboard(idx) }
+					return m, events.SetTeaMessage(m.tableReadController.CopyItemToClipboard(idx))
 				}
 			case key.Matches(msg, m.keyMap.Rescan):
 				return m, m.tableReadController.Rescan
@@ -226,22 +224,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keyMap.ViewForward):
 				return m, m.tableReadController.ViewForward
 			case key.Matches(msg, m.keyMap.CycleLayoutForward):
-				return m, func() tea.Msg {
-					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)}
-				}
+				return m, events.SetTeaMessage(controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, 1, ViewModeCount)})
 			case key.Matches(msg, m.keyMap.CycleLayoutBackwards):
-				return m, func() tea.Msg {
-					return controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)}
-				}
+				return m, events.SetTeaMessage(controllers.SetTableItemView{ViewIndex: utils.Cycle(m.mainViewIndex, -1, ViewModeCount)})
 			//case "e":
 			//	m.itemEdit.Visible()
 			//	return m, nil
+			case key.Matches(msg, m.keyMap.ShowColumnOverlay):
+				return m, events.SetTeaMessage(controllers.ShowColumnOverlay{})
 			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
 			case key.Matches(msg, m.keyMap.PromptForTable):
-				return m, func() tea.Msg {
-					return m.tableReadController.ListTables()
-				}
+				return m, events.SetTeaMessage(m.tableReadController.ListTables())
 			case key.Matches(msg, m.keyMap.Quit):
 				return m, tea.Quit
 			}
@@ -251,6 +245,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.root, cmd = m.root.Update(msg)
 	return m, cmd
+}
+
+func (m Model) Init() tea.Cmd {
+	// TODO: this should probably be moved somewhere else
+	rcFilename := os.ExpandEnv(initRCFilename)
+	if err := m.commandController.ExecuteFile(rcFilename); err != nil {
+		log.Println(err)
+	}
+
+	return m.tableReadController.Init
 }
 
 func (m Model) View() string {

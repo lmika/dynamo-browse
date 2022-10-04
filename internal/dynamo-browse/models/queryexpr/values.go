@@ -8,6 +8,10 @@ import (
 )
 
 func (a *astLiteralValue) dynamoValue() (types.AttributeValue, error) {
+	if a == nil {
+		return nil, nil
+	}
+
 	s, err := strconv.Unquote(a.StringVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot unquote string")
@@ -16,6 +20,10 @@ func (a *astLiteralValue) dynamoValue() (types.AttributeValue, error) {
 }
 
 func (a *astLiteralValue) goValue() (any, error) {
+	if a == nil {
+		return nil, nil
+	}
+
 	s, err := strconv.Unquote(a.StringVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot unquote string")
@@ -24,5 +32,8 @@ func (a *astLiteralValue) goValue() (any, error) {
 }
 
 func (a *astLiteralValue) String() string {
+	if a == nil {
+		return ""
+	}
 	return a.StringVal
 }

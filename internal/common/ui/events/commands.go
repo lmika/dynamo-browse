@@ -16,6 +16,12 @@ func SetStatus(msg string) tea.Cmd {
 	}
 }
 
+func SetTeaMessage(event tea.Msg) tea.Cmd {
+	return func() tea.Msg {
+		return event
+	}
+}
+
 func PromptForInput(prompt string, onDone func(value string) tea.Msg) tea.Msg {
 	return PromptForInputMsg{
 		Prompt: prompt,

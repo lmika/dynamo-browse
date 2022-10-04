@@ -13,6 +13,11 @@ type SetTableItemView struct {
 type SettingsUpdated struct {
 }
 
+type ColumnsUpdated struct {
+}
+
+type MoveLeftmostDisplayedColumnInTableViewBy int
+
 type NewResultSet struct {
 	ResultSet     *models.ResultSet
 	currentFilter string
@@ -59,3 +64,6 @@ type ResultSetUpdated struct {
 func (rs ResultSetUpdated) StatusMessage() string {
 	return rs.statusMessage
 }
+
+type ShowColumnOverlay struct{}
+type HideColumnOverlay struct{}
