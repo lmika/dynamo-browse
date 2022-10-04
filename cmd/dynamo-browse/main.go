@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/common/ui/logging"
 	"github.com/lmika/audax/internal/common/ui/osstyle"
@@ -120,29 +119,9 @@ func main() {
 	state.SetUIStateProvider(model)
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
-	lipgloss.HasDarkBackground()
+	osstyle.DetectCurrentScheme()
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
-
-	pluginRuntimeService.SetMessageSender(p.Send)
-	commandController.SetMissingCommand(pluginRuntimeService.MissingCommand)
-
-	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
-	if lipgloss.HasDarkBackground() {
-		if colorScheme := osstyle.CurrentColorScheme(); colorScheme == osstyle.ColorSchemeLightMode {
-			log.Printf("terminal reads dark but really in light mode")
-			lipgloss.SetHasDarkBackground(true)
-		} else {
-			log.Printf("in dark background")
-		}
-	} else {
-		if colorScheme := osstyle.CurrentColorScheme(); colorScheme == osstyle.ColorSchemeDarkMode {
-			log.Printf("terminal reads light but really in dark mode")
-			lipgloss.SetHasDarkBackground(true)
-		} else {
-			log.Printf("cannot detect system darkmode")
-		}
-	}
 
 	log.Println("launching")
 	pluginRuntimeService.Start()
