@@ -4,6 +4,15 @@ import "github.com/charmbracelet/bubbles/key"
 
 func Default() *KeyBindings {
 	return &KeyBindings{
+		ColumnPopup: &FieldsPopupBinding{
+			Close:            key.NewBinding(key.WithKeys("ctrl+c", "esc"), key.WithHelp("ctrl+c/esc", "close popup")),
+			ShiftColumnLeft:  key.NewBinding(key.WithKeys("I", "shift column left")),
+			ShiftColumnRight: key.NewBinding(key.WithKeys("K", "shift column right")),
+			ToggleVisible:    key.NewBinding(key.WithKeys(" ", "toggle column visible")),
+			ResetColumns:     key.NewBinding(key.WithKeys("R", "reset columns")),
+			AddColumn:        key.NewBinding(key.WithKeys("a", "add new column")),
+			DeleteColumn:     key.NewBinding(key.WithKeys("d", "delete column")),
+		},
 		TableView: &TableKeyBinding{
 			MoveUp:   key.NewBinding(key.WithKeys("i", "up")),
 			MoveDown: key.NewBinding(key.WithKeys("k", "down")),

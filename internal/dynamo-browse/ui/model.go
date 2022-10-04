@@ -74,7 +74,7 @@ func NewModel(
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
-	colSelector := colselector.New(mainView, defaultKeyMap.TableView, columnsController)
+	colSelector := colselector.New(mainView, defaultKeyMap, columnsController)
 	itemEdit := dynamoitemedit.NewModel(colSelector)
 	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
 	dialogPrompt := dialogprompt.New(statusAndPrompt)

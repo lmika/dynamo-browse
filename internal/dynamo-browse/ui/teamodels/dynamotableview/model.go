@@ -81,6 +81,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case controllers.SettingsUpdated:
 		m.updateTableHeading()
 		return m, nil
+	case controllers.MoveLeftmostDisplayedColumnInTableViewBy:
+		m.setLeftmostDisplayedColumn(m.colOffset + int(msg))
+		return m, nil
 	case tea.KeyMsg:
 		switch {
 		// Table nav

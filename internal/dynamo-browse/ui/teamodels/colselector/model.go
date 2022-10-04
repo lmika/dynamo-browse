@@ -8,21 +8,25 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
 )
 
+const (
+	overlayWidth  = 50
+	overlayHeight = 25
+)
+
 type Model struct {
-	keyBinding        *keybindings.TableKeyBinding
 	columnsController *controllers.ColumnsController
 	subModel          tea.Model
 	colListModel      *colListModel
 	compositor        *layout.Compositor
+	w, h              int
 }
 
-func New(submodel tea.Model, keyBinding *keybindings.TableKeyBinding, columnsController *controllers.ColumnsController) *Model {
+func New(submodel tea.Model, keyBinding *keybindings.KeyBindings, columnsController *controllers.ColumnsController) *Model {
 	colListModel := newColListModel(keyBinding, columnsController)
 
 	compositor := layout.NewCompositor(submodel)
 
 	return &Model{
-		keyBinding:        keyBinding,
 		columnsController: columnsController,
 		subModel:          submodel,
 		compositor:        compositor,
@@ -39,7 +43,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case controllers.ShowColumnOverlay:
 		m.colListModel.setColumnsFromModel(m.columnsController.Columns())
-		m.compositor.SetOverlay(m.colListModel, 6, 4, 50, 20)
+		m.compositor.SetOverlay(m.colListModel, m.w/2-overlayWidth/2, m.h/2-overlayHeight/2, overlayWidth, overlayHeight)
 	case controllers.HideColumnOverlay:
 		m.compositor.ClearOverlay()
 	case controllers.ColumnsUpdated:
@@ -58,6 +62,8 @@ func (m *Model) View() string {
 }
 
 func (m *Model) Resize(w, h int) layout.ResizingModel {
+	m.w, m.h = w, h
+	m.compositor.MoveOverlay(m.w/2-overlayWidth/2, m.h/2-overlayHeight/2)
 	m.subModel = layout.Resize(m.subModel, w, h)
 	m.colListModel = layout.Resize(m.colListModel, w, h).(*colListModel)
 	return m

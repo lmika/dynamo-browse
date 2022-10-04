@@ -10,21 +10,26 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
 	table "github.com/lmika/go-bubble-table"
+	"strings"
 )
 
+var frameColor = lipgloss.Color("63")
+
+var frameStyle = lipgloss.NewStyle().
+	Foreground(frameColor)
 var style = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("63"))
+	BorderForeground(frameColor)
 
 type colListModel struct {
-	keyBinding    *keybindings.TableKeyBinding
+	keyBinding    *keybindings.KeyBindings
 	colController *controllers.ColumnsController
 
 	rows  []table.Row
 	table table.Model
 }
 
-func newColListModel(keyBinding *keybindings.TableKeyBinding, colController *controllers.ColumnsController) *colListModel {
+func newColListModel(keyBinding *keybindings.KeyBindings, colController *controllers.ColumnsController) *colListModel {
 	tbl := table.New(table.SimpleColumns([]string{"", "Name"}), 100, 100)
 	tbl.SetRows([]table.Row{})
 
@@ -44,38 +49,44 @@ func (m *colListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		// Column operations
-		case msg.String() == "I":
+		case key.Matches(msg, m.keyBinding.ColumnPopup.ShiftColumnLeft):
 			return m, events.SetTeaMessage(m.shiftColumnUp(m.table.Cursor()))
-		case msg.String() == "K":
+		case key.Matches(msg, m.keyBinding.ColumnPopup.ShiftColumnRight):
 			return m, events.SetTeaMessage(m.shiftColumnDown(m.table.Cursor()))
-		case msg.String() == " ":
+		case key.Matches(msg, m.keyBinding.ColumnPopup.ToggleVisible):
 			return m, events.SetTeaMessage(m.colController.ToggleVisible(m.table.Cursor()))
-		case msg.String() == "esc":
+		case key.Matches(msg, m.keyBinding.ColumnPopup.Close):
 			return m, events.SetTeaMessage(controllers.HideColumnOverlay{})
-		case msg.String() == "R":
+		case key.Matches(msg, m.keyBinding.ColumnPopup.ResetColumns):
 			return m, events.SetTeaMessage(m.colController.SetColumnsToResultSet())
-		case msg.String() == "a":
+		case key.Matches(msg, m.keyBinding.ColumnPopup.AddColumn):
 			return m, events.SetTeaMessage(m.colController.AddColumn(m.table.Cursor()))
-		case msg.String() == "d":
+		case key.Matches(msg, m.keyBinding.ColumnPopup.DeleteColumn):
 			return m, events.SetTeaMessage(m.colController.DeleteColumn(m.table.Cursor()))
 
+		// Main table nav
+		case key.Matches(msg, m.keyBinding.TableView.ColLeft):
+			return m, events.SetTeaMessage(controllers.MoveLeftmostDisplayedColumnInTableViewBy(-1))
+		case key.Matches(msg, m.keyBinding.TableView.ColRight):
+			return m, events.SetTeaMessage(controllers.MoveLeftmostDisplayedColumnInTableViewBy(1))
+
 		// Table nav
-		case key.Matches(msg, m.keyBinding.MoveUp):
+		case key.Matches(msg, m.keyBinding.TableView.MoveUp):
 			m.table.GoUp()
 			return m, nil
-		case key.Matches(msg, m.keyBinding.MoveDown):
+		case key.Matches(msg, m.keyBinding.TableView.MoveDown):
 			m.table.GoDown()
 			return m, nil
-		case key.Matches(msg, m.keyBinding.PageUp):
+		case key.Matches(msg, m.keyBinding.TableView.PageUp):
 			m.table.GoPageUp()
 			return m, nil
-		case key.Matches(msg, m.keyBinding.PageDown):
+		case key.Matches(msg, m.keyBinding.TableView.PageDown):
 			m.table.GoPageDown()
 			return m, nil
-		case key.Matches(msg, m.keyBinding.Home):
+		case key.Matches(msg, m.keyBinding.TableView.Home):
 			m.table.GoTop()
 			return m, nil
-		case key.Matches(msg, m.keyBinding.End):
+		case key.Matches(msg, m.keyBinding.TableView.End):
 			m.table.GoBottom()
 			return m, nil
 		}
@@ -87,11 +98,20 @@ func (m *colListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (c *colListModel) View() string {
-	return style.Width(48).Height(18).Render(c.table.View())
+	innerView := lipgloss.JoinVertical(
+		lipgloss.Top,
+		lipgloss.PlaceHorizontal(overlayWidth-2, lipgloss.Center, "Columns"),
+		frameStyle.Render(strings.Repeat(lipgloss.NormalBorder().Top, 48)),
+		c.table.View(),
+	)
+
+	view := style.Width(overlayWidth - 2).Height(overlayHeight - 2).Render(innerView)
+
+	return view
 }
 
 func (c *colListModel) Resize(w, h int) layout.ResizingModel {
-	c.table.SetSize(46, 16)
+	c.table.SetSize(overlayWidth-4, overlayHeight-4)
 	return c
 }
 

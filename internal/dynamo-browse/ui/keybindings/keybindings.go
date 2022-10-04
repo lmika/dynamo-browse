@@ -3,8 +3,19 @@ package keybindings
 import "github.com/charmbracelet/bubbles/key"
 
 type KeyBindings struct {
-	TableView *TableKeyBinding `keymap:"item-table"`
-	View      *ViewKeyBindings `keymap:"view"`
+	ColumnPopup *FieldsPopupBinding `keymap:"column-popup"`
+	TableView   *TableKeyBinding    `keymap:"item-table"`
+	View        *ViewKeyBindings    `keymap:"view"`
+}
+
+type FieldsPopupBinding struct {
+	Close            key.Binding `keymap:"close"`
+	ShiftColumnLeft  key.Binding `keymap:"shift-column-left"`
+	ShiftColumnRight key.Binding `keymap:"shift-column-right"`
+	ToggleVisible    key.Binding `keymap:"toggle-column-visible"`
+	ResetColumns     key.Binding `keymap:"reset-columns"`
+	AddColumn        key.Binding `keymap:"add-column"`
+	DeleteColumn     key.Binding `keymap:"delete-column"`
 }
 
 type TableKeyBinding struct {

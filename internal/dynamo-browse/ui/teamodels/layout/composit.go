@@ -44,6 +44,10 @@ func (c *Compositor) SetOverlay(m ResizingModel, x, y, w, h int) {
 	c.foreW, c.foreH = w, h
 }
 
+func (c *Compositor) MoveOverlay(x, y int) {
+	c.foreX, c.foreY = x, y
+}
+
 func (c *Compositor) ClearOverlay() {
 	c.foreground = nil
 }
