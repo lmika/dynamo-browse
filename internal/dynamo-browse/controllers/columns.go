@@ -2,13 +2,16 @@ package controllers
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/columns"
+	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	bus "github.com/lmika/events"
 )
 
 type ColumnsController struct {
 	// State
-	colModel  *models.Columns
+	colModel  *columns.Columns
 	resultSet *models.ResultSet
 }
 
@@ -19,7 +22,7 @@ func NewColumnsController(eventBus *bus.Bus) *ColumnsController {
 	return cc
 }
 
-func (cc *ColumnsController) Columns() *models.Columns {
+func (cc *ColumnsController) Columns() *columns.Columns {
 	return cc.colModel
 }
 
@@ -51,7 +54,7 @@ func (cc *ColumnsController) ShiftColumnRight(idx int) tea.Msg {
 }
 
 func (cc *ColumnsController) SetColumnsToResultSet() tea.Msg {
-	cc.colModel = models.NewColumnsFromResultSet(cc.resultSet)
+	cc.colModel = columns.NewColumnsFromResultSet(cc.resultSet)
 	return ColumnsUpdated{}
 }
 
@@ -59,6 +62,47 @@ func (cc *ColumnsController) onNewResultSet(rs *models.ResultSet) {
 	cc.resultSet = rs
 
 	if cc.colModel == nil || !cc.colModel.TableInfo.Equal(rs.TableInfo) {
-		cc.colModel = models.NewColumnsFromResultSet(rs)
+		cc.colModel = columns.NewColumnsFromResultSet(rs)
 	}
+}
+
+func (cc *ColumnsController) AddColumn(afterIndex int) tea.Msg {
+	return events.PromptForInput("column expr: ", func(value string) tea.Msg {
+		colExpr, err := queryexpr.Parse(value)
+		if err != nil {
+			return events.Error(err)
+		}
+
+		newCol := columns.Column{
+			Name:      colExpr.String(),
+			Evaluator: columns.ExprFieldValueEvaluator{Expr: colExpr},
+		}
+
+		if afterIndex >= len(cc.colModel.Columns)-1 {
+			cc.colModel.Columns = append(cc.colModel.Columns, newCol)
+		} else {
+			newCols := make([]columns.Column, 0, len(cc.colModel.Columns)+1)
+
+			newCols = append(newCols, cc.colModel.Columns[:afterIndex+1]...)
+			newCols = append(newCols, newCol)
+			newCols = append(newCols, cc.colModel.Columns[afterIndex+1:]...)
+
+			cc.colModel.Columns = newCols
+		}
+
+		return ColumnsUpdated{}
+	})
+}
+
+func (cc *ColumnsController) DeleteColumn(afterIndex int) tea.Msg {
+	if len(cc.colModel.Columns) == 0 {
+		return nil
+	}
+
+	newCols := make([]columns.Column, 0, len(cc.colModel.Columns)-1)
+	newCols = append(newCols, cc.colModel.Columns[:afterIndex]...)
+	newCols = append(newCols, cc.colModel.Columns[afterIndex+1:]...)
+	cc.colModel.Columns = newCols
+
+	return ColumnsUpdated{}
 }

@@ -71,6 +71,12 @@ func main() {
 			"phone":        &types.AttributeValueMemberN{Value: gofakeit.Phone()},
 			"web":          &types.AttributeValueMemberS{Value: gofakeit.URL()},
 			"officeOpened": &types.AttributeValueMemberBOOL{Value: gofakeit.Bool()},
+			"colors": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"door":  &types.AttributeValueMemberS{Value: gofakeit.Color()},
+					"front": &types.AttributeValueMemberS{Value: gofakeit.Color()},
+				},
+			},
 			"ratings": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 				&types.AttributeValueMemberN{Value: fmt.Sprint(gofakeit.IntRange(0, 5))},
 				&types.AttributeValueMemberN{Value: fmt.Sprint(gofakeit.IntRange(0, 5))},

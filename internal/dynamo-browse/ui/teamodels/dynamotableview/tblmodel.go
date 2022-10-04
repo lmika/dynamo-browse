@@ -3,6 +3,7 @@ package dynamotableview
 import (
 	"fmt"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/audax/internal/dynamo-browse/models/itemrender"
 	"io"
 	"strings"
 
@@ -68,7 +69,8 @@ func (mtr itemTableRow) Render(w io.Writer, model table.Model, index int) {
 			sb.WriteString(style.Render("\t"))
 		}
 
-		if r := mtr.item.Renderer(col.Name); r != nil {
+		colValue, _ := col.Evaluator.EvaluateForItem(mtr.item)
+		if r := itemrender.ToRenderer(colValue); r != nil {
 			sb.WriteString(style.Render(r.StringValue()))
 			if mi := r.MetaInfo(); mi != "" {
 				sb.WriteString(metaInfoStyle.Render(mi))

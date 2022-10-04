@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/columns"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
@@ -27,7 +28,7 @@ type Setting interface {
 }
 
 type ColumnsProvider interface {
-	Columns() *models.Columns
+	Columns() *columns.Columns
 }
 
 type Model struct {
@@ -42,7 +43,7 @@ type Model struct {
 	isReadOnly bool
 	colOffset  int
 	rows       []table.Row
-	columns    []models.Column
+	columns    []columns.Column
 	resultSet  *models.ResultSet
 }
 

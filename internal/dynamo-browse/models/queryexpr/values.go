@@ -24,5 +24,8 @@ func (a *astLiteralValue) goValue() (any, error) {
 }
 
 func (a *astLiteralValue) String() string {
+	if a == nil {
+		return ""
+	}
 	return a.StringVal
 }
