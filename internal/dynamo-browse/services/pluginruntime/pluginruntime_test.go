@@ -91,6 +91,10 @@ type mockedSetting struct {
 	isReadOnly bool
 }
 
+func (ms *mockedSetting) DefaultLimit() int {
+	return 50
+}
+
 func (ms *mockedSetting) SetReadOnly(ro bool) error {
 	ms.isReadOnly = ro
 	return nil

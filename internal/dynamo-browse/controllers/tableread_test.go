@@ -7,7 +7,6 @@ import (
 	"github.com/lmika/audax/internal/common/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/test/testdynamo"
-	"github.com/lmika/audax/test/testworkspace"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
