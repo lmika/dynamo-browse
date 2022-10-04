@@ -42,7 +42,7 @@ func (a *astBinOp) evalItem(item models.Item) (types.AttributeValue, error) {
 		return left, nil
 	}
 
-	panic("TODO")
+	return nil, errors.New("TODO")
 }
 
 func (a *astBinOp) String() string {

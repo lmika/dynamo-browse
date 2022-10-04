@@ -26,7 +26,7 @@ func (a *astDisjunction) evalItem(item models.Item) (types.AttributeValue, error
 		return a.Operands[0].evalItem(item)
 	}
 
-	panic("TODO")
+	return nil, errors.New("TODO")
 }
 
 func (d *astDisjunction) String() string {

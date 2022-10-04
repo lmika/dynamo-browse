@@ -18,6 +18,17 @@ import (
 	"sync"
 )
 
+type resultSetUpdateOp int
+
+const (
+	resultSetUpdateInit resultSetUpdateOp = iota
+	resultSetUpdateQuery
+	resultSetUpdateFilter
+	resultSetUpdateSnapshotRestore
+	resultSetUpdateRescan
+	resultSetUpdateTouch
+)
+
 type TableReadController struct {
 	tableService        TableReadService
 	workspaceService    *workspaces.ViewSnapshotService
@@ -95,7 +106,7 @@ func (c *TableReadController) ScanTable(name string) tea.Msg {
 	}
 	resultSet = c.tableService.Filter(resultSet, c.state.Filter())
 
-	return c.setResultSetAndFilter(resultSet, c.state.Filter(), true)
+	return c.setResultSetAndFilter(resultSet, c.state.Filter(), true, resultSetUpdateInit)
 }
 
 func (c *TableReadController) PromptForQuery() tea.Msg {
@@ -118,7 +129,7 @@ func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query, newFi
 			newResultSet = c.tableService.Filter(newResultSet, newFilter)
 		}
 
-		return c.setResultSetAndFilter(newResultSet, newFilter, pushSnapshot)
+		return c.setResultSetAndFilter(newResultSet, newFilter, pushSnapshot, resultSetUpdateQuery)
 	}
 
 	expr, err := queryexpr.Parse(query)
@@ -135,7 +146,7 @@ func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query, newFi
 		if newFilter != "" {
 			newResultSet = c.tableService.Filter(newResultSet, newFilter)
 		}
-		return c.setResultSetAndFilter(newResultSet, newFilter, pushSnapshot)
+		return c.setResultSetAndFilter(newResultSet, newFilter, pushSnapshot, resultSetUpdateQuery)
 	})
 }
 
@@ -164,44 +175,11 @@ func (c *TableReadController) doIfNoneDirty(cmd tea.Cmd) tea.Msg {
 func (c *TableReadController) Rescan() tea.Msg {
 	return c.doIfNoneDirty(func() tea.Msg {
 		resultSet := c.state.ResultSet()
-		return c.doScan(context.Background(), resultSet, resultSet.Query, true)
+		return c.doScan(context.Background(), resultSet, resultSet.Query, true, resultSetUpdateRescan)
 	})
 }
 
-//func (c *TableReadController) ExportCSV(filename string) tea.Msg {
-//	resultSet := c.state.ResultSet()
-//	if resultSet == nil {
-//		return events.Error(errors.New("no result set"))
-//	}
-//
-//	f, err := os.Create(filename)
-//	if err != nil {
-//		return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-//	}
-//	defer f.Close()
-//
-//	cw := csv.NewWriter(f)
-//	defer cw.Flush()
-//
-//	columns := resultSet.Columns()
-//	if err := cw.Write(columns); err != nil {
-//		return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-//	}
-//
-//	row := make([]string, len(columns))
-//	for _, item := range resultSet.Items() {
-//		for i, col := range columns {
-//			row[i], _ = item.AttributeValueAsString(col)
-//		}
-//		if err := cw.Write(row); err != nil {
-//			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-//		}
-//	}
-//
-//	return nil
-//}
-
-func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable, pushBackstack bool) tea.Msg {
+func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
 	newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
 	if err != nil {
 		return events.Error(err)
@@ -209,10 +187,10 @@ func (c *TableReadController) doScan(ctx context.Context, resultSet *models.Resu
 
 	newResultSet = c.tableService.Filter(newResultSet, c.state.Filter())
 
-	return c.setResultSetAndFilter(newResultSet, c.state.Filter(), pushBackstack)
+	return c.setResultSetAndFilter(newResultSet, c.state.Filter(), pushBackstack, op)
 }
 
-func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string, pushBackstack bool) tea.Msg {
+func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
 	if pushBackstack {
 		if err := c.workspaceService.PushSnapshot(resultSet, filter); err != nil {
 			log.Printf("cannot push snapshot: %v", err)
@@ -221,7 +199,7 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 
 	c.state.setResultSetAndFilter(resultSet, filter)
 
-	c.eventBus.Fire(newResultSetEvent, resultSet)
+	c.eventBus.Fire(newResultSetEvent, resultSet, op)
 
 	return c.state.buildNewResultSetMessage("")
 }
@@ -242,7 +220,7 @@ func (c *TableReadController) Filter() tea.Msg {
 			resultSet := c.state.ResultSet()
 			newResultSet := c.tableService.Filter(resultSet, value)
 
-			return c.setResultSetAndFilter(newResultSet, value, true)
+			return c.setResultSetAndFilter(newResultSet, value, true, resultSetUpdateFilter)
 		},
 	}
 }
@@ -290,7 +268,7 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 		log.Printf("backstack: setting filter to '%v'", viewSnapshot.Filter)
 
 		newResultSet := c.tableService.Filter(currentResultSet, viewSnapshot.Filter)
-		return c.setResultSetAndFilter(newResultSet, viewSnapshot.Filter, false)
+		return c.setResultSetAndFilter(newResultSet, viewSnapshot.Filter, false, resultSetUpdateSnapshotRestore)
 	}
 
 	tableInfo := currentResultSet.TableInfo

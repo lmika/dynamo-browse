@@ -58,10 +58,10 @@ func (cc *ColumnsController) SetColumnsToResultSet() tea.Msg {
 	return ColumnsUpdated{}
 }
 
-func (cc *ColumnsController) onNewResultSet(rs *models.ResultSet) {
+func (cc *ColumnsController) onNewResultSet(rs *models.ResultSet, op resultSetUpdateOp) {
 	cc.resultSet = rs
 
-	if cc.colModel == nil || !cc.colModel.TableInfo.Equal(rs.TableInfo) {
+	if cc.colModel == nil || (op == resultSetUpdateInit || op == resultSetUpdateQuery) {
 		cc.colModel = columns.NewColumnsFromResultSet(rs)
 	}
 }
