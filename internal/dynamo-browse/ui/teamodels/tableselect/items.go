@@ -7,7 +7,7 @@ type tableItem struct {
 }
 
 func (ti tableItem) FilterValue() string {
-	return ""
+	return ti.name
 }
 
 func (ti tableItem) Title() string {
