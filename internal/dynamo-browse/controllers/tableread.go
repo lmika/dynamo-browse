@@ -16,6 +16,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 )
 
 type resultSetUpdateOp int
@@ -33,6 +34,7 @@ type TableReadController struct {
 	tableService        TableReadService
 	workspaceService    *workspaces.ViewSnapshotService
 	itemRendererService *itemrenderer.Service
+	jobController       *JobsController
 	eventBus            *bus.Bus
 	tableName           string
 	loadFromLastView    bool
@@ -48,6 +50,7 @@ func NewTableReadController(
 	tableService TableReadService,
 	workspaceService *workspaces.ViewSnapshotService,
 	itemRendererService *itemrenderer.Service,
+	jobController *JobsController,
 	eventBus *bus.Bus,
 	tableName string,
 ) *TableReadController {
@@ -56,6 +59,7 @@ func NewTableReadController(
 		tableService:        tableService,
 		workspaceService:    workspaceService,
 		itemRendererService: itemRendererService,
+		jobController:       jobController,
 		eventBus:            eventBus,
 		tableName:           tableName,
 		mutex:               new(sync.Mutex),
@@ -116,6 +120,17 @@ func (c *TableReadController) PromptForQuery() tea.Msg {
 			return c.runQuery(c.state.ResultSet().TableInfo, value, "", true)
 		},
 	}
+}
+
+func (c *TableReadController) CountTo10() tea.Msg {
+	return c.jobController.SubmitJob(func(ctx context.Context) error {
+		select {
+		case <-time.After(5 * time.Second):
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
 }
 
 func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query, newFilter string, pushSnapshot bool) tea.Msg {

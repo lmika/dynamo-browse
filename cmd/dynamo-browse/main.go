@@ -16,6 +16,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/settingstore"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
+	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
@@ -94,9 +95,11 @@ func main() {
 	tableService := tables.NewService(dynamoProvider, settingStore)
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
+	jobsService := jobs.NewService(eventBus)
 
 	state := controllers.NewState()
-	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, eventBus, *flagTable)
+	jobsController := controllers.NewJobsController(jobsService, eventBus)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, jobsController, eventBus, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController, settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
@@ -114,6 +117,7 @@ func main() {
 		columnsController,
 		exportController,
 		settingsController,
+		jobsController,
 		itemRendererService,
 		commandController,
 		keyBindingController,
@@ -122,8 +126,10 @@ func main() {
 
 	// Pre-determine if layout has dark background.  This prevents calls for creating a list to hang.
 	osstyle.DetectCurrentScheme()
-	
+
 	p := tea.NewProgram(model, tea.WithAltScreen())
+
+	jobsController.SetMessageSender(p.Send)
 
 	log.Println("launching")
 	if err := p.Start(); err != nil {

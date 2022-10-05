@@ -1,6 +1,7 @@
 package statusandprompt
 
 import (
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -14,13 +15,15 @@ import (
 // StatusAndPrompt is a resizing model which displays a submodel and a status bar.  When the start prompt
 // event is received, focus will be torn away and the user will be given a prompt the enter text.
 type StatusAndPrompt struct {
-	model         layout.ResizingModel
-	style         Style
-	modeLine      string
-	statusMessage string
-	pendingInput  *events.PromptForInputMsg
-	textInput     textinput.Model
-	width         int
+	model          layout.ResizingModel
+	style          Style
+	modeLine       string
+	statusMessage  string
+	spinner        spinner.Model
+	spinnerVisible bool
+	pendingInput   *events.PromptForInputMsg
+	textInput      textinput.Model
+	width          int
 }
 
 type Style struct {
@@ -29,11 +32,21 @@ type Style struct {
 
 func New(model layout.ResizingModel, initialMsg string, style Style) *StatusAndPrompt {
 	textInput := textinput.New()
-	return &StatusAndPrompt{model: model, style: style, statusMessage: initialMsg, modeLine: "", textInput: textInput}
+	return &StatusAndPrompt{
+		model:         model,
+		style:         style,
+		statusMessage: initialMsg,
+		modeLine:      "",
+		//spinner:       spinner.New(spinner.WithSpinner(spinner.Line)),
+		textInput: textInput,
+	}
 }
 
 func (s *StatusAndPrompt) Init() tea.Cmd {
-	return s.model.Init()
+	return tea.Batch(
+		s.model.Init(),
+		//s.spinner.Tick,
+	)
 }
 
 func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -47,6 +60,15 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.WrappedStatusMsg:
 		s.statusMessage = string(msg.Message)
 		cc.Add(func() tea.Msg { return msg.Next })
+	case events.ForegroundJobUpdate:
+		s.statusMessage = msg.JobStatus
+		if msg.JobRunning {
+			s.spinner = spinner.New(spinner.WithSpinner(spinner.Line))
+			s.spinnerVisible = true
+			cc.Add(s.spinner.Tick)
+		} else {
+			s.spinnerVisible = false
+		}
 	case events.ModeMessage:
 		s.modeLine = string(msg)
 	case events.MessageWithStatus:
@@ -92,8 +114,10 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	newModel := cc.Collect(s.model.Update(msg))
-	s.model = newModel.(layout.ResizingModel)
+	if s.spinnerVisible {
+		s.spinner = cc.Collect(s.spinner.Update(msg)).(spinner.Model)
+	}
+	s.model = cc.Collect(s.model.Update(msg)).(layout.ResizingModel)
 	return s, cc.Cmd()
 }
 
@@ -120,6 +144,10 @@ func (s *StatusAndPrompt) viewStatus() string {
 		statusLine = s.textInput.View()
 	} else {
 		statusLine = s.statusMessage
+	}
+
+	if s.spinnerVisible {
+		statusLine = lipgloss.JoinHorizontal(lipgloss.Left, s.spinner.View(), " ", statusLine)
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Top, modeLine, statusLine)

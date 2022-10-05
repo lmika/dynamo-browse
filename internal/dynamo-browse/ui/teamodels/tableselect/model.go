@@ -67,7 +67,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.pendingSelection != nil {
 		m.listController = cc.Collect(m.listController.Update(msg)).(listController)
 	}
-	m.submodel = cc.Collect(m.submodel.Update(msg))
+	m.submodel = cc.Collect(m.submodel.Update(msg)).(tea.Model)
 	return m, cc.Cmd()
 }
 

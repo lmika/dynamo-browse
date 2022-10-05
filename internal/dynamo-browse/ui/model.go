@@ -43,6 +43,7 @@ type Model struct {
 	settingsController   *controllers.SettingsController
 	exportController     *controllers.ExportController
 	commandController    *commandctrl.CommandController
+	jobController        *controllers.JobsController
 	colSelector          *colselector.Model
 	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
@@ -63,6 +64,7 @@ func NewModel(
 	columnsController *controllers.ColumnsController,
 	exportController *controllers.ExportController,
 	settingsController *controllers.SettingsController,
+	jobController *controllers.JobsController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
 	keyBindingController *controllers.KeyBindingController,
@@ -142,6 +144,11 @@ func NewModel(
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
 			},
 
+			// REALLY TEMP
+			"job": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				return rc.CountTo10()
+			},
+
 			"echo": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				s := new(strings.Builder)
 				for _, arg := range args {
@@ -179,6 +186,7 @@ func NewModel(
 		tableReadController:  rc,
 		tableWriteController: wc,
 		commandController:    cc,
+		jobController:        jobController,
 		itemEdit:             itemEdit,
 		colSelector:          colSelector,
 		statusAndPrompt:      statusAndPrompt,
@@ -236,6 +244,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.commandController.Prompt
 			case key.Matches(msg, m.keyMap.PromptForTable):
 				return m, events.SetTeaMessage(m.tableReadController.ListTables())
+			case key.Matches(msg, m.keyMap.CancelRunningJob):
+				return m, events.SetTeaMessage(m.jobController.CancelRunningJob())
 			case key.Matches(msg, m.keyMap.Quit):
 				return m, tea.Quit
 			}
@@ -254,7 +264,10 @@ func (m Model) Init() tea.Cmd {
 		log.Println(err)
 	}
 
-	return m.tableReadController.Init
+	return tea.Batch(
+		m.tableReadController.Init,
+		m.root.Init(),
+	)
 }
 
 func (m Model) View() string {
