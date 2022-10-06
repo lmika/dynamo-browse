@@ -144,11 +144,6 @@ func NewModel(
 				return wc.NoisyTouchItem(dtv.SelectedItemIndex())
 			},
 
-			// REALLY TEMP
-			"job": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
-				return rc.CountTo10()
-			},
-
 			"echo": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				s := new(strings.Builder)
 				for _, arg := range args {

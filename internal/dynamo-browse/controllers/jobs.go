@@ -17,7 +17,6 @@ func NewJobsController(service *jobs.Services, bus *bus.Bus) *JobsController {
 		service: service,
 	}
 
-	bus.On(jobs.JobEventForegroundDone, jc.onJobDone)
 	return jc
 }
 
@@ -25,32 +24,9 @@ func (js *JobsController) SetMessageSender(msgSender func(msg tea.Msg)) {
 	js.msgSender = msgSender
 }
 
-func (js *JobsController) SubmitJob(job jobs.Job) tea.Msg {
-	js.service.SubmitForegroundJob(job)
-	return events.ForegroundJobUpdate{
-		JobRunning: true,
-		JobStatus:  "Job started… press Ctrl+C to stop",
-	}
-}
-
-func (jc *JobsController) onJobDone(eventData jobs.JobDoneEvent) {
-	if err := eventData.Err; err != nil {
-		jc.msgSender(events.ForegroundJobUpdate{
-			JobRunning: false,
-			JobStatus:  "Err: " + err.Error(),
-		})
-		return
-	}
-
-	jc.msgSender(events.ForegroundJobUpdate{
-		JobRunning: false,
-		JobStatus:  "",
-	})
-}
-
 func (js *JobsController) CancelRunningJob() tea.Msg {
 	hasCancelled := js.service.CancelForegroundJob()
-	if !hasCancelled {
+	if hasCancelled {
 		return events.ForegroundJobUpdate{
 			JobRunning: true,
 			JobStatus:  "Cancelling running job…",

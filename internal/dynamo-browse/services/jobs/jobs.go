@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type Job func(ctx context.Context) error
+type Job func(ctx context.Context)
 
 type jobInfo struct {
 	ctx      context.Context
@@ -42,8 +42,8 @@ func (jc *Services) SubmitForegroundJob(job Job) {
 	go func() {
 		defer cancelFn()
 
-		err := job(newJobInfo.ctx)
-		jc.bus.Fire(JobEventForegroundDone, JobDoneEvent{Err: err})
+		job(newJobInfo.ctx)
+		//jc.bus.Fire(JobEventForegroundDone, JobDoneEvent{Err: err})
 
 		// TODO: needs to be protected by the mutex
 		jc.foregroundJob = nil

@@ -118,6 +118,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) setLeftmostDisplayedColumn(newCol int) {
+	if m.columnsProvider == nil || m.columnsProvider.Columns() == nil {
+		return
+	}
+
 	if newCol < 0 {
 		m.colOffset = 0
 	} else if newCol >= len(m.columnsProvider.Columns().Columns) {

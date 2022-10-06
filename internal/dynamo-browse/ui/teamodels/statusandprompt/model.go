@@ -61,10 +61,10 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.statusMessage = string(msg.Message)
 		cc.Add(func() tea.Msg { return msg.Next })
 	case events.ForegroundJobUpdate:
-		s.statusMessage = msg.JobStatus
 		if msg.JobRunning {
 			s.spinner = spinner.New(spinner.WithSpinner(spinner.Line))
 			s.spinnerVisible = true
+			s.statusMessage = msg.JobStatus
 			cc.Add(s.spinner.Tick)
 		} else {
 			s.spinnerVisible = false
