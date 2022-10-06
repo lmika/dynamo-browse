@@ -205,6 +205,12 @@ func (m *Model) SelectedItemIndex() int {
 
 func (m *Model) selectedItem() (itemTableRow, bool) {
 	resultSet := m.resultSet
+
+	// Fix bug??
+	if m.table.Cursor() < 0 {
+		return itemTableRow{}, false
+	}
+
 	if resultSet != nil && len(m.rows) > 0 {
 		selectedItem, ok := m.table.SelectedRow().(itemTableRow)
 		if ok {
