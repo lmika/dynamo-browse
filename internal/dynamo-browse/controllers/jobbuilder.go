@@ -17,6 +17,7 @@ type JobBuilder[T any] struct {
 	job         func(ctx context.Context) (T, error)
 	onDone      func(res T) tea.Msg
 	onErr       func(err error) tea.Msg
+	onEither    func(res T, err error) tea.Msg
 }
 
 func (jb JobBuilder[T]) OnDone(fn func(res T) tea.Msg) JobBuilder[T] {
@@ -31,6 +32,12 @@ func (jb JobBuilder[T]) OnErr(fn func(err error) tea.Msg) JobBuilder[T] {
 	return newJb
 }
 
+func (jb JobBuilder[T]) OnEither(fn func(res T, err error) tea.Msg) JobBuilder[T] {
+	newJb := jb
+	newJb.onEither = fn
+	return newJb
+}
+
 func (jb JobBuilder[T]) Submit() tea.Msg {
 	jobFinished := make(chan tea.Msg)
 
@@ -38,7 +45,10 @@ func (jb JobBuilder[T]) Submit() tea.Msg {
 		res, err := jb.job(ctx)
 
 		var msg tea.Msg
-		if err == nil {
+
+		if jb.onEither != nil {
+			msg = jb.onEither(res, err)
+		} else if err == nil {
 			msg = jb.onDone(res)
 		} else {
 			if jb.onErr != nil {
@@ -59,6 +69,11 @@ func (jb JobBuilder[T]) Submit() tea.Msg {
 				JobStatus:  "",
 			})
 		}
+	}, func(msg string) {
+		jb.jc.msgSender(events.ForegroundJobUpdate{
+			JobRunning: true,
+			JobStatus:  jb.description + " " + msg,
+		})
 	})
 
 	// Wait 700 msecs to see if the job finishes in time, otherwise indicate that a job is running

@@ -16,14 +16,22 @@ import (
 type TableWriteController struct {
 	state                *State
 	tableService         *tables.Service
+	jobController        *JobsController
 	tableReadControllers *TableReadController
 	settingProvider      SettingsProvider
 }
 
-func NewTableWriteController(state *State, tableService *tables.Service, tableReadControllers *TableReadController, settingProvider SettingsProvider) *TableWriteController {
+func NewTableWriteController(
+	state *State,
+	tableService *tables.Service,
+	jobController *JobsController,
+	tableReadControllers *TableReadController,
+	settingProvider SettingsProvider,
+) *TableWriteController {
 	return &TableWriteController{
 		state:                state,
 		tableService:         tableService,
+		jobController:        jobController,
 		tableReadControllers: tableReadControllers,
 		settingProvider:      settingProvider,
 	}
@@ -231,30 +239,30 @@ func (twc *TableWriteController) DeleteAttribute(idx int, key string) tea.Msg {
 	return ResultSetUpdated{}
 }
 
-func (twc *TableWriteController) PutItem(idx int) tea.Msg {
-	if err := twc.assertReadWrite(); err != nil {
-		return events.Error(err)
-	}
-
-	resultSet := twc.state.ResultSet()
-	if !resultSet.IsDirty(idx) {
-		return events.Error(errors.New("item is not dirty"))
-	}
-
-	return events.PromptForInputMsg{
-		Prompt: "put item? ",
-		OnDone: func(value string) tea.Msg {
-			if value != "y" {
-				return nil
-			}
-
-			if err := twc.tableService.PutItemAt(context.Background(), resultSet, idx); err != nil {
-				return events.Error(err)
-			}
-			return ResultSetUpdated{}
-		},
-	}
-}
+//func (twc *TableWriteController) PutItem(idx int) tea.Msg {
+//	if err := twc.assertReadWrite(); err != nil {
+//		return events.Error(err)
+//	}
+//
+//	resultSet := twc.state.ResultSet()
+//	if !resultSet.IsDirty(idx) {
+//		return events.Error(errors.New("item is not dirty"))
+//	}
+//
+//	return events.PromptForInputMsg{
+//		Prompt: "put item? ",
+//		OnDone: func(value string) tea.Msg {
+//			if value != "y" {
+//				return nil
+//			}
+//
+//			if err := twc.tableService.PutItemAt(context.Background(), resultSet, idx); err != nil {
+//				return events.Error(err)
+//			}
+//			return ResultSetUpdated{}
+//		},
+//	}
+//}
 
 func (twc *TableWriteController) PutItems() tea.Msg {
 	if err := twc.assertReadWrite(); err != nil {
@@ -305,19 +313,18 @@ func (twc *TableWriteController) PutItems() tea.Msg {
 				return events.StatusMsg("operation aborted")
 			}
 
-			if err := twc.state.withResultSetReturningError(func(rs *models.ResultSet) error {
-				err := twc.tableService.PutSelectedItems(context.Background(), rs, itemsToPut)
+			return NewJob(twc.jobController, "Updating items…", func(ctx context.Context) (*models.ResultSet, error) {
+				rs := twc.state.ResultSet()
+				err := twc.tableService.PutSelectedItems(ctx, rs, itemsToPut)
 				if err != nil {
-					return err
+					return nil, err
 				}
-				return nil
-			}); err != nil {
-				return events.Error(err)
-			}
-
-			return ResultSetUpdated{
-				statusMessage: applyToN("", len(itemsToPut), "item", "item", " put to table"),
-			}
+				return rs, nil
+			}).OnDone(func(rs *models.ResultSet) tea.Msg {
+				return ResultSetUpdated{
+					statusMessage: applyToN("", len(itemsToPut), "item", "item", " put to table"),
+				}
+			}).Submit()
 		},
 	}
 }
@@ -375,7 +382,7 @@ func (twc *TableWriteController) NoisyTouchItem(idx int) tea.Msg {
 				return events.Error(err)
 			}
 
-			return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query, false, resultSetUpdateTouch)
+			return twc.tableReadControllers.doScan(resultSet, resultSet.Query, false, resultSetUpdateTouch)
 		},
 	}
 }
@@ -399,14 +406,14 @@ func (twc *TableWriteController) DeleteMarked() tea.Msg {
 				return events.StatusMsg("operation aborted")
 			}
 
-			ctx := context.Background()
-			if err := twc.tableService.Delete(ctx, resultSet.TableInfo, sliceutils.Map(markedItems, func(index models.ItemIndex) models.Item {
-				return index.Item
-			})); err != nil {
-				return events.Error(err)
-			}
-
-			return twc.tableReadControllers.doScan(ctx, resultSet, resultSet.Query, false, resultSetUpdateTouch)
+			return NewJob(twc.jobController, "Deleting items…", func(ctx context.Context) (struct{}, error) {
+				err := twc.tableService.Delete(ctx, resultSet.TableInfo, sliceutils.Map(markedItems, func(index models.ItemIndex) models.Item {
+					return index.Item
+				}))
+				return struct{}{}, err
+			}).OnDone(func(_ struct{}) tea.Msg {
+				return twc.tableReadControllers.doScan(resultSet, resultSet.Query, false, resultSetUpdateTouch)
+			}).Submit()
 		},
 	}
 }

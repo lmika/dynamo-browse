@@ -28,10 +28,15 @@ func NewService(bus *bus.Bus) *Services {
 }
 
 // SubmitForegroundJob starts a foreground job.
-func (jc *Services) SubmitForegroundJob(job Job) {
+func (jc *Services) SubmitForegroundJob(job Job, onJobUpdate func(msg string)) {
 	// TODO: if there's already a foreground job, then return error
 
 	ctx, cancelFn := context.WithCancel(context.Background())
+
+	jobUpdateChan := make(chan string)
+	jobUpdater := &jobUpdaterValue{msgUpdate: jobUpdateChan}
+	ctx = context.WithValue(ctx, jobUpdaterKey, jobUpdater)
+
 	newJobInfo := &jobInfo{
 		ctx:      ctx,
 		cancelFn: cancelFn,
@@ -41,12 +46,18 @@ func (jc *Services) SubmitForegroundJob(job Job) {
 
 	go func() {
 		defer cancelFn()
+		defer close(jobUpdateChan)
 
 		job(newJobInfo.ctx)
-		//jc.bus.Fire(JobEventForegroundDone, JobDoneEvent{Err: err})
 
 		// TODO: needs to be protected by the mutex
 		jc.foregroundJob = nil
+	}()
+
+	go func() {
+		for update := range jobUpdateChan {
+			onJobUpdate(update)
+		}
 	}()
 }
 

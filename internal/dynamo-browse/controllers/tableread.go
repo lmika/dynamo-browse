@@ -29,6 +29,14 @@ const (
 	resultSetUpdateTouch
 )
 
+type MarkOp int
+
+const (
+	MarkOpMark MarkOp = iota
+	MarkOpUnmark
+	MarkOpToggle
+)
+
 type TableReadController struct {
 	tableService        TableReadService
 	workspaceService    *workspaces.ViewSnapshotService
@@ -191,11 +199,11 @@ func (c *TableReadController) doIfNoneDirty(cmd tea.Cmd) tea.Msg {
 func (c *TableReadController) Rescan() tea.Msg {
 	return c.doIfNoneDirty(func() tea.Msg {
 		resultSet := c.state.ResultSet()
-		return c.doScan(context.Background(), resultSet, resultSet.Query, true, resultSetUpdateRescan)
+		return c.doScan(resultSet, resultSet.Query, true, resultSetUpdateRescan)
 	})
 }
 
-func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
+func (c *TableReadController) doScan(resultSet *models.ResultSet, query models.Queryable, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
 	return NewJob(c.jobController, "Rescan…", func(ctx context.Context) (*models.ResultSet, error) {
 		newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
 		if err != nil {
@@ -222,6 +230,26 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 	c.eventBus.Fire(newResultSetEvent, resultSet, op)
 
 	return c.state.buildNewResultSetMessage("")
+}
+
+func (c *TableReadController) Mark(op MarkOp) tea.Msg {
+	c.state.withResultSet(func(resultSet *models.ResultSet) {
+		for i := range resultSet.Items() {
+			if resultSet.Hidden(i) {
+				continue
+			}
+
+			switch op {
+			case MarkOpMark:
+				resultSet.SetMark(i, true)
+			case MarkOpUnmark:
+				resultSet.SetMark(i, false)
+			case MarkOpToggle:
+				resultSet.SetMark(i, !resultSet.Marked(i))
+			}
+		}
+	})
+	return ResultSetUpdated{}
 }
 
 func (c *TableReadController) Unmark() tea.Msg {

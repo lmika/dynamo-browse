@@ -2,13 +2,17 @@ package dynamo
 
 import (
 	"context"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	"github.com/pkg/errors"
+	"log"
+	"time"
 )
 
 type Provider struct {
@@ -70,6 +74,8 @@ func (p *Provider) PutItems(ctx context.Context, name string, items []models.Ite
 }
 
 func (p *Provider) batchPutItems(ctx context.Context, name string, items []models.Item) error {
+	nextUpdate := time.Now().Add(1 * time.Second)
+
 	reqs := len(items)/25 + 1
 	for rn := 0; rn < reqs; rn++ {
 		s, f := rn*25, (rn+1)*25
@@ -82,6 +88,7 @@ func (p *Provider) batchPutItems(ctx context.Context, name string, items []model
 			return types.WriteRequest{PutRequest: &types.PutRequest{Item: item}}
 		})
 
+		log.Printf("Page")
 		_, err := p.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
 			RequestItems: map[string][]types.WriteRequest{
 				name: writeRequests,
@@ -89,6 +96,11 @@ func (p *Provider) batchPutItems(ctx context.Context, name string, items []model
 		})
 		if err != nil {
 			errors.Wrapf(err, "unable to put page %v of back puts", rn)
+		}
+
+		if time.Now().After(nextUpdate) {
+			jobs.PostUpdate(ctx, fmt.Sprintf("updated %d items", f))
+			nextUpdate = time.Now().Add(1 * time.Second)
 		}
 	}
 	return nil
@@ -109,6 +121,8 @@ func (p *Provider) ScanItems(ctx context.Context, tableName string, filterExpr *
 
 	items := make([]models.Item, 0)
 
+	nextUpdate := time.Now().Add(1 * time.Second)
+
 outer:
 	for paginator.HasMorePages() {
 		res, err := paginator.NextPage(ctx)
@@ -120,6 +134,11 @@ outer:
 			items = append(items, itm)
 			if len(items) >= maxItems {
 				break outer
+			}
+
+			if time.Now().After(nextUpdate) {
+				jobs.PostUpdate(ctx, fmt.Sprintf("found %d items", len(items)))
+				nextUpdate = time.Now().Add(1 * time.Second)
 			}
 		}
 	}
@@ -143,6 +162,8 @@ func (p *Provider) QueryItems(ctx context.Context, tableName string, filterExpr 
 
 	items := make([]models.Item, 0)
 
+	nextUpdate := time.Now().Add(1 * time.Second)
+
 outer:
 	for paginator.HasMorePages() {
 		res, err := paginator.NextPage(ctx)
@@ -154,6 +175,11 @@ outer:
 			items = append(items, itm)
 			if len(items) >= maxItems {
 				break outer
+			}
+
+			if time.Now().After(nextUpdate) {
+				jobs.PostUpdate(ctx, fmt.Sprintf("found %d items", len(items)))
+				nextUpdate = time.Now().Add(1 * time.Second)
 			}
 		}
 	}

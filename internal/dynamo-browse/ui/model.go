@@ -98,6 +98,23 @@ func NewModel(
 				}
 				return exportController.ExportCSV(args[0])
 			},
+			"mark": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				var markOp = controllers.MarkOpMark
+				if len(args) > 0 {
+					switch args[0] {
+					case "all":
+						markOp = controllers.MarkOpMark
+					case "none":
+						markOp = controllers.MarkOpUnmark
+					case "toggle":
+						markOp = controllers.MarkOpToggle
+					default:
+						return events.Error(errors.New("unrecognised mark operation"))
+					}
+				}
+
+				return rc.Mark(markOp)
+			},
 			"unmark": commandctrl.NoArgCommand(rc.Unmark),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked),
 

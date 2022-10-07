@@ -2,10 +2,13 @@ package tables
 
 import (
 	"context"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/lmika/audax/internal/common/sliceutils"
+	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
@@ -126,9 +129,16 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 		return err
 	}
 
-	for _, item := range items {
+	nextUpdate := time.Now().Add(1 * time.Second)
+
+	for i, item := range items {
 		if err := s.provider.DeleteItem(ctx, tableInfo.Name, item.KeyValue(tableInfo)); err != nil {
 			return errors.Wrapf(err, "cannot delete item")
+		}
+
+		if time.Now().After(nextUpdate) {
+			jobs.PostUpdate(ctx, fmt.Sprintf("delete %d items", i))
+			nextUpdate = time.Now().Add(1 * time.Second)
 		}
 	}
 	return nil
