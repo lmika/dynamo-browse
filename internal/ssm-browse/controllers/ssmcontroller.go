@@ -77,7 +77,7 @@ func (c *SSMController) Clone(param models.SSMParameter) tea.Msg {
 }
 
 func (c *SSMController) DeleteParameter(param models.SSMParameter) tea.Msg {
-	return events.Confirm("delete parameter? ", func() tea.Msg {
+	return events.ConfirmYes("delete parameter? ", func() tea.Msg {
 		ctx := context.Background()
 		if err := c.service.Delete(ctx, param); err != nil {
 			return events.Error(err)

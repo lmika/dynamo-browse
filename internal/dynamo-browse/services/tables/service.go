@@ -63,7 +63,7 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr 
 		results, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, limit)
 	}
 
-	if err != nil {
+	if err != nil && len(results) == 0 {
 		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
 
@@ -76,7 +76,7 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr 
 	resultSet.SetItems(results)
 	resultSet.RefreshColumns()
 
-	return resultSet, nil
+	return resultSet, err
 }
 
 func (s *Service) Put(ctx context.Context, tableInfo *models.TableInfo, item models.Item) error {

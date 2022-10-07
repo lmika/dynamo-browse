@@ -127,6 +127,9 @@ outer:
 	for paginator.HasMorePages() {
 		res, err := paginator.NextPage(ctx)
 		if err != nil {
+			if ctx.Err() != nil {
+				return items, models.NewPartialResultsError(ctx.Err())
+			}
 			return nil, errors.Wrapf(err, "cannot execute scan on table %v", tableName)
 		}
 
@@ -168,6 +171,9 @@ outer:
 	for paginator.HasMorePages() {
 		res, err := paginator.NextPage(ctx)
 		if err != nil {
+			if ctx.Err() != nil {
+				return items, models.NewPartialResultsError(ctx.Err())
+			}
 			return nil, errors.Wrapf(err, "cannot execute query on table %v", tableName)
 		}
 

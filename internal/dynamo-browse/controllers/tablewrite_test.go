@@ -49,7 +49,7 @@ func TestTableWriteController_NewItem(t *testing.T) {
 		// Prompt for keys
 		invokeCommandExpectingError(t, srv.writeController.NewItem())
 
-		// Confirm no changes
+		// ConfirmYes no changes
 		invokeCommand(t, srv.readController.Rescan())
 
 		newResultSet := srv.state.ResultSet()

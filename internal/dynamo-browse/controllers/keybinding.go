@@ -27,7 +27,7 @@ func (kb *KeyBindingController) Rebind(bindingName string, newKey string, force 
 	var keyAlreadyBoundErr keybindings.KeyAlreadyBoundError
 	if errors.As(err, &keyAlreadyBoundErr) {
 		promptMsg := fmt.Sprintf("Key '%v' already bound to '%v'.  Continue? ", keyAlreadyBoundErr.Key, keyAlreadyBoundErr.ExistingBindingName)
-		return events.Confirm(promptMsg, func() tea.Msg {
+		return events.ConfirmYes(promptMsg, func() tea.Msg {
 			err := kb.service.Rebind(bindingName, newKey, true)
 			if err != nil {
 				return events.Error(err)
