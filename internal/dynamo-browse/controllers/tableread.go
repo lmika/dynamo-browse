@@ -117,6 +117,7 @@ func (c *TableReadController) ScanTable(name string) tea.Msg {
 		if err != nil {
 			return nil, err
 		}
+
 		resultSet = c.tableService.Filter(resultSet, c.state.Filter())
 
 		return resultSet, nil
@@ -247,15 +248,6 @@ func (c *TableReadController) Mark(op MarkOp) tea.Msg {
 			case MarkOpToggle:
 				resultSet.SetMark(i, !resultSet.Marked(i))
 			}
-		}
-	})
-	return ResultSetUpdated{}
-}
-
-func (c *TableReadController) Unmark() tea.Msg {
-	c.state.withResultSet(func(resultSet *models.ResultSet) {
-		for i := range resultSet.Items() {
-			resultSet.SetMark(i, false)
 		}
 	})
 	return ResultSetUpdated{}

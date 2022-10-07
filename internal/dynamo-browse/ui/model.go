@@ -115,7 +115,6 @@ func NewModel(
 
 				return rc.Mark(markOp)
 			},
-			"unmark": commandctrl.NoArgCommand(rc.Unmark),
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked),
 
 			// TEMP
@@ -185,10 +184,11 @@ func NewModel(
 			},
 
 			// Aliases
-			"sa": cc.Alias("set-attr"),
-			"da": cc.Alias("del-attr"),
-			"w":  cc.Alias("put"),
-			"q":  cc.Alias("quit"),
+			"unmark": cc.Alias("mark", []string{"none"}),
+			"sa":     cc.Alias("set-attr", nil),
+			"da":     cc.Alias("del-attr", nil),
+			"w":      cc.Alias("put", nil),
+			"q":      cc.Alias("quit", nil),
 		},
 	})
 
