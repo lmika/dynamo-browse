@@ -50,16 +50,16 @@ func (m Modal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg, tea.MouseMsg:
 		// only notify top level stack
 		if len(m.modeStack) > 0 {
-			m.modeStack[len(m.modeStack)-1] = cc.Collect(m.modeStack[len(m.modeStack)-1].Update(msg))
+			m.modeStack[len(m.modeStack)-1] = cc.Collect(m.modeStack[len(m.modeStack)-1].Update(msg)).(tea.Model)
 		} else {
-			m.baseMode = cc.Collect(m.baseMode.Update(msg))
+			m.baseMode = cc.Collect(m.baseMode.Update(msg)).(tea.Model)
 		}
 	default:
 		// notify all modes of other events
 		// TODO: is this right?
-		m.baseMode = cc.Collect(m.baseMode.Update(msg))
+		m.baseMode = cc.Collect(m.baseMode.Update(msg)).(tea.Model)
 		for i, s := range m.modeStack {
-			m.modeStack[i] = cc.Collect(s.Update(msg))
+			m.modeStack[i] = cc.Collect(s.Update(msg)).(tea.Model)
 		}
 	}
 

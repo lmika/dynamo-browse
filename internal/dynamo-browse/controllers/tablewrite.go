@@ -239,31 +239,6 @@ func (twc *TableWriteController) DeleteAttribute(idx int, key string) tea.Msg {
 	return ResultSetUpdated{}
 }
 
-//func (twc *TableWriteController) PutItem(idx int) tea.Msg {
-//	if err := twc.assertReadWrite(); err != nil {
-//		return events.Error(err)
-//	}
-//
-//	resultSet := twc.state.ResultSet()
-//	if !resultSet.IsDirty(idx) {
-//		return events.Error(errors.New("item is not dirty"))
-//	}
-//
-//	return events.PromptForInputMsg{
-//		Prompt: "put item? ",
-//		OnDone: func(value string) tea.Msg {
-//			if value != "y" {
-//				return nil
-//			}
-//
-//			if err := twc.tableService.PutItemAt(context.Background(), resultSet, idx); err != nil {
-//				return events.Error(err)
-//			}
-//			return ResultSetUpdated{}
-//		},
-//	}
-//}
-
 func (twc *TableWriteController) PutItems() tea.Msg {
 	if err := twc.assertReadWrite(); err != nil {
 		return events.Error(err)

@@ -98,7 +98,7 @@ func main() {
 	jobsService := jobs.NewService(eventBus)
 
 	state := controllers.NewState()
-	jobsController := controllers.NewJobsController(jobsService, eventBus)
+	jobsController := controllers.NewJobsController(jobsService, eventBus, false)
 	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, jobsController, eventBus, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)

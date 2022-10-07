@@ -10,11 +10,13 @@ import (
 type JobsController struct {
 	service   *jobs.Services
 	msgSender func(msg tea.Msg)
+	immediate bool
 }
 
-func NewJobsController(service *jobs.Services, bus *bus.Bus) *JobsController {
+func NewJobsController(service *jobs.Services, bus *bus.Bus, immediate bool) *JobsController {
 	jc := &JobsController{
-		service: service,
+		service:   service,
+		immediate: immediate,
 	}
 
 	return jc

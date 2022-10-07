@@ -39,24 +39,33 @@ func (jb JobBuilder[T]) OnEither(fn func(res T, err error) tea.Msg) JobBuilder[T
 }
 
 func (jb JobBuilder[T]) Submit() tea.Msg {
+	if jb.jc.immediate {
+		return jb.executeJob(context.Background())
+	}
+	return jb.doSubmit()
+}
+
+func (jb JobBuilder[T]) executeJob(ctx context.Context) tea.Msg {
+	res, err := jb.job(ctx)
+
+	if jb.onEither != nil {
+		return jb.onEither(res, err)
+	} else if err == nil {
+		return jb.onDone(res)
+	} else {
+		if jb.onErr != nil {
+			return jb.onErr(err)
+		} else {
+			return events.Error(err)
+		}
+	}
+}
+
+func (jb JobBuilder[T]) doSubmit() tea.Msg {
 	jobFinished := make(chan tea.Msg)
 
 	jb.jc.service.SubmitForegroundJob(func(ctx context.Context) {
-		res, err := jb.job(ctx)
-
-		var msg tea.Msg
-
-		if jb.onEither != nil {
-			msg = jb.onEither(res, err)
-		} else if err == nil {
-			msg = jb.onDone(res)
-		} else {
-			if jb.onErr != nil {
-				msg = jb.onErr(err)
-			} else {
-				msg = events.Error(err)
-			}
-		}
+		msg := jb.executeJob(ctx)
 
 		select {
 		case jobFinished <- msg:
