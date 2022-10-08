@@ -65,10 +65,14 @@ func (jb JobBuilder[T]) doSubmit() tea.Msg {
 		msg := jb.executeJob(ctx)
 
 		jb.jc.msgSender(msg)
-		jb.jc.msgSender(events.ForegroundJobUpdate{
-			JobRunning: false,
-			JobStatus:  "",
-		})
+
+		if _, isForegroundJobUpdate := msg.(events.ForegroundJobUpdate); !isForegroundJobUpdate {
+			// Likely another job was scheduled so don't indicate that no jobs are running.
+			jb.jc.msgSender(events.ForegroundJobUpdate{
+				JobRunning: false,
+				JobStatus:  "",
+			})
+		}
 	}, func(msg string) {
 		jb.jc.msgSender(events.ForegroundJobUpdate{
 			JobRunning: true,

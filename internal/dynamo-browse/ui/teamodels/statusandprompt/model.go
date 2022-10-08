@@ -37,8 +37,8 @@ func New(model layout.ResizingModel, initialMsg string, style Style) *StatusAndP
 		style:         style,
 		statusMessage: initialMsg,
 		modeLine:      "",
-		//spinner:       spinner.New(spinner.WithSpinner(spinner.Line)),
-		textInput: textInput,
+		spinner:       spinner.New(spinner.WithSpinner(spinner.Line)),
+		textInput:     textInput,
 	}
 }
 
@@ -62,7 +62,6 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cc.Add(func() tea.Msg { return msg.Next })
 	case events.ForegroundJobUpdate:
 		if msg.JobRunning {
-			s.spinner = spinner.New(spinner.WithSpinner(spinner.Line))
 			s.spinnerVisible = true
 			s.statusMessage = msg.JobStatus
 			cc.Add(s.spinner.Tick)
