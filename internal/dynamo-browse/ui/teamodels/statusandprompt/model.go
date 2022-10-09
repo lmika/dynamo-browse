@@ -45,7 +45,6 @@ func New(model layout.ResizingModel, initialMsg string, style Style) *StatusAndP
 func (s *StatusAndPrompt) Init() tea.Cmd {
 	return tea.Batch(
 		s.model.Init(),
-		//s.spinner.Tick,
 	)
 }
 

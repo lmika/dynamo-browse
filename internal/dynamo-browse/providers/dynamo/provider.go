@@ -11,7 +11,6 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	"github.com/pkg/errors"
-	"log"
 	"time"
 )
 
@@ -88,7 +87,6 @@ func (p *Provider) batchPutItems(ctx context.Context, name string, items []model
 			return types.WriteRequest{PutRequest: &types.PutRequest{Item: item}}
 		})
 
-		log.Printf("Page")
 		_, err := p.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
 			RequestItems: map[string][]types.WriteRequest{
 				name: writeRequests,
