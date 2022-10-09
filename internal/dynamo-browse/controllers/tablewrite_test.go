@@ -9,6 +9,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/settingstore"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
+	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
@@ -48,7 +49,7 @@ func TestTableWriteController_NewItem(t *testing.T) {
 		// Prompt for keys
 		invokeCommandExpectingError(t, srv.writeController.NewItem())
 
-		// Confirm no changes
+		// ConfirmYes no changes
 		invokeCommand(t, srv.readController.Rescan())
 
 		newResultSet := srv.state.ResultSet()
@@ -240,7 +241,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 
 		// Modify the item and put it
 		invokeCommandWithPrompt(t, srv.writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
-		invokeCommandWithPrompt(t, srv.writeController.PutItem(0), "y")
+		invokeCommandWithPrompt(t, srv.writeController.PutItems(), "y")
 
 		// Rescan the table
 		invokeCommand(t, srv.readController.Rescan())
@@ -260,7 +261,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 
 		// Modify the item but do not put it
 		invokeCommandWithPrompt(t, srv.writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
-		invokeCommandWithPrompt(t, srv.writeController.PutItem(0), "n")
+		invokeCommandWithPrompt(t, srv.writeController.PutItems(), "n")
 
 		current, _ := srv.state.ResultSet().Items()[0].AttributeValueAsString("alpha")
 		assert.Equal(t, "a new value", current)
@@ -282,7 +283,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 		assert.Equal(t, "This is some value", before)
 		assert.False(t, srv.state.ResultSet().IsDirty(0))
 
-		invokeCommandExpectingError(t, srv.writeController.PutItem(0))
+		invokeCommand(t, srv.writeController.PutItems())
 	})
 
 	t.Run("should not put the selected item if in read-only mode", func(t *testing.T) {
@@ -296,7 +297,7 @@ func TestTableWriteController_PutItem(t *testing.T) {
 
 		// Modify the item but do not put it
 		invokeCommandWithPrompt(t, srv.writeController.SetAttributeValue(0, models.StringItemType, "alpha"), "a new value")
-		invokeCommandExpectingError(t, srv.writeController.PutItem(0))
+		invokeCommandExpectingError(t, srv.writeController.PutItems())
 
 		current, _ := srv.state.ResultSet().Items()[0].AttributeValueAsString("alpha")
 		assert.Equal(t, "a new value", current)
@@ -596,8 +597,9 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	eventBus := bus.New()
 
 	state := controllers.NewState()
-	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, eventBus, cfg.tableName)
-	writeController := controllers.NewTableWriteController(state, service, readController, settingStore)
+	jobsController := controllers.NewJobsController(jobs.NewService(eventBus), eventBus, true)
+	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, jobsController, eventBus, cfg.tableName)
+	writeController := controllers.NewTableWriteController(state, service, jobsController, readController, settingStore)
 	settingsController := controllers.NewSettingsController(settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)

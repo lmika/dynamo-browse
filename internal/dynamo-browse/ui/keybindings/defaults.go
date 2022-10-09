@@ -35,7 +35,8 @@ func Default() *KeyBindings {
 			CycleLayoutBackwards: key.NewBinding(key.WithKeys("W"), key.WithHelp("W", "cycle layout backward")),
 			PromptForCommand:     key.NewBinding(key.WithKeys(":"), key.WithHelp(":", "prompt for command")),
 			ShowColumnOverlay:    key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "show column overlay")),
-			Quit:                 key.NewBinding(key.WithKeys("ctrl+c", "esc"), key.WithHelp("ctrl+c/esc", "quit")),
+			CancelRunningJob:     key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "cancel running job or quit")),
+			Quit:                 key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "quit")),
 		},
 	}
 }

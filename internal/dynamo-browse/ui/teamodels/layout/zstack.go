@@ -39,10 +39,10 @@ func (vb ZStack) Update(msg tea.Msg) (m tea.Model, cmd tea.Cmd) {
 
 	// All other messages go to each model
 	var cc utils.CmdCollector
-	vb.visibleModel = cc.Collect(vb.visibleModel.Update(msg))
-	vb.focusedModel = cc.Collect(vb.focusedModel.Update(msg))
+	vb.visibleModel = cc.Collect(vb.visibleModel.Update(msg)).(tea.Model)
+	vb.focusedModel = cc.Collect(vb.focusedModel.Update(msg)).(tea.Model)
 	for i, c := range vb.otherModels {
-		vb.otherModels[i] = cc.Collect(c.Update(msg))
+		vb.otherModels[i] = cc.Collect(c.Update(msg)).(tea.Model)
 	}
 	return vb, cc.Cmd()
 }

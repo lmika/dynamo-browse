@@ -57,14 +57,20 @@ func (c *CommandController) execute(ctx ExecContext, commandInput string) tea.Ms
 	return command(ctx, tokens[1:])
 }
 
-func (c *CommandController) Alias(commandName string) Command {
+func (c *CommandController) Alias(commandName string, aliasArgs []string) Command {
 	return func(ctx ExecContext, args []string) tea.Msg {
 		command := c.lookupCommand(commandName)
 		if command == nil {
 			return events.Error(errors.New("no such command: " + commandName))
 		}
 
-		return command(ctx, args)
+		var allArgs []string
+		if len(aliasArgs) > 0 {
+			allArgs = append(append([]string{}, aliasArgs...), args...)
+		} else {
+			allArgs = args
+		}
+		return command(ctx, allArgs)
 	}
 }
 
