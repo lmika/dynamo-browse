@@ -26,7 +26,7 @@ func (js *JobsController) SetMessageSender(msgSender func(msg tea.Msg)) {
 	js.msgSender = msgSender
 }
 
-func (js *JobsController) CancelRunningJob() tea.Msg {
+func (js *JobsController) CancelRunningJob(ifNoJobsRunning func() tea.Msg) tea.Msg {
 	hasCancelled := js.service.CancelForegroundJob()
 	if hasCancelled {
 		return events.ForegroundJobUpdate{
@@ -34,5 +34,5 @@ func (js *JobsController) CancelRunningJob() tea.Msg {
 			JobStatus:  "Cancelling running job…",
 		}
 	}
-	return events.StatusMsg("No running job")
+	return ifNoJobsRunning()
 }

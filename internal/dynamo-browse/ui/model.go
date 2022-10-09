@@ -257,7 +257,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keyMap.PromptForTable):
 				return m, events.SetTeaMessage(m.tableReadController.ListTables())
 			case key.Matches(msg, m.keyMap.CancelRunningJob):
-				return m, events.SetTeaMessage(m.jobController.CancelRunningJob())
+				return m, events.SetTeaMessage(m.jobController.CancelRunningJob(func() tea.Msg {
+					return tea.Quit()
+				}))
 			case key.Matches(msg, m.keyMap.Quit):
 				return m, tea.Quit
 			}
