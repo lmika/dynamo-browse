@@ -167,11 +167,8 @@ func (m *Model) rebuildTable(targetTbl *table.Model) {
 
 	// Use the target table model if you can, but if it's nil or the number of rows is smaller than the
 	// existing table, create a new one
-	if targetTbl == nil || len(resultSet.Items()) > len(m.rows) {
+	if targetTbl == nil {
 		tbl = table.New(columnModel{m}, m.w, m.h-m.frameTitle.HeaderHeight())
-		if targetTbl != nil {
-			tbl.GoBottom()
-		}
 	} else {
 		tbl = *targetTbl
 	}
@@ -195,6 +192,7 @@ func (m *Model) rebuildTable(targetTbl *table.Model) {
 
 	m.rows = newRows
 	tbl.SetRows(newRows)
+	tbl.GoTop() // Preserve top and cursor location
 
 	m.table = tbl
 }
