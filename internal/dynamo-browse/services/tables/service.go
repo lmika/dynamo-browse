@@ -160,6 +160,10 @@ func (s *Service) assertReadWrite() error {
 
 // TODO: move into a new service
 func (s *Service) Filter(resultSet *models.ResultSet, filter string) *models.ResultSet {
+	if resultSet == nil {
+		return nil
+	}
+
 	for i, item := range resultSet.Items() {
 		if filter == "" {
 			resultSet.SetHidden(i, false)

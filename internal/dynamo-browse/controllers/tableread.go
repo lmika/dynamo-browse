@@ -100,6 +100,10 @@ func (c *TableReadController) ListTables() tea.Msg {
 		return PromptForTableMsg{
 			Tables: res.([]string),
 			OnSelected: func(tableName string) tea.Msg {
+				if tableName == "" {
+					return events.StatusMsg("No table selected")
+				}
+
 				return c.ScanTable(tableName)
 			},
 		}
@@ -126,11 +130,12 @@ func (c *TableReadController) PromptForQuery() tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt: "query: ",
 		OnDone: func(value string) tea.Msg {
-			//return NewJob(c.jobController, "Running query…", func(ctx context.Context) (tea.Msg, error) {
-			return c.runQuery(c.state.ResultSet().TableInfo, value, "", true)
-			//}).OnDone(func(m tea.Msg) tea.Msg {
-			//	return m
-			//}).Submit()
+			resultSet := c.state.ResultSet()
+			if resultSet == nil {
+				return events.StatusMsg("Result-set is nil")
+			}
+
+			return c.runQuery(resultSet.TableInfo, value, "", true)
 		},
 	}
 }
@@ -243,8 +248,12 @@ func (c *TableReadController) Filter() tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt: "filter: ",
 		OnDone: func(value string) tea.Msg {
+			resultSet := c.state.ResultSet()
+			if resultSet == nil {
+				return events.StatusMsg("Result-set is nil")
+			}
+
 			return NewJob(c.jobController, "Applying Filter…", func(ctx context.Context) (*models.ResultSet, error) {
-				resultSet := c.state.ResultSet()
 				newResultSet := c.tableService.Filter(resultSet, value)
 				return newResultSet, nil
 			}).OnEither(c.handleResultSetFromJobResult(value, true, resultSetUpdateFilter)).Submit()
