@@ -48,11 +48,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.compositor.ClearOverlay()
 	case controllers.ColumnsUpdated:
 		m.colListModel.refreshTable()
-		m.subModel = cc.Collect(m.subModel.Update(msg))
+		m.subModel = cc.Collect(m.subModel.Update(msg)).(tea.Model)
 	case tea.KeyMsg:
 		m.compositor = cc.Collect(m.compositor.Update(msg)).(*layout.Compositor)
 	default:
-		m.subModel = cc.Collect(m.subModel.Update(msg))
+		m.subModel = cc.Collect(m.subModel.Update(msg)).(tea.Model)
 	}
 	return m, cc.Cmd()
 }

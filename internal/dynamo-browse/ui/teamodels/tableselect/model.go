@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
@@ -55,7 +56,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					var sel controllers.PromptForTableMsg
 					sel, m.pendingSelection = *m.pendingSelection, nil
 
-					return m, func() tea.Msg { return sel.OnSelected(m.listController.list.SelectedItem().(tableItem).name) }
+					if selTableItem, isTableItem := m.listController.list.SelectedItem().(tableItem); isTableItem {
+						return m, events.SetTeaMessage(sel.OnSelected(selTableItem.name))
+					}
+					return m, events.SetTeaMessage(sel.OnSelected(""))
 				}
 			}
 
@@ -67,7 +71,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.pendingSelection != nil {
 		m.listController = cc.Collect(m.listController.Update(msg)).(listController)
 	}
-	m.submodel = cc.Collect(m.submodel.Update(msg))
+	m.submodel = cc.Collect(m.submodel.Update(msg)).(tea.Model)
 	return m, cc.Cmd()
 }
 

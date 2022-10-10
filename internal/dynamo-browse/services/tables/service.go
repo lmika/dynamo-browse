@@ -2,10 +2,13 @@ package tables
 
 import (
 	"context"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/lmika/audax/internal/common/sliceutils"
+	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
@@ -60,7 +63,7 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr 
 		results, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, limit)
 	}
 
-	if err != nil {
+	if err != nil && len(results) == 0 {
 		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
 
@@ -73,7 +76,7 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr 
 	resultSet.SetItems(results)
 	resultSet.RefreshColumns()
 
-	return resultSet, nil
+	return resultSet, err
 }
 
 func (s *Service) Put(ctx context.Context, tableInfo *models.TableInfo, item models.Item) error {
@@ -126,9 +129,16 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 		return err
 	}
 
-	for _, item := range items {
+	nextUpdate := time.Now().Add(1 * time.Second)
+
+	for i, item := range items {
 		if err := s.provider.DeleteItem(ctx, tableInfo.Name, item.KeyValue(tableInfo)); err != nil {
 			return errors.Wrapf(err, "cannot delete item")
+		}
+
+		if time.Now().After(nextUpdate) {
+			jobs.PostUpdate(ctx, fmt.Sprintf("delete %d items", i))
+			nextUpdate = time.Now().Add(1 * time.Second)
 		}
 	}
 	return nil
@@ -150,6 +160,10 @@ func (s *Service) assertReadWrite() error {
 
 // TODO: move into a new service
 func (s *Service) Filter(resultSet *models.ResultSet, filter string) *models.ResultSet {
+	if resultSet == nil {
+		return nil
+	}
+
 	for i, item := range resultSet.Items() {
 		if filter == "" {
 			resultSet.SetHidden(i, false)

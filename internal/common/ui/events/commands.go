@@ -29,7 +29,13 @@ func PromptForInput(prompt string, onDone func(value string) tea.Msg) tea.Msg {
 	}
 }
 
-func Confirm(prompt string, onYes func() tea.Msg) tea.Msg {
+func Confirm(prompt string, onResult func(yes bool) tea.Msg) tea.Msg {
+	return PromptForInput(prompt, func(value string) tea.Msg {
+		return onResult(value == "y")
+	})
+}
+
+func ConfirmYes(prompt string, onYes func() tea.Msg) tea.Msg {
 	return PromptForInput(prompt, func(value string) tea.Msg {
 		if value == "y" {
 			return onYes()

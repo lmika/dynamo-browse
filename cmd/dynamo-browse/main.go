@@ -16,6 +16,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/settingstore"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
+	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/services/pluginruntime"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
@@ -95,10 +96,12 @@ func main() {
 	tableService := tables.NewService(dynamoProvider, settingStore)
 	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
+	jobsService := jobs.NewService(eventBus)
 
 	state := controllers.NewState()
-	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, eventBus, *flagTable)
-	tableWriteController := controllers.NewTableWriteController(state, tableService, tableReadController, settingStore)
+	jobsController := controllers.NewJobsController(jobsService, eventBus, false)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, jobsController, eventBus, *flagTable)
+	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
 	settingsController := controllers.NewSettingsController(settingStore)
@@ -117,6 +120,7 @@ func main() {
 		columnsController,
 		exportController,
 		settingsController,
+		jobsController,
 		itemRendererService,
 		commandController,
 		keyBindingController,
@@ -129,6 +133,8 @@ func main() {
 	osstyle.DetectCurrentScheme()
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
+
+	jobsController.SetMessageSender(p.Send)
 
 	log.Println("launching")
 	pluginRuntimeService.Start()

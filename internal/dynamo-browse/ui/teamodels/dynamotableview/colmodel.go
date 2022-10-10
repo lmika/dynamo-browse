@@ -5,6 +5,10 @@ type columnModel struct {
 }
 
 func (cm columnModel) Len() int {
+	if len(cm.m.columns) == 0 {
+		return 0
+	}
+
 	return len(cm.m.columns[cm.m.colOffset:]) + 1
 }
 

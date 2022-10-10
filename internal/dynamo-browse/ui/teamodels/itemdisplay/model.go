@@ -23,7 +23,7 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cc utils.CmdCollector
 
-	m.baseMode = cc.Collect(m.baseMode.Update(msg))
+	m.baseMode = cc.Collect(m.baseMode.Update(msg)).(tea.Model)
 	return m, cc.Cmd()
 }
 

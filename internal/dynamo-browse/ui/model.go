@@ -47,6 +47,7 @@ type Model struct {
 	settingsController   *controllers.SettingsController
 	exportController     *controllers.ExportController
 	commandController    *commandctrl.CommandController
+	jobController        *controllers.JobsController
 	colSelector          *colselector.Model
 	dynamoTableView      *dynamotableview.Model
 	itemEdit             *dynamoitemedit.Model
@@ -68,6 +69,7 @@ func NewModel(
 	columnsController *controllers.ColumnsController,
 	exportController *controllers.ExportController,
 	settingsController *controllers.SettingsController,
+	jobController *controllers.JobsController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
 	keyBindingController *controllers.KeyBindingController,
@@ -102,7 +104,23 @@ func NewModel(
 				}
 				return exportController.ExportCSV(args[0])
 			},
-			"unmark": commandctrl.NoArgCommand(rc.Unmark),
+			"mark": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				var markOp = controllers.MarkOpMark
+				if len(args) > 0 {
+					switch args[0] {
+					case "all":
+						markOp = controllers.MarkOpMark
+					case "none":
+						markOp = controllers.MarkOpUnmark
+					case "toggle":
+						markOp = controllers.MarkOpToggle
+					default:
+						return events.Error(errors.New("unrecognised mark operation"))
+					}
+				}
+
+				return rc.Mark(markOp)
+			},
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked),
 
 			// TEMP
@@ -186,10 +204,11 @@ func NewModel(
 			},
 
 			// Aliases
-			"sa": cc.Alias("set-attr"),
-			"da": cc.Alias("del-attr"),
-			"w":  cc.Alias("put"),
-			"q":  cc.Alias("quit"),
+			"unmark": cc.Alias("mark", []string{"none"}),
+			"sa":     cc.Alias("set-attr", nil),
+			"da":     cc.Alias("del-attr", nil),
+			"w":      cc.Alias("put", nil),
+			"q":      cc.Alias("quit", nil),
 		},
 	})
 
@@ -199,6 +218,7 @@ func NewModel(
 		tableReadController:  rc,
 		tableWriteController: wc,
 		commandController:    cc,
+		jobController:        jobController,
 		dynamoTableView:      dtv,
 		itemEdit:             itemEdit,
 		colSelector:          colSelector,
@@ -257,6 +277,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.commandController.Prompt
 			case key.Matches(msg, m.keyMap.PromptForTable):
 				return m, events.SetTeaMessage(m.tableReadController.ListTables())
+			case key.Matches(msg, m.keyMap.CancelRunningJob):
+				return m, events.SetTeaMessage(m.jobController.CancelRunningJob(func() tea.Msg {
+					return tea.Quit()
+				}))
 			case key.Matches(msg, m.keyMap.Quit):
 				return m, tea.Quit
 			}
@@ -275,7 +299,10 @@ func (m Model) Init() tea.Cmd {
 		log.Println(err)
 	}
 
-	return m.tableReadController.Init
+	return tea.Batch(
+		m.tableReadController.Init,
+		m.root.Init(),
+	)
 }
 
 func (m Model) View() string {

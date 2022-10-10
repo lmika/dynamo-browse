@@ -29,10 +29,19 @@ const (
 	resultSetUpdateTouch
 )
 
+type MarkOp int
+
+const (
+	MarkOpMark MarkOp = iota
+	MarkOpUnmark
+	MarkOpToggle
+)
+
 type TableReadController struct {
 	tableService        TableReadService
 	workspaceService    *workspaces.ViewSnapshotService
 	itemRendererService *itemrenderer.Service
+	jobController       *JobsController
 	eventBus            *bus.Bus
 	tableName           string
 	loadFromLastView    bool
@@ -48,6 +57,7 @@ func NewTableReadController(
 	tableService TableReadService,
 	workspaceService *workspaces.ViewSnapshotService,
 	itemRendererService *itemrenderer.Service,
+	jobController *JobsController,
 	eventBus *bus.Bus,
 	tableName string,
 ) *TableReadController {
@@ -56,6 +66,7 @@ func NewTableReadController(
 		tableService:        tableService,
 		workspaceService:    workspaceService,
 		itemRendererService: itemRendererService,
+		jobController:       jobController,
 		eventBus:            eventBus,
 		tableName:           tableName,
 		mutex:               new(sync.Mutex),
@@ -79,57 +90,67 @@ func (c *TableReadController) Init() tea.Msg {
 }
 
 func (c *TableReadController) ListTables() tea.Msg {
-	tables, err := c.tableService.ListTables(context.Background())
-	if err != nil {
-		return events.Error(err)
-	}
+	return NewJob(c.jobController, "Listing tables…", func(ctx context.Context) (any, error) {
+		tables, err := c.tableService.ListTables(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		return tables, nil
+	}).OnDone(func(res any) tea.Msg {
+		return PromptForTableMsg{
+			Tables: res.([]string),
+			OnSelected: func(tableName string) tea.Msg {
+				if tableName == "" {
+					return events.StatusMsg("No table selected")
+				}
 
-	return PromptForTableMsg{
-		Tables: tables,
-		OnSelected: func(tableName string) tea.Msg {
-			return c.ScanTable(tableName)
-		},
-	}
+				return c.ScanTable(tableName)
+			},
+		}
+	}).Submit()
 }
 
 func (c *TableReadController) ScanTable(name string) tea.Msg {
-	ctx := context.Background()
+	return NewJob(c.jobController, "Scanning…", func(ctx context.Context) (*models.ResultSet, error) {
+		tableInfo, err := c.tableService.Describe(ctx, name)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot describe %v", c.tableName)
+		}
 
-	tableInfo, err := c.tableService.Describe(ctx, name)
-	if err != nil {
-		return events.Error(errors.Wrapf(err, "cannot describe %v", c.tableName))
-	}
+		resultSet, err := c.tableService.Scan(ctx, tableInfo)
+		if resultSet != nil {
+			resultSet = c.tableService.Filter(resultSet, c.state.Filter())
+		}
 
-	resultSet, err := c.tableService.Scan(ctx, tableInfo)
-	if err != nil {
-		return events.Error(err)
-	}
-	resultSet = c.tableService.Filter(resultSet, c.state.Filter())
-
-	return c.setResultSetAndFilter(resultSet, c.state.Filter(), true, resultSetUpdateInit)
+		return resultSet, err
+	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), true, resultSetUpdateInit)).Submit()
 }
 
 func (c *TableReadController) PromptForQuery() tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt: "query: ",
 		OnDone: func(value string) tea.Msg {
-			return c.runQuery(c.state.ResultSet().TableInfo, value, "", true)
+			resultSet := c.state.ResultSet()
+			if resultSet == nil {
+				return events.StatusMsg("Result-set is nil")
+			}
+
+			return c.runQuery(resultSet.TableInfo, value, "", true)
 		},
 	}
 }
 
 func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query, newFilter string, pushSnapshot bool) tea.Msg {
 	if query == "" {
-		newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, nil)
-		if err != nil {
-			return events.Error(err)
-		}
+		return NewJob(c.jobController, "Scanning…", func(ctx context.Context) (*models.ResultSet, error) {
+			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, nil)
 
-		if newFilter != "" {
-			newResultSet = c.tableService.Filter(newResultSet, newFilter)
-		}
+			if newResultSet != nil && newFilter != "" {
+				newResultSet = c.tableService.Filter(newResultSet, newFilter)
+			}
 
-		return c.setResultSetAndFilter(newResultSet, newFilter, pushSnapshot, resultSetUpdateQuery)
+			return newResultSet, err
+		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, resultSetUpdateQuery)).Submit()
 	}
 
 	expr, err := queryexpr.Parse(query)
@@ -138,15 +159,14 @@ func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query, newFi
 	}
 
 	return c.doIfNoneDirty(func() tea.Msg {
-		newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, expr)
-		if err != nil {
-			return events.Error(err)
-		}
+		return NewJob(c.jobController, "Running query…", func(ctx context.Context) (*models.ResultSet, error) {
+			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, expr)
 
-		if newFilter != "" {
-			newResultSet = c.tableService.Filter(newResultSet, newFilter)
-		}
-		return c.setResultSetAndFilter(newResultSet, newFilter, pushSnapshot, resultSetUpdateQuery)
+			if newFilter != "" && newResultSet != nil {
+				newResultSet = c.tableService.Filter(newResultSet, newFilter)
+			}
+			return newResultSet, err
+		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, resultSetUpdateQuery)).Submit()
 	})
 }
 
@@ -175,19 +195,19 @@ func (c *TableReadController) doIfNoneDirty(cmd tea.Cmd) tea.Msg {
 func (c *TableReadController) Rescan() tea.Msg {
 	return c.doIfNoneDirty(func() tea.Msg {
 		resultSet := c.state.ResultSet()
-		return c.doScan(context.Background(), resultSet, resultSet.Query, true, resultSetUpdateRescan)
+		return c.doScan(resultSet, resultSet.Query, true, resultSetUpdateRescan)
 	})
 }
 
-func (c *TableReadController) doScan(ctx context.Context, resultSet *models.ResultSet, query models.Queryable, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
-	newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
-	if err != nil {
-		return events.Error(err)
-	}
+func (c *TableReadController) doScan(resultSet *models.ResultSet, query models.Queryable, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
+	return NewJob(c.jobController, "Rescan…", func(ctx context.Context) (*models.ResultSet, error) {
+		newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
+		if newResultSet != nil {
+			newResultSet = c.tableService.Filter(newResultSet, c.state.Filter())
+		}
 
-	newResultSet = c.tableService.Filter(newResultSet, c.state.Filter())
-
-	return c.setResultSetAndFilter(newResultSet, c.state.Filter(), pushBackstack, op)
+		return newResultSet, err
+	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), pushBackstack, op)).Submit()
 }
 
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
@@ -204,10 +224,21 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 	return c.state.buildNewResultSetMessage("")
 }
 
-func (c *TableReadController) Unmark() tea.Msg {
+func (c *TableReadController) Mark(op MarkOp) tea.Msg {
 	c.state.withResultSet(func(resultSet *models.ResultSet) {
 		for i := range resultSet.Items() {
-			resultSet.SetMark(i, false)
+			if resultSet.Hidden(i) {
+				continue
+			}
+
+			switch op {
+			case MarkOpMark:
+				resultSet.SetMark(i, true)
+			case MarkOpUnmark:
+				resultSet.SetMark(i, false)
+			case MarkOpToggle:
+				resultSet.SetMark(i, !resultSet.Marked(i))
+			}
 		}
 	})
 	return ResultSetUpdated{}
@@ -218,10 +249,34 @@ func (c *TableReadController) Filter() tea.Msg {
 		Prompt: "filter: ",
 		OnDone: func(value string) tea.Msg {
 			resultSet := c.state.ResultSet()
-			newResultSet := c.tableService.Filter(resultSet, value)
+			if resultSet == nil {
+				return events.StatusMsg("Result-set is nil")
+			}
 
-			return c.setResultSetAndFilter(newResultSet, value, true, resultSetUpdateFilter)
+			return NewJob(c.jobController, "Applying Filter…", func(ctx context.Context) (*models.ResultSet, error) {
+				newResultSet := c.tableService.Filter(resultSet, value)
+				return newResultSet, nil
+			}).OnEither(c.handleResultSetFromJobResult(value, true, resultSetUpdateFilter)).Submit()
 		},
+	}
+}
+
+func (c *TableReadController) handleResultSetFromJobResult(filter string, pushbackStack bool, op resultSetUpdateOp) func(newResultSet *models.ResultSet, err error) tea.Msg {
+	return func(newResultSet *models.ResultSet, err error) tea.Msg {
+		if err == nil {
+			return c.setResultSetAndFilter(newResultSet, filter, pushbackStack, op)
+		}
+
+		var partialResultsErr models.PartialResultsError
+		if errors.As(err, &partialResultsErr) {
+			return events.Confirm(applyToN("View the ", len(newResultSet.Items()), "item", "items", " returned so far? "), func(yes bool) tea.Msg {
+				if yes {
+					return c.setResultSetAndFilter(newResultSet, filter, pushbackStack, op)
+				}
+				return events.StatusMsg("Operation cancelled")
+			})
+		}
+		return events.Error(err)
 	}
 }
 
@@ -252,11 +307,15 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 	currentResultSet := c.state.ResultSet()
 
 	if currentResultSet == nil {
-		tableInfo, err := c.tableService.Describe(context.Background(), viewSnapshot.TableName)
-		if err != nil {
-			return events.Error(err)
-		}
-		return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false)
+		return NewJob(c.jobController, "Fetching table info…", func(ctx context.Context) (*models.TableInfo, error) {
+			tableInfo, err := c.tableService.Describe(context.Background(), viewSnapshot.TableName)
+			if err != nil {
+				return nil, err
+			}
+			return tableInfo, nil
+		}).OnDone(func(tableInfo *models.TableInfo) tea.Msg {
+			return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false)
+		}).Submit()
 	}
 
 	var currentQueryExpr string
@@ -265,23 +324,24 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 	}
 
 	if viewSnapshot.TableName == currentResultSet.TableInfo.Name && viewSnapshot.Query == currentQueryExpr {
-		log.Printf("backstack: setting filter to '%v'", viewSnapshot.Filter)
-
-		newResultSet := c.tableService.Filter(currentResultSet, viewSnapshot.Filter)
-		return c.setResultSetAndFilter(newResultSet, viewSnapshot.Filter, false, resultSetUpdateSnapshotRestore)
+		return NewJob(c.jobController, "Applying filter…", func(ctx context.Context) (*models.ResultSet, error) {
+			return c.tableService.Filter(currentResultSet, viewSnapshot.Filter), nil
+		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Filter, false, resultSetUpdateSnapshotRestore)).Submit()
 	}
 
-	tableInfo := currentResultSet.TableInfo
-	if viewSnapshot.TableName != currentResultSet.TableInfo.Name {
-		tableInfo, err = c.tableService.Describe(context.Background(), viewSnapshot.TableName)
-		if err != nil {
-			return events.Error(err)
+	return NewJob(c.jobController, "Running query…", func(ctx context.Context) (tea.Msg, error) {
+		tableInfo := currentResultSet.TableInfo
+		if viewSnapshot.TableName != currentResultSet.TableInfo.Name {
+			tableInfo, err = c.tableService.Describe(context.Background(), viewSnapshot.TableName)
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
 
-	log.Printf("backstack: running query: table = '%v', query = '%v', filter = '%v'",
-		tableInfo.Name, viewSnapshot.Query, viewSnapshot.Filter)
-	return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false)
+		return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false), nil
+	}).OnDone(func(m tea.Msg) tea.Msg {
+		return m
+	}).Submit()
 }
 
 func (c *TableReadController) CopyItemToClipboard(idx int) tea.Msg {

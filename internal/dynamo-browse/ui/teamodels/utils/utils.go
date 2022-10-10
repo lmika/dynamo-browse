@@ -12,7 +12,7 @@ func (c *CmdCollector) Add(cmd tea.Cmd) {
 	}
 }
 
-func (c *CmdCollector) Collect(m tea.Model, cmd tea.Cmd) tea.Model {
+func (c *CmdCollector) Collect(m any, cmd tea.Cmd) any {
 	if cmd != nil {
 		c.cmds = append(c.cmds, cmd)
 	}
