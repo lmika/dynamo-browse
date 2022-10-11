@@ -2,6 +2,7 @@ package queryexpr
 
 import (
 	"github.com/alecthomas/participle/v2"
+	"github.com/alecthomas/participle/v2/lexer"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
@@ -32,7 +33,7 @@ type astConjunction struct {
 
 type astEqualityOp struct {
 	Ref   *astDot          `parser:"@@"`
-	Op    string           `parser:"( @('^' '=' | '=')"`
+	Op    string           `parser:"( @('^=' | '=')"`
 	Value *astLiteralValue `parser:"@@ )?"`
 }
 
@@ -46,14 +47,23 @@ type astLiteralValue struct {
 	IntVal    *int64  `parser:"| @Int"`
 }
 
-var parser = participle.MustBuild(&astExpr{})
+var scanner = lexer.MustSimple([]lexer.SimpleRule{
+	{Name: "Eq", Pattern: `=|[\\^]=`},
+	{Name: "String", Pattern: `"(\\"|[^"])*"`},
+	{Name: "Int", Pattern: `[-+]?(\d*\.)?\d+`},
+	{Name: "Number", Pattern: `[-+]?(\d*\.)?\d+`},
+	{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_-]*`},
+	{Name: "Punct", Pattern: `[-[!@#$%^&*()+_={}\|:;"'<,>.?/]|][=]?`},
+	{Name: "EOL", Pattern: `[\n\r]+`},
+	{Name: "whitespace", Pattern: `[ \t]+`},
+})
+var parser = participle.MustBuild[astExpr](participle.Lexer(scanner))
 
 func Parse(expr string) (*QueryExpr, error) {
-	var ast astExpr
-
-	if err := parser.ParseString("expr", expr, &ast); err != nil {
+	ast, err := parser.ParseString("expr", expr)
+	if err != nil {
 		return nil, errors.Wrapf(err, "cannot parse expression: '%v'", expr)
 	}
 
-	return &QueryExpr{ast: &ast}, nil
+	return &QueryExpr{ast: ast}, nil
 }
