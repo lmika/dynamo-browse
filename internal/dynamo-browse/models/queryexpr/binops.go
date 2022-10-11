@@ -5,9 +5,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
+	"strings"
 )
 
-func (a *astBinOp) evalToIR(info *models.TableInfo) (irAtom, error) {
+func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	v, err := a.Value.goValue()
 	if err != nil {
 		return nil, err
@@ -32,7 +33,7 @@ func (a *astBinOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
-func (a *astBinOp) evalItem(item models.Item) (types.AttributeValue, error) {
+func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error) {
 	left, err := a.Ref.evalItem(item)
 	if err != nil {
 		return nil, err
@@ -42,10 +43,40 @@ func (a *astBinOp) evalItem(item models.Item) (types.AttributeValue, error) {
 		return left, nil
 	}
 
-	return nil, errors.New("TODO")
+	right, err := a.Value.dynamoValue()
+	if err != nil {
+		return nil, err
+	}
+
+	switch a.Op {
+	case "=":
+		cmp, isComparable := models.CompareScalarAttributes(left, right)
+		if !isComparable {
+			return nil, ValuesNotComparable{Left: left, Right: right}
+		}
+		return &types.AttributeValueMemberBOOL{Value: cmp == 0}, nil
+	case "^=":
+		rightVal, err := a.Value.goValue()
+		if err != nil {
+			return nil, err
+		}
+
+		strValue, isStrValue := rightVal.(string)
+		if !isStrValue {
+			return nil, errors.New("operand '^=' must be string")
+		}
+
+		leftAsStr, canBeString := models.AttributeToString(left)
+		if !canBeString {
+			return nil, ValueNotConvertableToString{Val: left}
+		}
+		return &types.AttributeValueMemberBOOL{Value: strings.HasPrefix(leftAsStr, strValue)}, nil
+	}
+
+	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
-func (a *astBinOp) String() string {
+func (a *astEqualityOp) String() string {
 	return a.Ref.String() + a.Op + a.Value.String()
 }
 

@@ -22,11 +22,26 @@ func (a *astDisjunction) evalToIR(tableInfo *models.TableInfo) (*irDisjunction, 
 }
 
 func (a *astDisjunction) evalItem(item models.Item) (types.AttributeValue, error) {
+	val, err := a.Operands[0].evalItem(item)
+	if err != nil {
+		return nil, err
+	}
 	if len(a.Operands) == 1 {
-		return a.Operands[0].evalItem(item)
+		return val, nil
 	}
 
-	return nil, errors.New("TODO")
+	for _, opr := range a.Operands[1:] {
+		if isAttributeTrue(val) {
+			return &types.AttributeValueMemberBOOL{Value: true}, nil
+		}
+
+		val, err = opr.evalItem(item)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &types.AttributeValueMemberBOOL{Value: isAttributeTrue(val)}, nil
 }
 
 func (d *astDisjunction) String() string {

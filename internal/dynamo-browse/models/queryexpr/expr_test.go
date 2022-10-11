@@ -157,9 +157,37 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: `bravo`, expected: &types.AttributeValueMemberN{Value: "123"}},
 			{expr: `charlie`, expected: item["charlie"]},
 
+			// Equality with literal
+			{expr: `alpha="alpha"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `bravo=123`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `charlie.tree="green"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha^="al"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha="foobar"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `alpha^="need-something"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+
 			// Dot values
 			{expr: `charlie.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
 			{expr: `charlie.tree`, expected: &types.AttributeValueMemberS{Value: "green"}},
+
+			// Conjunction
+			{expr: `alpha="alpha" and bravo=123`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha="alpha" and bravo=321`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `alpha="bravo" and bravo=123`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `alpha="bravo" and bravo=321`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `alpha="alpha" and bravo=123 and charlie.door="red"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha="alpha" and bravo=123 and charlie.door^="green"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+
+			// Disjunction
+			{expr: `alpha="alpha" or bravo=123`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha="alpha" or bravo=321`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha="bravo" or bravo=123`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha="bravo" or bravo=321`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `alpha="alpha" or bravo=123 or charlie.tree="green"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha="bravo" or bravo=321 or charlie.tree^="red"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+
+			// Order of operation
+			{expr: `alpha="alpha" and bravo=123 or charlie.door="green"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha="bravo" or bravo=321 and charlie.door="green"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
 		}
 		for _, scenario := range scenarios {
 			t.Run(scenario.expr, func(t *testing.T) {

@@ -27,11 +27,10 @@ type astDisjunction struct {
 }
 
 type astConjunction struct {
-	Operands []*astBinOp `parser:"@@ ('and' @@)*"`
+	Operands []*astEqualityOp `parser:"@@ ('and' @@)*"`
 }
 
-// TODO: do this properly
-type astBinOp struct {
+type astEqualityOp struct {
 	Ref   *astDot          `parser:"@@"`
 	Op    string           `parser:"( @('^' '=' | '=')"`
 	Value *astLiteralValue `parser:"@@ )?"`
@@ -43,7 +42,8 @@ type astDot struct {
 }
 
 type astLiteralValue struct {
-	StringVal string `parser:"@String"`
+	StringVal *string `parser:"@String"`
+	IntVal    *int64  `parser:"| @Int"`
 }
 
 var parser = participle.MustBuild(&astExpr{})
