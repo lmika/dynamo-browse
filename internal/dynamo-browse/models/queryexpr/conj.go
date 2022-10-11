@@ -22,11 +22,26 @@ func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (*irConjunction, 
 }
 
 func (a *astConjunction) evalItem(item models.Item) (types.AttributeValue, error) {
+	val, err := a.Operands[0].evalItem(item)
+	if err != nil {
+		return nil, err
+	}
 	if len(a.Operands) == 1 {
-		return a.Operands[0].evalItem(item)
+		return val, nil
 	}
 
-	return nil, errors.New("TODO")
+	for _, opr := range a.Operands[1:] {
+		if !isAttributeTrue(val) {
+			return &types.AttributeValueMemberBOOL{Value: false}, nil
+		}
+
+		val, err = opr.evalItem(item)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &types.AttributeValueMemberBOOL{Value: isAttributeTrue(val)}, nil
 }
 
 func (d *astConjunction) String() string {
@@ -95,4 +110,18 @@ func (d *irConjunction) calcQueryForScan(info *models.TableInfo) (expression.Con
 	// Build conjunction
 	conjExpr := expression.And(conds[0], conds[1], conds[2:]...)
 	return conjExpr, nil
+}
+
+func isAttributeTrue(attr types.AttributeValue) bool {
+	switch val := attr.(type) {
+	case *types.AttributeValueMemberS:
+		return val.Value != ""
+	case *types.AttributeValueMemberN:
+		return val.Value != "0"
+	case *types.AttributeValueMemberBOOL:
+		return val.Value
+	case *types.AttributeValueMemberNULL:
+		return false
+	}
+	return true
 }

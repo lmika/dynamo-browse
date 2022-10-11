@@ -3,7 +3,7 @@ module github.com/lmika/audax
 go 1.18
 
 require (
-	github.com/alecthomas/participle/v2 v2.0.0-alpha7
+	github.com/alecthomas/participle/v2 v2.0.0-beta.5
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/aws/aws-sdk-go-v2 v1.16.5
 	github.com/aws/aws-sdk-go-v2/config v1.13.1

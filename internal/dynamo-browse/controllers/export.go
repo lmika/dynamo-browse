@@ -4,7 +4,7 @@ import (
 	"encoding/csv"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
 	"os"
 )
@@ -46,7 +46,7 @@ func (c *ExportController) ExportCSV(filename string) tea.Msg {
 	row := make([]string, len(columns))
 	for _, item := range resultSet.Items() {
 		for i, col := range columns {
-			row[i], _ = models.AttributeToString(col.Evaluator.EvaluateForItem(item))
+			row[i], _ = attrutils.AttributeToString(col.Evaluator.EvaluateForItem(item))
 		}
 		if err := cw.Write(row); err != nil {
 			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))

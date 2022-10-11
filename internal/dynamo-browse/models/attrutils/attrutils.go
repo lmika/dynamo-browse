@@ -1,4 +1,4 @@
-package models
+package attrutils
 
 import (
 	"math/big"
@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-func compareScalarAttributes(x, y types.AttributeValue) (int, bool) {
+func CompareScalarAttributes(x, y types.AttributeValue) (int, bool) {
 	switch xVal := x.(type) {
 	case *types.AttributeValueMemberS:
 		if yVal, ok := y.(*types.AttributeValueMemberS); ok {

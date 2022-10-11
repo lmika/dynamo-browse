@@ -12,11 +12,19 @@ func (a *astLiteralValue) dynamoValue() (types.AttributeValue, error) {
 		return nil, nil
 	}
 
-	s, err := strconv.Unquote(a.StringVal)
+	goValue, err := a.goValue()
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot unquote string")
+		return nil, err
 	}
-	return &types.AttributeValueMemberS{Value: s}, nil
+
+	switch v := goValue.(type) {
+	case string:
+		return &types.AttributeValueMemberS{Value: v}, nil
+	case int64:
+		return &types.AttributeValueMemberN{Value: strconv.FormatInt(v, 10)}, nil
+	}
+
+	return nil, errors.New("unrecognised type")
 }
 
 func (a *astLiteralValue) goValue() (any, error) {
@@ -24,16 +32,29 @@ func (a *astLiteralValue) goValue() (any, error) {
 		return nil, nil
 	}
 
-	s, err := strconv.Unquote(a.StringVal)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot unquote string")
+	switch {
+	case a.StringVal != nil:
+		s, err := strconv.Unquote(*a.StringVal)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot unquote string")
+		}
+		return s, nil
+	case a.IntVal != nil:
+		return *a.IntVal, nil
 	}
-	return s, nil
+	return nil, errors.New("unrecognised type")
 }
 
 func (a *astLiteralValue) String() string {
 	if a == nil {
 		return ""
 	}
-	return a.StringVal
+
+	switch {
+	case a.StringVal != nil:
+		return *a.StringVal
+	case a.IntVal != nil:
+		return strconv.FormatInt(*a.IntVal, 10)
+	}
+	return ""
 }
