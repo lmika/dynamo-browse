@@ -4,6 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -50,7 +51,7 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 
 	switch a.Op {
 	case "=":
-		cmp, isComparable := models.CompareScalarAttributes(left, right)
+		cmp, isComparable := attrutils.CompareScalarAttributes(left, right)
 		if !isComparable {
 			return nil, ValuesNotComparable{Left: left, Right: right}
 		}
@@ -66,7 +67,7 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 			return nil, errors.New("operand '^=' must be string")
 		}
 
-		leftAsStr, canBeString := models.AttributeToString(left)
+		leftAsStr, canBeString := attrutils.AttributeToString(left)
 		if !canBeString {
 			return nil, ValueNotConvertableToString{Val: left}
 		}

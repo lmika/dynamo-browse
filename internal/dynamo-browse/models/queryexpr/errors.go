@@ -3,7 +3,8 @@ package queryexpr
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
+	"github.com/lmika/audax/internal/dynamo-browse/models/itemrender"
 	"strings"
 )
 
@@ -27,8 +28,8 @@ type ValuesNotComparable struct {
 }
 
 func (n ValuesNotComparable) Error() string {
-	leftStr, _ := models.AttributeToString(n.Left)
-	rightStr, _ := models.AttributeToString(n.Right)
+	leftStr, _ := attrutils.AttributeToString(n.Left)
+	rightStr, _ := attrutils.AttributeToString(n.Right)
 	return fmt.Sprintf("values '%v' and '%v' are not comparable", leftStr, rightStr)
 }
 
@@ -38,6 +39,6 @@ type ValueNotConvertableToString struct {
 }
 
 func (n ValueNotConvertableToString) Error() string {
-	// TODO -- render value
-	return fmt.Sprintf("values '%v' not convertable to string", n.Val)
+	render := itemrender.ToRenderer(n.Val)
+	return fmt.Sprintf("values '%v', type %v, is not convertable to string", render.StringValue(), render.TypeName())
 }

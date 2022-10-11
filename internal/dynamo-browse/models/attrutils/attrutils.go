@@ -1,4 +1,4 @@
-package models
+package attrutils
 
 import (
 	"math/big"

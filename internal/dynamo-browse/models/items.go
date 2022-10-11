@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 )
 
 type ItemIndex struct {
@@ -33,5 +34,5 @@ func (i Item) KeyValue(info *TableInfo) map[string]types.AttributeValue {
 }
 
 func (i Item) AttributeValueAsString(key string) (string, bool) {
-	return AttributeToString(i[key])
+	return attrutils.AttributeToString(i[key])
 }

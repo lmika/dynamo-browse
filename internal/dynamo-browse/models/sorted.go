@@ -1,6 +1,9 @@
 package models
 
-import "sort"
+import (
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
+	"sort"
+)
 
 // sortedItems is a collection of items that is sorted.
 // Items are sorted based on the PK, and SK in ascending order
@@ -22,7 +25,7 @@ func (si *sortedItems) Len() int {
 func (si *sortedItems) Less(i, j int) bool {
 	// Compare primary keys
 	pv1, pv2 := si.items[i][si.tableInfo.Keys.PartitionKey], si.items[j][si.tableInfo.Keys.PartitionKey]
-	pc, ok := CompareScalarAttributes(pv1, pv2)
+	pc, ok := attrutils.CompareScalarAttributes(pv1, pv2)
 	if !ok {
 		return i < j
 	}
@@ -36,7 +39,7 @@ func (si *sortedItems) Less(i, j int) bool {
 	// Partition keys are equal, compare sort key
 	if sortKey := si.tableInfo.Keys.SortKey; sortKey != "" {
 		sv1, sv2 := si.items[i][sortKey], si.items[j][sortKey]
-		sc, ok := CompareScalarAttributes(sv1, sv2)
+		sc, ok := attrutils.CompareScalarAttributes(sv1, sv2)
 		if !ok {
 			return i < j
 		}
