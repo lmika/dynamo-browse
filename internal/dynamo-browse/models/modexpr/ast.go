@@ -22,14 +22,13 @@ type astLiteralValue struct {
 	String string `parser:"@String"`
 }
 
-var parser = participle.MustBuild(&astExpr{})
+var parser = participle.MustBuild[astExpr]()
 
 func Parse(expr string) (*ModExpr, error) {
-	var ast astExpr
-
-	if err := parser.ParseString("expr", expr, &ast); err != nil {
+	ast, err := parser.ParseString("expr", expr)
+	if err != nil {
 		return nil, errors.Wrapf(err, "cannot parse expression: '%v'", expr)
 	}
 
-	return &ModExpr{ast: &ast}, nil
+	return &ModExpr{ast: ast}, nil
 }
