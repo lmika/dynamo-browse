@@ -8,7 +8,6 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/pkg/errors"
-	"log"
 )
 
 func audaxDynamoSession(service *Service) require.ModuleLoader {
@@ -16,10 +15,6 @@ func audaxDynamoSession(service *Service) require.ModuleLoader {
 		o := module.Get("exports").(*goja.Object)
 
 		// Session
-		o.Set("registerCommand", func(name string, fn goja.Callable) {
-			log.Printf("registering user command: %v", name)
-			service.userCommands[name] = fn
-		})
 		o.DefineAccessorProperty("resultSet", rt.ToValue(func() goja.Value {
 			return newJSResultSet(rt, service.state.ResultSet())
 		}), rt.ToValue(func(v goja.Value) error {

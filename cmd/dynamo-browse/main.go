@@ -113,6 +113,7 @@ func main() {
 	pluginRuntimeService := pluginruntime.New(state, tableService, workspaceService)
 
 	commandController := commandctrl.NewCommandController()
+	commandController.SetMissingCommand(pluginRuntimeService.MissingCommand)
 
 	model := ui.NewModel(
 		tableReadController,
@@ -135,6 +136,7 @@ func main() {
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	jobsController.SetMessageSender(p.Send)
+	pluginRuntimeService.SetMessageSender(p.Send)
 
 	log.Println("launching")
 	pluginRuntimeService.Start()
