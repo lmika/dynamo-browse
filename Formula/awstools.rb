@@ -5,21 +5,21 @@
 class Awstools < Formula
   desc "TUI tools for AWS administration"
   homepage "https://audax.tools"
-  version "0.0.3"
+  version "0.0.4"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/lmika/audax/releases/download/v0.0.3/audax_0.0.3_darwin_arm64.tar.gz"
-      sha256 "90e38259ef7a092fa111e7c630eef868012ad883f586d12dc3209ffddb642eda"
+      url "https://github.com/lmika/audax/releases/download/v0.0.4/audax_0.0.4_darwin_arm64.tar.gz"
+      sha256 "6aca5616739767094c7af7fe755467c1cbb423824fee8d84364cb9db4c2b9214"
 
       def install
         bin.install "dynamo-browse"
       end
     end
     if Hardware::CPU.intel?
-      url "https://github.com/lmika/audax/releases/download/v0.0.3/audax_0.0.3_darwin_amd64.tar.gz"
-      sha256 "3c6a07e92ca0a0af5a405d8c42daee61d13b8ec215ac991e02f374fc09414c81"
+      url "https://github.com/lmika/audax/releases/download/v0.0.4/audax_0.0.4_darwin_amd64.tar.gz"
+      sha256 "f3e38cfdde782f83874518191cab579f6ea8d37576e0f1cbf0bfd60e29cb1a73"
 
       def install
         bin.install "dynamo-browse"
@@ -29,8 +29,8 @@ class Awstools < Formula
 
   on_linux do
     if Hardware::CPU.intel?
-      url "https://github.com/lmika/audax/releases/download/v0.0.3/audax_0.0.3_linux_amd64.tar.gz"
-      sha256 "1b1a1ca9f5baa93cda863d7f1834a9e482339f5ba40321e80093f94cbe04f020"
+      url "https://github.com/lmika/audax/releases/download/v0.0.4/audax_0.0.4_linux_amd64.tar.gz"
+      sha256 "59fc640d0ae863a9eb71766aea383eb4fefb76c33e5bd93afdd74fa21b1645bf"
 
       def install
         bin.install "dynamo-browse"
