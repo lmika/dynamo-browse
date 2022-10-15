@@ -11,7 +11,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
-	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
+	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
 	"github.com/lmika/audax/test/testdynamo"
 	"github.com/lmika/audax/test/testworkspace"
 	bus "github.com/lmika/events"
@@ -588,7 +588,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
 	settingStore := settingstore.New(ws)
-	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 
 	client := testdynamo.SetupTestTable(t, testData)
