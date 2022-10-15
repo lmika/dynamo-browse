@@ -49,6 +49,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case controllers.ColumnsUpdated:
 		m.colListModel.refreshTable()
 		m.subModel = cc.Collect(m.subModel.Update(msg)).(tea.Model)
+	case controllers.SetSelectedColumnInColSelector:
+		m.compositor = cc.Collect(m.compositor.Update(msg)).(*layout.Compositor)
 	case tea.KeyMsg:
 		m.compositor = cc.Collect(m.compositor.Update(msg)).(*layout.Compositor)
 	default:

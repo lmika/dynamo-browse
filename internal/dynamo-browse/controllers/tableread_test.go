@@ -4,7 +4,6 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/common/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/test/testdynamo"
 	"github.com/stretchr/testify/assert"
@@ -122,19 +121,6 @@ func tempFile(t *testing.T) string {
 	})
 
 	return tempFile.Name()
-}
-
-func testWorkspace(t *testing.T) *workspaces.Workspace {
-	wsTempFile := tempFile(t)
-
-	wsManager := workspaces.New(workspaces.MetaInfo{Command: "dynamo-browse"})
-	ws, err := wsManager.Open(wsTempFile)
-	if err != nil {
-		t.Fatalf("cannot create workspace manager: %v", err)
-	}
-	t.Cleanup(func() { ws.Close() })
-
-	return ws
 }
 
 func invokeCommand(t *testing.T, msg tea.Msg) tea.Msg {

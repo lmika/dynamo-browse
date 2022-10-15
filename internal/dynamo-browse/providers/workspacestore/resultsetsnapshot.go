@@ -24,7 +24,6 @@ func (s *ResultSetSnapshotStore) Save(rs *serialisable.ViewSnapshot) error {
 	if err := s.ws.Save(rs); err != nil {
 		return errors.Wrap(err, "cannot save result set")
 	}
-	log.Printf("saved result set: table='%v', query='%v', filter='%v'", rs.TableName, rs.Query, rs.Filter)
 	return nil
 }
 
@@ -141,4 +140,8 @@ func (s *ResultSetSnapshotStore) Remove(resultSetId int64) error {
 		return errors.Wrap(err, "cannot delete snapshot")
 	}
 	return nil
+}
+
+func (s *ResultSetSnapshotStore) Len() (int, error) {
+	return s.ws.Count(&serialisable.ViewSnapshot{})
 }

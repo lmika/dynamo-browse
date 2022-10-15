@@ -19,7 +19,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
-	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
+	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
@@ -93,7 +93,7 @@ func main() {
 	}
 
 	tableService := tables.NewService(dynamoProvider, settingStore)
-	workspaceService := workspaces_service.NewService(resultSetSnapshotStore)
+	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
 	jobsService := jobs.NewService(eventBus)
 

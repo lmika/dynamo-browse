@@ -10,6 +10,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
 	table "github.com/lmika/go-bubble-table"
+	"log"
 	"strings"
 )
 
@@ -46,6 +47,12 @@ func (c *colListModel) Init() tea.Cmd {
 
 func (m *colListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case controllers.SetSelectedColumnInColSelector:
+		// HACK: this needs to work for all cases
+		log.Printf("%d == %d?", int(msg), m.table.Cursor()+1)
+		if int(msg) == m.table.Cursor()+1 {
+			m.table.GoDown()
+		}
 	case tea.KeyMsg:
 		switch {
 		// Column operations

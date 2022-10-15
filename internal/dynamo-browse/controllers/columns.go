@@ -90,7 +90,10 @@ func (cc *ColumnsController) AddColumn(afterIndex int) tea.Msg {
 			cc.colModel.Columns = newCols
 		}
 
-		return ColumnsUpdated{}
+		return tea.Batch(
+			events.SetTeaMessage(ColumnsUpdated{}),
+			events.SetTeaMessage(SetSelectedColumnInColSelector(afterIndex+1)),
+		)()
 	})
 }
 

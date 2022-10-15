@@ -1,7 +1,6 @@
-package workspaces
+package viewsnapshot
 
 import (
-	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/pkg/errors"
 	"time"
@@ -17,19 +16,20 @@ func NewService(store ViewSnapshotStore) *ViewSnapshotService {
 	}
 }
 
-func (s *ViewSnapshotService) PushSnapshot(rs *models.ResultSet, filter string) error {
+func (s *ViewSnapshotService) PushSnapshot(details serialisable.ViewSnapshotDetails) error {
 	newSnapshot := &serialisable.ViewSnapshot{
-		Time:      time.Now(),
-		TableName: rs.TableInfo.Name,
+		Time:    time.Now(),
+		Details: details,
 	}
-	if q := rs.Query; q != nil {
-		newSnapshot.Query = q.String()
-	}
-	newSnapshot.Filter = filter
 
 	oldHead, err := s.store.CurrentlyViewedSnapshot()
 	if err != nil {
 		return errors.Wrap(err, "cannot get snapshot head")
+	}
+
+	if oldHead != nil && oldHead.Details == details {
+		// Attempting to push a duplicate
+		return nil
 	}
 
 	if oldHead != nil {
@@ -60,6 +60,10 @@ func (s *ViewSnapshotService) PushSnapshot(rs *models.ResultSet, filter string) 
 	}
 
 	return nil
+}
+
+func (s *ViewSnapshotService) Len() (int, error) {
+	return s.store.Len()
 }
 
 func (s *ViewSnapshotService) ViewRestore() (*serialisable.ViewSnapshot, error) {

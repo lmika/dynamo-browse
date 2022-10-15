@@ -13,6 +13,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	workspaces_service "github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
 	"github.com/lmika/audax/test/testdynamo"
+	"github.com/lmika/audax/test/testworkspace"
 	bus "github.com/lmika/events"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -583,7 +584,7 @@ type serviceConfig struct {
 }
 
 func newService(t *testing.T, cfg serviceConfig) *services {
-	ws := testWorkspace(t)
+	ws := testworkspace.New(t)
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
 	settingStore := settingstore.New(ws)

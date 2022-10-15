@@ -9,7 +9,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
-	"github.com/lmika/audax/internal/dynamo-browse/services/workspaces"
+	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
 	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
 	"golang.design/x/clipboard"
@@ -39,7 +39,7 @@ const (
 
 type TableReadController struct {
 	tableService        TableReadService
-	workspaceService    *workspaces.ViewSnapshotService
+	workspaceService    *viewsnapshot.ViewSnapshotService
 	itemRendererService *itemrenderer.Service
 	jobController       *JobsController
 	eventBus            *bus.Bus
@@ -55,7 +55,7 @@ type TableReadController struct {
 func NewTableReadController(
 	state *State,
 	tableService TableReadService,
-	workspaceService *workspaces.ViewSnapshotService,
+	workspaceService *viewsnapshot.ViewSnapshotService,
 	itemRendererService *itemrenderer.Service,
 	jobController *JobsController,
 	eventBus *bus.Bus,
@@ -211,8 +211,16 @@ func (c *TableReadController) doScan(resultSet *models.ResultSet, query models.Q
 }
 
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
-	if pushBackstack {
-		if err := c.workspaceService.PushSnapshot(resultSet, filter); err != nil {
+	if resultSet != nil && pushBackstack {
+		details := serialisable.ViewSnapshotDetails{
+			TableName: resultSet.TableInfo.Name,
+			Filter:    filter,
+		}
+		if q := resultSet.Query; q != nil {
+			details.Query = q.String()
+		}
+
+		if err := c.workspaceService.PushSnapshot(details); err != nil {
 			log.Printf("cannot push snapshot: %v", err)
 		}
 	}
@@ -308,13 +316,13 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 
 	if currentResultSet == nil {
 		return NewJob(c.jobController, "Fetching table info…", func(ctx context.Context) (*models.TableInfo, error) {
-			tableInfo, err := c.tableService.Describe(context.Background(), viewSnapshot.TableName)
+			tableInfo, err := c.tableService.Describe(context.Background(), viewSnapshot.Details.TableName)
 			if err != nil {
 				return nil, err
 			}
 			return tableInfo, nil
 		}).OnDone(func(tableInfo *models.TableInfo) tea.Msg {
-			return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false)
+			return c.runQuery(tableInfo, viewSnapshot.Details.Query, viewSnapshot.Details.Filter, false)
 		}).Submit()
 	}
 
@@ -323,22 +331,22 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 		currentQueryExpr = currentResultSet.Query.String()
 	}
 
-	if viewSnapshot.TableName == currentResultSet.TableInfo.Name && viewSnapshot.Query == currentQueryExpr {
+	if viewSnapshot.Details.TableName == currentResultSet.TableInfo.Name && viewSnapshot.Details.Query == currentQueryExpr {
 		return NewJob(c.jobController, "Applying filter…", func(ctx context.Context) (*models.ResultSet, error) {
-			return c.tableService.Filter(currentResultSet, viewSnapshot.Filter), nil
-		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Filter, false, resultSetUpdateSnapshotRestore)).Submit()
+			return c.tableService.Filter(currentResultSet, viewSnapshot.Details.Filter), nil
+		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Details.Filter, false, resultSetUpdateSnapshotRestore)).Submit()
 	}
 
 	return NewJob(c.jobController, "Running query…", func(ctx context.Context) (tea.Msg, error) {
 		tableInfo := currentResultSet.TableInfo
-		if viewSnapshot.TableName != currentResultSet.TableInfo.Name {
-			tableInfo, err = c.tableService.Describe(context.Background(), viewSnapshot.TableName)
+		if viewSnapshot.Details.TableName != currentResultSet.TableInfo.Name {
+			tableInfo, err = c.tableService.Describe(context.Background(), viewSnapshot.Details.TableName)
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		return c.runQuery(tableInfo, viewSnapshot.Query, viewSnapshot.Filter, false), nil
+		return c.runQuery(tableInfo, viewSnapshot.Details.Query, viewSnapshot.Details.Filter, false), nil
 	}).OnDone(func(m tea.Msg) tea.Msg {
 		return m
 	}).Submit()

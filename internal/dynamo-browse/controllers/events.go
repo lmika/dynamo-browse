@@ -16,6 +16,8 @@ type SettingsUpdated struct {
 type ColumnsUpdated struct {
 }
 
+type SetSelectedColumnInColSelector int
+
 type MoveLeftmostDisplayedColumnInTableViewBy int
 
 type NewResultSet struct {
