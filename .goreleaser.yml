@@ -21,7 +21,7 @@ archives:
         format: tar.gz
 nfpms:
   - id: package_nfpms
-    package_name: awstools
+    package_name: audax
     builds:
       - dynamo-browse
     vendor: lmika
@@ -34,10 +34,11 @@ nfpms:
       - rpm
     bindir: /usr/local/bin
 brews:
-  - name: awstools
+  - name: audax
     tap:
       owner: lmika
-      name: awstools
+      name: homebrew-audax
+      token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
     folder: Formula
     homepage:  https://audax.tools
     description: TUI tools for AWS administration
