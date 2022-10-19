@@ -277,6 +277,10 @@ func (c *TableReadController) handleResultSetFromJobResult(filter string, pushba
 
 		var partialResultsErr models.PartialResultsError
 		if errors.As(err, &partialResultsErr) {
+			if newResultSet == nil {
+				return events.StatusMsg("Operation cancelled")
+			}
+
 			return events.Confirm(applyToN("View the ", len(newResultSet.Items()), "item", "items", " returned so far? "), func(yes bool) tea.Msg {
 				if yes {
 					return c.setResultSetAndFilter(newResultSet, filter, pushbackStack, op)

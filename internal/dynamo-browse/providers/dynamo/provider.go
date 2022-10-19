@@ -115,7 +115,9 @@ func (p *Provider) ScanItems(ctx context.Context, tableName string, filterExpr *
 		input.ExpressionAttributeValues = filterExpr.Values()
 	}
 
-	paginator := dynamodb.NewScanPaginator(p.client, input)
+	paginator := dynamodb.NewScanPaginator(p.client, input, func(opt *dynamodb.ScanPaginatorOptions) {
+		opt.Limit = 100
+	})
 
 	items := make([]models.Item, 0)
 
@@ -136,11 +138,11 @@ outer:
 			if len(items) >= maxItems {
 				break outer
 			}
+		}
 
-			if time.Now().After(nextUpdate) {
-				jobs.PostUpdate(ctx, fmt.Sprintf("found %d items", len(items)))
-				nextUpdate = time.Now().Add(1 * time.Second)
-			}
+		if time.Now().After(nextUpdate) {
+			jobs.PostUpdate(ctx, fmt.Sprintf("found %d items", len(items)))
+			nextUpdate = time.Now().Add(1 * time.Second)
 		}
 	}
 
@@ -159,7 +161,9 @@ func (p *Provider) QueryItems(ctx context.Context, tableName string, filterExpr 
 		input.ExpressionAttributeValues = filterExpr.Values()
 	}
 
-	paginator := dynamodb.NewQueryPaginator(p.client, input)
+	paginator := dynamodb.NewQueryPaginator(p.client, input, func(opt *dynamodb.QueryPaginatorOptions) {
+		opt.Limit = 100
+	})
 
 	items := make([]models.Item, 0)
 
@@ -180,11 +184,11 @@ outer:
 			if len(items) >= maxItems {
 				break outer
 			}
+		}
 
-			if time.Now().After(nextUpdate) {
-				jobs.PostUpdate(ctx, fmt.Sprintf("found %d items", len(items)))
-				nextUpdate = time.Now().Add(1 * time.Second)
-			}
+		if time.Now().After(nextUpdate) {
+			jobs.PostUpdate(ctx, fmt.Sprintf("found %d items", len(items)))
+			nextUpdate = time.Now().Add(1 * time.Second)
 		}
 	}
 
