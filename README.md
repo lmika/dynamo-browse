@@ -14,7 +14,7 @@ breaking concentration, especially if you do a lot in the terminal.
 
 More info about the available tools are available here:
 
-- [dynamo-browse](https://audax.tools/docs/dynamo-browse): Browse DynamoDB tables
+- [dynamo-browse](https://audax.tools/dynamo-browse): Browse DynamoDB tables
 
 ## Install
 
@@ -23,7 +23,7 @@ Binary packages can be [download from the release page](https://github.com/lmika
 If you have Go 1.18, you can install using the following command:
 
 ```
-go install github.com/lmika/audax/cmd/dynamo-browse@v0.0.2
+go install github.com/lmika/audax/cmd/dynamo-browse@v0.1.0
 ```
 
 ## License
