@@ -9,7 +9,7 @@ import (
 )
 
 func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (*irConjunction, error) {
-	atoms := make([]irAtom, len(a.Operands))
+	atoms := make([]*irBoolNot, len(a.Operands))
 	for i, op := range a.Operands {
 		var err error
 		atoms[i], err = op.evalToIR(tableInfo)
@@ -56,7 +56,7 @@ func (d *astConjunction) String() string {
 }
 
 type irConjunction struct {
-	atoms []irAtom
+	atoms []*irBoolNot
 }
 
 func (d *irConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {

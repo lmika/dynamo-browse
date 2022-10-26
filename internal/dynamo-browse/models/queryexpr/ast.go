@@ -28,12 +28,23 @@ type astDisjunction struct {
 }
 
 type astConjunction struct {
-	Operands []*astEqualityOp `parser:"@@ ('and' @@)*"`
+	Operands []*astBooleanNot `parser:"@@ ('and' @@)*"`
+}
+
+type astBooleanNot struct {
+	HasNot  bool             `parser:"@'not'? "`
+	Operand *astComparisonOp `parser:"@@"`
+}
+
+type astComparisonOp struct {
+	Ref   *astEqualityOp   `parser:"@@"`
+	Op    string           `parser:"( @('<' | '<=' | '>' | '>=')"`
+	Value *astLiteralValue `parser:"@@ )?"`
 }
 
 type astEqualityOp struct {
 	Ref   *astDot          `parser:"@@"`
-	Op    string           `parser:"( @('^=' | '=')"`
+	Op    string           `parser:"( @('^=' | '=' | '!=')"`
 	Value *astLiteralValue `parser:"@@ )?"`
 }
 
@@ -48,7 +59,8 @@ type astLiteralValue struct {
 }
 
 var scanner = lexer.MustSimple([]lexer.SimpleRule{
-	{Name: "Eq", Pattern: `=|[\\^]=`},
+	{Name: "Eq", Pattern: `=|[\\^]=|[!]=`},
+	{Name: "Cmp", Pattern: `<[=]?|>[=]?`},
 	{Name: "String", Pattern: `"(\\"|[^"])*"`},
 	{Name: "Int", Pattern: `[-+]?(\d*\.)?\d+`},
 	{Name: "Number", Pattern: `[-+]?(\d*\.)?\d+`},

@@ -1,6 +1,7 @@
 package queryexpr_test
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
@@ -20,133 +21,141 @@ func TestModExpr_Query(t *testing.T) {
 	}
 
 	t.Run("as queries", func(t *testing.T) {
-		t.Run("perform query when request pk is fixed", func(t *testing.T) {
-			modExpr, err := queryexpr.Parse(`pk="prefix"`)
-			assert.NoError(t, err)
+		scenarios := []scanScenario{
+			scanCase("when request pk is fixed",
+				`pk="prefix"`,
+				`#0 = :0`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+			),
+			scanCase("when request pk and sk is fixed",
+				`pk="prefix" and sk="another"`,
+				`(#0 = :0) AND (#1 = :1)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
+			scanCase("when request pk is equals and sk is prefix #1",
+				`pk="prefix" and sk^="another"`,
+				`(#0 = :0) AND (begins_with (#1, :1))`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
+			scanCase("when request pk is equals and sk is prefix #2",
+				`sk^="another" and pk="prefix"`,
+				`(#0 = :0) AND (begins_with (#1, :1))`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
+			scanCase("when request pk is equals and sk is less than",
+				`pk="prefix" and sk < 100`,
+				`(#0 = :0) AND (#1 < :1)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsNumber(1, 1, "sk", "100"),
+			),
+			scanCase("when request pk is equals and sk is less or equal to",
+				`pk="prefix" and sk <= 100`,
+				`(#0 = :0) AND (#1 <= :1)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsNumber(1, 1, "sk", "100"),
+			),
+			scanCase("when request pk is equals and sk is greater than",
+				`pk="prefix" and sk > 100`,
+				`(#0 = :0) AND (#1 > :1)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsNumber(1, 1, "sk", "100"),
+			),
+			scanCase("when request pk is equals and sk is greater or equal to",
+				`pk="prefix" and sk >= 100`,
+				`(#0 = :0) AND (#1 >= :1)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsNumber(1, 1, "sk", "100"),
+			),
+		}
 
-			plan, err := modExpr.Plan(tableInfo)
-			assert.NoError(t, err)
+		for _, scenario := range scenarios {
+			t.Run(scenario.description, func(t *testing.T) {
+				modExpr, err := queryexpr.Parse(scenario.expression)
+				assert.NoError(t, err)
 
-			assert.True(t, plan.CanQuery)
-			assert.Equal(t, "#0 = :0", aws.ToString(plan.Expression.KeyCondition()))
-			assert.Equal(t, "pk", plan.Expression.Names()["#0"])
-			assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
-		})
+				plan, err := modExpr.Plan(tableInfo)
+				assert.NoError(t, err)
 
-		t.Run("perform query when request pk and sk is fixed", func(t *testing.T) {
-			modExpr, err := queryexpr.Parse(`pk="prefix" and sk="another"`)
-			assert.NoError(t, err)
-
-			plan, err := modExpr.Plan(tableInfo)
-			assert.NoError(t, err)
-
-			assert.True(t, plan.CanQuery)
-			assert.Equal(t, "(#0 = :0) AND (#1 = :1)", aws.ToString(plan.Expression.KeyCondition()))
-			assert.Equal(t, "pk", plan.Expression.Names()["#0"])
-			assert.Equal(t, "sk", plan.Expression.Names()["#1"])
-			assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
-			assert.Equal(t, "another", plan.Expression.Values()[":1"].(*types.AttributeValueMemberS).Value)
-		})
-
-		t.Run("perform query when request pk is equals and sk is prefix", func(t *testing.T) {
-			scenarios := []struct {
-				expr string
-			}{
-				{expr: `pk="prefix" and sk^="another"`},
-				{expr: `sk^="another" and pk="prefix"`},
-			}
-
-			for _, scenario := range scenarios {
-				t.Run(scenario.expr, func(t *testing.T) {
-					modExpr, err := queryexpr.Parse(scenario.expr)
-					assert.NoError(t, err)
-
-					plan, err := modExpr.Plan(tableInfo)
-					assert.NoError(t, err)
-
-					assert.True(t, plan.CanQuery)
-					assert.Equal(t, "(#0 = :0) AND (begins_with (#1, :1))", aws.ToString(plan.Expression.KeyCondition()))
-					assert.Equal(t, "pk", plan.Expression.Names()["#0"])
-					assert.Equal(t, "sk", plan.Expression.Names()["#1"])
-					assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
-					assert.Equal(t, "another", plan.Expression.Values()[":1"].(*types.AttributeValueMemberS).Value)
-				})
-			}
-		})
+				assert.True(t, plan.CanQuery)
+				assert.Equal(t, scenario.expectedFilter, aws.ToString(plan.Expression.KeyCondition()))
+				for k, v := range scenario.expectedNames {
+					assert.Equal(t, v, plan.Expression.Names()[k])
+				}
+				for k, v := range scenario.expectedValues {
+					assert.Equal(t, v, plan.Expression.Values()[k])
+				}
+			})
+		}
 	})
 
 	t.Run("as scans", func(t *testing.T) {
-		t.Run("when request pk prefix", func(t *testing.T) {
-			modExpr, err := queryexpr.Parse(`pk^="prefix"`)
-			assert.NoError(t, err)
+		scenarios := []scanScenario{
+			scanCase("when request pk prefix", `pk^="prefix"`, `begins_with (#0, :0)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+			),
+			scanCase("when request sk equals something", `sk="something"`, `#0 = :0`,
+				exprNameIsString(0, 0, "sk", "something"),
+			),
+			scanCase("with not equal", `sk != "something"`, `#0 <> :0`,
+				exprNameIsString(0, 0, "sk", "something"),
+			),
+			scanCase("less than value", `num < 100`, `#0 < :0`,
+				exprNameIsNumber(0, 0, "num", "100"),
+			),
+			scanCase("less or equal to value", `num <= 100`, `#0 <= :0`,
+				exprNameIsNumber(0, 0, "num", "100"),
+			),
+			scanCase("greater than value", `num > 100`, `#0 > :0`,
+				exprNameIsNumber(0, 0, "num", "100"),
+			),
+			scanCase("greater or equal to value", `num >= 100`, `#0 >= :0`,
+				exprNameIsNumber(0, 0, "num", "100"),
+			),
+			scanCase("with disjunctions",
+				`pk="prefix" or sk="another"`,
+				`(#0 = :0) OR (#1 = :1)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
+			scanCase("with disjunctions with numbers",
+				`pk="prefix" or num=123 and negnum=-131`,
+				`(#0 = :0) OR ((#1 = :1) AND (#2 = :2))`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsNumber(1, 1, "num", "123"),
+				exprNameIsNumber(2, 2, "negnum", "-131"),
+			),
+			scanCase("with disjunctions if pk is present twice in expression",
+				`pk="prefix" and pk="another"`,
+				`(#0 = :0) AND (#0 = :1)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(0, 1, "pk", "another"),
+			),
+			scanCase("with not", `not pk="prefix"`, `NOT (#0 = :0)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+			),
+		}
 
-			plan, err := modExpr.Plan(tableInfo)
-			assert.NoError(t, err)
+		for _, scenario := range scenarios {
+			t.Run(scenario.description, func(t *testing.T) {
+				modExpr, err := queryexpr.Parse(scenario.expression)
+				assert.NoError(t, err)
 
-			assert.False(t, plan.CanQuery)
-			assert.Equal(t, "begins_with (#0, :0)", aws.ToString(plan.Expression.Filter()))
-			assert.Equal(t, "pk", plan.Expression.Names()["#0"])
-			assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
-		})
+				plan, err := modExpr.Plan(tableInfo)
+				assert.NoError(t, err)
 
-		t.Run("when request sk equals something", func(t *testing.T) {
-			modExpr, err := queryexpr.Parse(`sk="something"`)
-			assert.NoError(t, err)
-
-			plan, err := modExpr.Plan(tableInfo)
-			assert.NoError(t, err)
-
-			assert.False(t, plan.CanQuery)
-			assert.Equal(t, "#0 = :0", aws.ToString(plan.Expression.Filter()))
-			assert.Equal(t, "sk", plan.Expression.Names()["#0"])
-			assert.Equal(t, "something", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
-		})
-
-		t.Run("with disjunctions", func(t *testing.T) {
-			modExpr, err := queryexpr.Parse(`pk="prefix" or sk="another"`)
-			assert.NoError(t, err)
-
-			plan, err := modExpr.Plan(tableInfo)
-			assert.NoError(t, err)
-
-			assert.False(t, plan.CanQuery)
-			assert.Equal(t, "(#0 = :0) OR (#1 = :1)", aws.ToString(plan.Expression.Filter()))
-			assert.Equal(t, "pk", plan.Expression.Names()["#0"])
-			assert.Equal(t, "sk", plan.Expression.Names()["#1"])
-			assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
-			assert.Equal(t, "another", plan.Expression.Values()[":1"].(*types.AttributeValueMemberS).Value)
-		})
-
-		t.Run("with disjunctions with numbers", func(t *testing.T) {
-			modExpr, err := queryexpr.Parse(`pk="prefix" or num=123 and negnum=-131`)
-			assert.NoError(t, err)
-
-			plan, err := modExpr.Plan(tableInfo)
-			assert.NoError(t, err)
-
-			assert.False(t, plan.CanQuery)
-			assert.Equal(t, "(#0 = :0) OR ((#1 = :1) AND (#2 = :2))", aws.ToString(plan.Expression.Filter()))
-			assert.Equal(t, "pk", plan.Expression.Names()["#0"])
-			assert.Equal(t, "num", plan.Expression.Names()["#1"])
-			assert.Equal(t, "negnum", plan.Expression.Names()["#2"])
-			assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
-			assert.Equal(t, "123", plan.Expression.Values()[":1"].(*types.AttributeValueMemberN).Value)
-			assert.Equal(t, "-131", plan.Expression.Values()[":2"].(*types.AttributeValueMemberN).Value)
-		})
-
-		t.Run("with disjunctions if pk is present twice in expression", func(t *testing.T) {
-			modExpr, err := queryexpr.Parse(`pk="prefix" and pk="another"`)
-			assert.NoError(t, err)
-
-			plan, err := modExpr.Plan(tableInfo)
-			assert.NoError(t, err)
-
-			assert.False(t, plan.CanQuery)
-			assert.Equal(t, "(#0 = :0) AND (#0 = :1)", aws.ToString(plan.Expression.Filter()))
-			assert.Equal(t, "pk", plan.Expression.Names()["#0"])
-			assert.Equal(t, "prefix", plan.Expression.Values()[":0"].(*types.AttributeValueMemberS).Value)
-			assert.Equal(t, "another", plan.Expression.Values()[":1"].(*types.AttributeValueMemberS).Value)
-		})
+				assert.False(t, plan.CanQuery)
+				assert.Equal(t, scenario.expectedFilter, aws.ToString(plan.Expression.Filter()))
+				for k, v := range scenario.expectedNames {
+					assert.Equal(t, v, plan.Expression.Names()[k])
+				}
+				for k, v := range scenario.expectedValues {
+					assert.Equal(t, v, plan.Expression.Values()[k])
+				}
+			})
+		}
 	})
 }
 
@@ -181,6 +190,8 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: `alpha^="al"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `alpha="foobar"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
 			{expr: `alpha^="need-something"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			// TODO: negation
+			// TODO: comparison
 
 			// Dot values
 			{expr: `charlie.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
@@ -256,4 +267,40 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			})
 		}
 	})
+}
+
+type scanScenario struct {
+	description    string
+	expression     string
+	expectedFilter string
+	expectedNames  map[string]string
+	expectedValues map[string]types.AttributeValue
+}
+
+func scanCase(description, expression, expectedFilter string, options ...func(ss *scanScenario)) scanScenario {
+	ss := scanScenario{
+		description:    description,
+		expression:     expression,
+		expectedFilter: expectedFilter,
+		expectedNames:  map[string]string{},
+		expectedValues: map[string]types.AttributeValue{},
+	}
+	for _, opt := range options {
+		opt(&ss)
+	}
+	return ss
+}
+
+func exprNameIsString(idx, valIdx int, name string, expected string) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.expectedNames[fmt.Sprintf("#%d", idx)] = name
+		ss.expectedValues[fmt.Sprintf(":%d", valIdx)] = &types.AttributeValueMemberS{Value: expected}
+	}
+}
+
+func exprNameIsNumber(idx, valIdx int, name string, expected string) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.expectedNames[fmt.Sprintf("#%d", idx)] = name
+		ss.expectedValues[fmt.Sprintf(":%d", valIdx)] = &types.AttributeValueMemberN{Value: expected}
+	}
 }

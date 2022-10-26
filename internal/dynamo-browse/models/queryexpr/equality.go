@@ -23,6 +23,8 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	switch a.Op {
 	case "=":
 		return irFieldEq{name: singleName, value: v}, nil
+	case "!=":
+		return irFieldNe{name: singleName, value: v}, nil
 	case "^=":
 		strValue, isStrValue := v.(string)
 		if !isStrValue {
@@ -32,6 +34,10 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	}
 
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
+}
+
+func (a *astEqualityOp) unqualifiedName() (string, bool) {
+	return a.Ref.unqualifiedName()
 }
 
 func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error) {
@@ -104,6 +110,27 @@ func (a irFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyCond
 
 func (a irFieldEq) operandFieldName() string {
 	return a.name
+}
+
+type irFieldNe struct {
+	name  string
+	value any
+}
+
+func (a irFieldNe) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	return false
+}
+
+func (a irFieldNe) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	return expression.Name(a.name).NotEqual(expression.Value(a.value)), nil
+}
+
+func (a irFieldNe) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	return expression.KeyConditionBuilder{}, errors.New("cannot use as query")
+}
+
+func (a irFieldNe) operandFieldName() string {
+	return ""
 }
 
 type irFieldBeginsWith struct {
