@@ -5,6 +5,8 @@ builds:
       - linux_amd64
       - darwin_amd64
       - darwin_arm64
+    env:
+      - CGO_ENABLED=1
     main: ./cmd/dynamo-browse/.
     binary: dynamo-browse
 archives:
