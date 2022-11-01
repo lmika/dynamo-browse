@@ -257,11 +257,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keyMap.PromptForTable):
 				return m, events.SetTeaMessage(m.tableReadController.ListTables())
 			case key.Matches(msg, m.keyMap.CancelRunningJob):
-				return m, events.SetTeaMessage(m.jobController.CancelRunningJob(func() tea.Msg {
-					return tea.Quit()
-				}))
+				return m, events.SetTeaMessage(m.jobController.CancelRunningJob(m.promptToQuit))
 			case key.Matches(msg, m.keyMap.Quit):
-				return m, tea.Quit
+				return m, m.promptToQuit
 			}
 		}
 	}
@@ -311,4 +309,13 @@ func (m *Model) setMainViewIndex(viewIndex int) tea.Cmd {
 	m.mainView = newMainView
 	m.itemEdit.SetSubmodel(m.mainView)
 	return m.tableView.Refresh()
+}
+
+func (m *Model) promptToQuit() tea.Msg {
+	return events.Confirm("Quit dynamo-browse? ", func(yes bool) tea.Msg {
+		if yes {
+			return tea.Quit()
+		}
+		return nil
+	})
 }
