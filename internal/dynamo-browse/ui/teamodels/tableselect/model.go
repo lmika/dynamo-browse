@@ -1,6 +1,7 @@
 package tableselect
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -14,9 +15,12 @@ import (
 
 var (
 	activeHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
-		Background(lipgloss.Color("#4479ff"))
+				Bold(true).
+				Foreground(lipgloss.Color("#ffffff")).
+				Background(lipgloss.Color("#4479ff"))
+
+	chooseSelectedTableBinding = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select table"))
+	exitTableSelectionBinding  = key.NewBinding(key.WithKeys("ctrl+c", "esc"), key.WithHelp("esc", "close selection"))
 )
 
 type Model struct {
@@ -50,8 +54,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		if m.pendingSelection != nil {
-			switch msg.String() {
-			case "enter":
+			switch {
+			case key.Matches(msg, chooseSelectedTableBinding):
 				if m.listController.list.FilterState() != list.Filtering {
 					var sel controllers.PromptForTableMsg
 					sel, m.pendingSelection = *m.pendingSelection, nil
@@ -59,6 +63,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if selTableItem, isTableItem := m.listController.list.SelectedItem().(tableItem); isTableItem {
 						return m, events.SetTeaMessage(sel.OnSelected(selTableItem.name))
 					}
+					return m, events.SetTeaMessage(sel.OnSelected(""))
+				}
+			case key.Matches(msg, exitTableSelectionBinding):
+				if m.listController.list.FilterState() != list.Filtering && m.listController.list.FilterState() != list.FilterApplied {
+					var sel controllers.PromptForTableMsg
+					sel, m.pendingSelection = *m.pendingSelection, nil
+
 					return m, events.SetTeaMessage(sel.OnSelected(""))
 				}
 			}

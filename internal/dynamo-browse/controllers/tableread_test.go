@@ -34,7 +34,7 @@ func TestTableReadController_ListTables(t *testing.T) {
 	t.Run("returns a list of tables", func(t *testing.T) {
 		srv := newService(t, serviceConfig{})
 
-		event := srv.readController.ListTables().(controllers.PromptForTableMsg)
+		event := srv.readController.ListTables(false).(controllers.PromptForTableMsg)
 
 		assert.Equal(t, []string{"alpha-table", "bravo-table"}, event.Tables)
 
