@@ -50,6 +50,7 @@ func newListController(tableNames []string, w, h int) listController {
 		key.WithHelp("→/l/pgdn", "next page"),
 	)
 	list.SetShowTitle(false)
+	list.DisableQuitKeybindings()
 
 	return listController{list: list}
 }

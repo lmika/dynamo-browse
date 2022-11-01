@@ -83,13 +83,13 @@ func (c *TableReadController) Init() tea.Msg {
 	}
 
 	if c.tableName == "" {
-		return c.ListTables()
+		return c.ListTables(true)
 	} else {
 		return c.ScanTable(c.tableName)
 	}
 }
 
-func (c *TableReadController) ListTables() tea.Msg {
+func (c *TableReadController) ListTables(quitIfNoTable bool) tea.Msg {
 	return NewJob(c.jobController, "Listing tables…", func(ctx context.Context) (any, error) {
 		tables, err := c.tableService.ListTables(context.Background())
 		if err != nil {
@@ -101,6 +101,9 @@ func (c *TableReadController) ListTables() tea.Msg {
 			Tables: res.([]string),
 			OnSelected: func(tableName string) tea.Msg {
 				if tableName == "" {
+					if quitIfNoTable {
+						return tea.Quit()
+					}
 					return events.StatusMsg("No table selected")
 				}
 

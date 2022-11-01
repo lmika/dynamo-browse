@@ -87,7 +87,7 @@ func NewModel(
 			"quit": commandctrl.NoArgCommand(tea.Quit),
 			"table": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
-					return rc.ListTables()
+					return rc.ListTables(false)
 				} else {
 					return rc.ScanTable(args[0])
 				}
@@ -255,7 +255,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
 			case key.Matches(msg, m.keyMap.PromptForTable):
-				return m, events.SetTeaMessage(m.tableReadController.ListTables())
+				return m, events.SetTeaMessage(m.tableReadController.ListTables(false))
 			case key.Matches(msg, m.keyMap.CancelRunningJob):
 				return m, events.SetTeaMessage(m.jobController.CancelRunningJob(m.promptToQuit))
 			case key.Matches(msg, m.keyMap.Quit):
