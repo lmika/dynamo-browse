@@ -35,6 +35,10 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
+func (a *astComparisonOp) unqualifiedName() (string, bool) {
+	return a.Ref.unqualifiedName()
+}
+
 func (a *astComparisonOp) String() string {
 	return a.Ref.String() + a.Op + a.Value.String()
 }

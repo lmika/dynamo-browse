@@ -27,8 +27,19 @@ func TestModExpr_Query(t *testing.T) {
 				`#0 = :0`,
 				exprNameIsString(0, 0, "pk", "prefix"),
 			),
+			scanCase("when request pk is in with a single value",
+				`pk in ("prefix")`,
+				`#0 = :0`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+			),
 			scanCase("when request pk and sk is fixed",
 				`pk="prefix" and sk="another"`,
+				`(#0 = :0) AND (#1 = :1)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
+			scanCase("when request pk and sk is fixed (using 'in')",
+				`pk in ("prefix") and sk in ("another")`,
 				`(#0 = :0) AND (#1 = :1)`,
 				exprNameIsString(0, 0, "pk", "prefix"),
 				exprNameIsString(1, 1, "sk", "another"),
@@ -136,6 +147,15 @@ func TestModExpr_Query(t *testing.T) {
 			scanCase("with not", `not pk="prefix"`, `NOT (#0 = :0)`,
 				exprNameIsString(0, 0, "pk", "prefix"),
 			),
+
+			scanCase("with in", `pk in ("alpha", "bravo", "charlie")`,
+				`#0 IN (:0, :1, :2)`,
+				exprName(0, "pk"),
+				exprValueIsString(0, "alpha"),
+				exprValueIsString(1, "bravo"),
+				exprValueIsString(2, "charlie"),
+			),
+			// TODO: in > 100 items ==> items OR items
 		}
 
 		for _, scenario := range scenarios {
@@ -192,6 +212,7 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: `alpha^="need-something"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
 			// TODO: negation
 			// TODO: comparison
+			// TODO: in
 
 			// Dot values
 			{expr: `charlie.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
@@ -289,6 +310,18 @@ func scanCase(description, expression, expectedFilter string, options ...func(ss
 		opt(&ss)
 	}
 	return ss
+}
+
+func exprName(idx int, name string) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.expectedNames[fmt.Sprintf("#%d", idx)] = name
+	}
+}
+
+func exprValueIsString(valIdx int, expected string) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.expectedValues[fmt.Sprintf(":%d", valIdx)] = &types.AttributeValueMemberS{Value: expected}
+	}
 }
 
 func exprNameIsString(idx, valIdx int, name string, expected string) func(ss *scanScenario) {

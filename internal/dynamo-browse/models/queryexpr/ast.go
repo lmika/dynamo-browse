@@ -15,14 +15,6 @@ type astExpr struct {
 	Root *astDisjunction `parser:"@@"`
 }
 
-func (a *astExpr) evalToIR(tableInfo *models.TableInfo) (*irDisjunction, error) {
-	return a.Root.evalToIR(tableInfo)
-}
-
-func (a *astExpr) evalItem(item models.Item) (types.AttributeValue, error) {
-	return a.Root.evalItem(item)
-}
-
 type astDisjunction struct {
 	Operands []*astConjunction `parser:"@@ ('or' @@)*"`
 }
@@ -32,8 +24,13 @@ type astConjunction struct {
 }
 
 type astBooleanNot struct {
-	HasNot  bool             `parser:"@'not'? "`
-	Operand *astComparisonOp `parser:"@@"`
+	HasNot  bool   `parser:"@'not'? "`
+	Operand *astIn `parser:"@@"`
+}
+
+type astIn struct {
+	Ref     *astComparisonOp   `parser:"@@ ('in' '('"`
+	Operand []*astLiteralValue `parser:"@@ (',' @@ )*  ')')?"`
 }
 
 type astComparisonOp struct {
@@ -78,4 +75,12 @@ func Parse(expr string) (*QueryExpr, error) {
 	}
 
 	return &QueryExpr{ast: ast}, nil
+}
+
+func (a *astExpr) evalToIR(tableInfo *models.TableInfo) (*irDisjunction, error) {
+	return a.Root.evalToIR(tableInfo)
+}
+
+func (a *astExpr) evalItem(item models.Item) (types.AttributeValue, error) {
+	return a.Root.evalItem(item)
 }
