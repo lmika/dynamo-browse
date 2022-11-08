@@ -11,12 +11,12 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return a.Ref.evalToIR(info)
 	}
 
-	v, err := a.Value.goValue()
+	v, err := a.Value.rightOperandGoValue()
 	if err != nil {
 		return nil, err
 	}
 
-	singleName, isSingleName := a.Ref.unqualifiedName()
+	singleName, isSingleName := a.Ref.leftOperandName()
 	if !isSingleName {
 		return nil, errors.Errorf("%v: cannot use dereferences", singleName)
 	}
@@ -35,8 +35,8 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
-func (a *astComparisonOp) unqualifiedName() (string, bool) {
-	return a.Ref.unqualifiedName()
+func (a *astComparisonOp) leftOperandName() (string, bool) {
+	return a.Ref.leftOperandName()
 }
 
 func (a *astComparisonOp) String() string {

@@ -112,6 +112,13 @@ func (d *irConjunction) calcQueryForScan(info *models.TableInfo) (expression.Con
 	return conjExpr, nil
 }
 
+func (d *irConjunction) operandFieldName() string {
+	if len(d.atoms) == 1 {
+		return d.atoms[0].operandFieldName()
+	}
+	return ""
+}
+
 func isAttributeTrue(attr types.AttributeValue) bool {
 	switch val := attr.(type) {
 	case *types.AttributeValueMemberS:

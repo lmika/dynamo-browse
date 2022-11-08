@@ -10,7 +10,11 @@ import (
 )
 
 func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
-	v, err := a.Value.goValue()
+	if a.Op == "" {
+		return a.Ref.evalToIR(info)
+	}
+
+	v, err := a.Value.rightOperandGoValue()
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +40,14 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
-func (a *astEqualityOp) unqualifiedName() (string, bool) {
+func (a *astEqualityOp) rightOperandGoValue() (any, error) {
+	if a.Op == "" {
+		return a.Ref.rightOperandGoValue()
+	}
+	return nil, ValueMustBeLiteral{}
+}
+
+func (a *astEqualityOp) leftOperandName() (string, bool) {
 	return a.Ref.unqualifiedName()
 }
 
@@ -50,7 +61,7 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 		return left, nil
 	}
 
-	right, err := a.Value.dynamoValue()
+	right, err := a.Value.rightOperandDynamoValue()
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +74,7 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 		}
 		return &types.AttributeValueMemberBOOL{Value: cmp == 0}, nil
 	case "^=":
-		rightVal, err := a.Value.goValue()
+		rightVal, err := a.Value.rightOperandGoValue()
 		if err != nil {
 			return nil, err
 		}

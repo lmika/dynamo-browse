@@ -29,20 +29,26 @@ type astBooleanNot struct {
 }
 
 type astIn struct {
-	Ref     *astComparisonOp   `parser:"@@ ('in' '('"`
-	Operand []*astLiteralValue `parser:"@@ (',' @@ )*  ')')?"`
+	Ref     *astComparisonOp `parser:"@@ ('in' '('"`
+	Operand []*astAtom       `parser:"@@ (',' @@ )*  ')')?"`
 }
 
 type astComparisonOp struct {
-	Ref   *astEqualityOp   `parser:"@@"`
-	Op    string           `parser:"( @('<' | '<=' | '>' | '>=')"`
-	Value *astLiteralValue `parser:"@@ )?"`
+	Ref   *astEqualityOp `parser:"@@"`
+	Op    string         `parser:"( @('<' | '<=' | '>' | '>=')"`
+	Value *astEqualityOp `parser:"@@ )?"`
 }
 
 type astEqualityOp struct {
-	Ref   *astDot          `parser:"@@"`
-	Op    string           `parser:"( @('^=' | '=' | '!=')"`
-	Value *astLiteralValue `parser:"@@ )?"`
+	Ref   *astAtom `parser:"@@"`
+	Op    string   `parser:"( @('^=' | '=' | '!=')"`
+	Value *astAtom `parser:"@@ )?"`
+}
+
+type astAtom struct {
+	Ref     *astDot          `parser:"@@ | "`
+	Literal *astLiteralValue `parser:"@@ | "`
+	Paren   *astExpr         `parser:"'(' @@ ')'"`
 }
 
 type astDot struct {

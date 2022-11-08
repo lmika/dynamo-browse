@@ -13,14 +13,14 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return a.Ref.evalToIR(info)
 	}
 
-	singleName, isSingleName := a.Ref.unqualifiedName()
+	singleName, isSingleName := a.Ref.leftOperandName()
 	if !isSingleName {
 		return nil, errors.Errorf("%v: cannot use dereferences", singleName)
 	}
 
 	oprValues := make([]any, len(a.Operand))
 	for i, o := range a.Operand {
-		v, err := o.goValue()
+		v, err := o.rightOperandGoValue()
 		if err != nil {
 			return nil, errors.Errorf("'in' operand %v: %v", i, o)
 		}

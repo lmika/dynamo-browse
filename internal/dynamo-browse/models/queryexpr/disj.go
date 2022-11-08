@@ -59,6 +59,13 @@ type irDisjunction struct {
 	conj []*irConjunction
 }
 
+func (a *irDisjunction) operandFieldName() string {
+	if len(a.conj) == 1 {
+		return a.conj[0].operandFieldName()
+	}
+	return ""
+}
+
 func (d *irDisjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	// TODO: not entire accurate, as filter expressions are also possible
 	if len(d.conj) == 1 {

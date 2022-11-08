@@ -42,3 +42,9 @@ func (n ValueNotConvertableToString) Error() string {
 	render := itemrender.ToRenderer(n.Val)
 	return fmt.Sprintf("values '%v', type %v, is not convertable to string", render.StringValue(), render.TypeName())
 }
+
+type ValueMustBeLiteral struct{}
+
+func (n ValueMustBeLiteral) Error() string {
+	return "value must be a literal"
+}
