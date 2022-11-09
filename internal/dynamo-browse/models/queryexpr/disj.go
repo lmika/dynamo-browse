@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (a *astDisjunction) evalToIR(tableInfo *models.TableInfo) (*irDisjunction, error) {
+func (a *astDisjunction) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
 	conj := make([]*irConjunction, len(a.Operands))
 	for i, op := range a.Operands {
 		var err error
@@ -82,7 +82,7 @@ func (d *irDisjunction) calcQueryForQuery(info *models.TableInfo) (expression.Ke
 	return expression.KeyConditionBuilder{}, errors.New("expected exactly 1 operand for query")
 }
 
-func (d *irDisjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+func (d *irDisjunction) calcQueryForScan(info *models.TableInfo) (expressionBuilder, error) {
 	if len(d.conj) == 1 {
 		return d.conj[0].calcQueryForScan(info)
 	}
@@ -92,7 +92,7 @@ func (d *irDisjunction) calcQueryForScan(info *models.TableInfo) (expression.Con
 	for i, operand := range d.conj {
 		cond, err := operand.calcQueryForScan(info)
 		if err != nil {
-			return expression.ConditionBuilder{}, err
+			return nil, err
 		}
 		conds[i] = cond
 	}

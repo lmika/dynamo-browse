@@ -9,9 +9,9 @@ import (
 func (a *astAtom) evalToIR(info *models.TableInfo) (irAtom, error) {
 	switch {
 	case a.Ref != nil:
-		return nil, errors.New("TODO")
+		return a.Ref.evalToIR(info)
 	case a.Literal != nil:
-		return nil, errors.New("TODO")
+		return a.Literal.evalToIR(info)
 	case a.Paren != nil:
 		return a.Paren.evalToIR(info)
 	}

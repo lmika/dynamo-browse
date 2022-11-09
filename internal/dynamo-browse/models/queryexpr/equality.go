@@ -10,31 +10,37 @@ import (
 )
 
 func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
-	if a.Op == "" {
-		return a.Ref.evalToIR(info)
-	}
-
-	v, err := a.Value.rightOperandGoValue()
+	leftIR, err := a.Ref.evalToIR(info)
 	if err != nil {
 		return nil, err
 	}
 
-	singleName, isSingleName := a.Ref.unqualifiedName()
-	if !isSingleName {
-		return nil, errors.Errorf("%v: cannot use dereferences", singleName)
+	if a.Op == "" {
+		return leftIR, nil
+	}
+
+	nameIR, isNameIR := leftIR.(irNamePath)
+	if !isNameIR {
+		return nil, OperandNotANameError(a.Ref.String())
+	}
+
+	rightIR, err := a.Value.evalToIR(info)
+	if err != nil {
+		return nil, err
+	}
+
+	valueIR, isValueIR := rightIR.(irValue)
+	if !isValueIR {
+		return nil, ValueMustBeLiteralError{}
 	}
 
 	switch a.Op {
 	case "=":
-		return irFieldEq{name: singleName, value: v}, nil
+		return irFieldEq{name: nameIR, value: valueIR}, nil
 	case "!=":
-		return irFieldNe{name: singleName, value: v}, nil
+		return irFieldNe{name: nameIR, value: valueIR}, nil
 	case "^=":
-		strValue, isStrValue := v.(string)
-		if !isStrValue {
-			return nil, errors.New("operand '^=' must be string")
-		}
-		return irFieldBeginsWith{name: singleName, prefix: strValue}, nil
+		return irFieldBeginsWith{name: nameIR, value: valueIR}, nil
 	}
 
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
@@ -44,7 +50,7 @@ func (a *astEqualityOp) rightOperandGoValue() (any, error) {
 	if a.Op == "" {
 		return a.Ref.rightOperandGoValue()
 	}
-	return nil, ValueMustBeLiteral{}
+	return nil, ValueMustBeLiteralError{}
 }
 
 func (a *astEqualityOp) leftOperandName() (string, bool) {
@@ -99,33 +105,41 @@ func (a *astEqualityOp) String() string {
 }
 
 type irFieldEq struct {
-	name  string
-	value any
+	name  irNamePath
+	value irValue
 }
 
 func (a irFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	if a.name == info.Keys.PartitionKey || a.name == info.Keys.SortKey {
-		return qci.addKey(info, a.name)
+	keyName := a.name.keyName()
+	if keyName == "" {
+		return false
+	}
+
+	if keyName == info.Keys.PartitionKey || keyName == info.Keys.SortKey {
+		return qci.addKey(info, keyName)
 	}
 
 	return false
 }
 
 func (a irFieldEq) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	return expression.Name(a.name).Equal(expression.Value(a.value)), nil
+	nb := a.name.calcName(info)
+	vb := a.value.goValue()
+	return nb.Equal(expression.Value(vb)), nil
 }
 
 func (a irFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.Key(a.name).Equal(expression.Value(a.value)), nil
+	vb := a.value.goValue()
+	return expression.Key(a.name.keyName()).Equal(expression.Value(vb)), nil
 }
 
-func (a irFieldEq) operandFieldName() string {
-	return a.name
-}
+//func (a irFieldEq) operandFieldName() string {
+//	return a.name
+//}
 
 type irFieldNe struct {
-	name  string
-	value any
+	name  irNamePath
+	value irValue
 }
 
 func (a irFieldNe) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
@@ -133,38 +147,78 @@ func (a irFieldNe) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcIn
 }
 
 func (a irFieldNe) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	return expression.Name(a.name).NotEqual(expression.Value(a.value)), nil
+	nb := a.name.calcName(info)
+	vb := a.value.goValue()
+	return nb.NotEqual(expression.Value(vb)), nil
 }
 
 func (a irFieldNe) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
 	return expression.KeyConditionBuilder{}, errors.New("cannot use as query")
 }
 
-func (a irFieldNe) operandFieldName() string {
-	return ""
-}
+//func (a irFieldNe) operandFieldName() string {
+//	return ""
+//}
 
 type irFieldBeginsWith struct {
-	name   string
-	prefix string
+	name  irNamePath
+	value irValue
 }
 
 func (a irFieldBeginsWith) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	if a.name == info.Keys.SortKey {
-		return qci.addKey(info, a.name)
+	keyName := a.name.keyName()
+	if keyName == "" {
+		return false
+	}
+
+	if keyName == info.Keys.SortKey {
+		return qci.addKey(info, a.name.name)
 	}
 
 	return false
 }
 
 func (a irFieldBeginsWith) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	return expression.Name(a.name).BeginsWith(a.prefix), nil
+	nb := a.name.calcName(info)
+	vb := a.value.goValue()
+	strValue, isStrValue := vb.(string)
+	if !isStrValue {
+		return expression.ConditionBuilder{}, errors.New("operand '^=' must be string")
+	}
+
+	return nb.BeginsWith(strValue), nil
 }
 
 func (a irFieldBeginsWith) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.Key(a.name).BeginsWith(a.prefix), nil
+	vb := a.value.goValue()
+	strValue, isStrValue := vb.(string)
+	if !isStrValue {
+		return expression.KeyConditionBuilder{}, errors.New("operand '^=' must be string")
+	}
+
+	return expression.Key(a.name.keyName()).BeginsWith(strValue), nil
 }
 
-func (a irFieldBeginsWith) operandFieldName() string {
-	return a.name
-}
+//func (a irFieldBeginsWith) operandFieldName() string {
+//	return a.name
+//}
+
+//func getNameAndValue(info *models.TableInfo, name irNamePath, value irValue) (expression.NameBuilder, any, error) {
+//nqc, err := name.calcQueryForScan(info)
+//if err != nil {
+//	return expression.NameBuilder{}, nil, err
+//}
+//nb := name.calcName(info)
+
+//vqc, err := value.calcQueryForScan(info)
+//if err != nil {
+//	return nameScanQueryCalc{}, valueScanQueryCalc{}, err
+//}
+//vb, isVB := vqc.(valueScanQueryCalc)
+//if !isVB {
+//	return nameScanQueryCalc{}, valueScanQueryCalc{}, errors.New("value is not a value builder")
+//}
+//	vb := value.goValue()
+//
+//	return nb, vb, nil
+//}

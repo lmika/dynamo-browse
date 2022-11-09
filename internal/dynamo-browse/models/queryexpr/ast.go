@@ -83,7 +83,7 @@ func Parse(expr string) (*QueryExpr, error) {
 	return &QueryExpr{ast: ast}, nil
 }
 
-func (a *astExpr) evalToIR(tableInfo *models.TableInfo) (*irDisjunction, error) {
+func (a *astExpr) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
 	return a.Root.evalToIR(tableInfo)
 }
 

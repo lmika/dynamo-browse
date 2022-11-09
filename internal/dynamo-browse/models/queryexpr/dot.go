@@ -1,10 +1,15 @@
 package queryexpr
 
 import (
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"strings"
 )
+
+func (dt *astDot) evalToIR(info *models.TableInfo) (irAtom, error) {
+	return irNamePath{dt.Name, dt.Quals}, nil
+}
 
 func (dt *astDot) unqualifiedName() (string, bool) {
 	if len(dt.Quals) == 0 {
@@ -44,4 +49,40 @@ func (a *astDot) String() string {
 	}
 
 	return sb.String()
+}
+
+type irNamePath struct {
+	name  string
+	quals []string
+}
+
+func (i irNamePath) operandFieldName() string {
+	panic("implement me")
+}
+
+func (i irNamePath) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	return false
+}
+
+func (i irNamePath) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	return expression.KeyConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
+}
+
+func (i irNamePath) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	return expression.ConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
+}
+
+func (i irNamePath) keyName() string {
+	if len(i.quals) == 0 {
+		return ""
+	}
+	return i.name
+}
+
+func (i irNamePath) calcName(info *models.TableInfo) expression.NameBuilder {
+	nb := expression.Name(i.name)
+	for _, qual := range i.quals {
+		nb = nb.AppendName(expression.Name(qual))
+	}
+	return nb
 }

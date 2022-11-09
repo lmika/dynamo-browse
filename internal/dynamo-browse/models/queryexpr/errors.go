@@ -15,6 +15,12 @@ func (n NameNotFoundError) Error() string {
 	return fmt.Sprintf("%v: name not found", string(n))
 }
 
+type OperandNotANameError string
+
+func (n OperandNotANameError) Error() string {
+	return fmt.Sprintf("operand '%v' is not a name", string(n))
+}
+
 // ValueNotAMapError is return if the given name is not a map
 type ValueNotAMapError []string
 
@@ -43,8 +49,14 @@ func (n ValueNotConvertableToString) Error() string {
 	return fmt.Sprintf("values '%v', type %v, is not convertable to string", render.StringValue(), render.TypeName())
 }
 
-type ValueMustBeLiteral struct{}
+type NodeCannotBeConvertedToQueryError struct{}
 
-func (n ValueMustBeLiteral) Error() string {
+func (n NodeCannotBeConvertedToQueryError) Error() string {
+	return "node cannot be converted to query"
+}
+
+type ValueMustBeLiteralError struct{}
+
+func (n ValueMustBeLiteralError) Error() string {
 	return "value must be a literal"
 }

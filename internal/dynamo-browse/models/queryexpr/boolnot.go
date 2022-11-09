@@ -55,12 +55,12 @@ type irBoolNot struct {
 	atom   irAtom
 }
 
-func (d *irBoolNot) operandFieldName() string {
-	if d.hasNot {
-		return ""
-	}
-	return d.atom.operandFieldName()
-}
+//func (d *irBoolNot) operandFieldName() string {
+//	if d.hasNot {
+//		return ""
+//	}
+//	return d.atom.operandFieldName()
+//}
 
 func (d *irBoolNot) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	if d.hasNot {

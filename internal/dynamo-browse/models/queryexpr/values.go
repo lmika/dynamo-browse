@@ -1,11 +1,17 @@
 package queryexpr
 
 import (
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/pkg/errors"
 )
+
+func (a *astLiteralValue) evalToIR(info *models.TableInfo) (irAtom, error) {
+	return irValue{value: a.goValue()}, nil
+}
 
 func (a *astLiteralValue) dynamoValue() (types.AttributeValue, error) {
 	if a == nil {
@@ -57,4 +63,28 @@ func (a *astLiteralValue) String() string {
 		return strconv.FormatInt(*a.IntVal, 10)
 	}
 	return ""
+}
+
+type irValue struct {
+	value any
+}
+
+func (i irValue) operandFieldName() string {
+	return ""
+}
+
+func (i irValue) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	return false
+}
+
+func (i irValue) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	return expression.KeyConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
+}
+
+func (i irValue) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	return expression.ConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
+}
+
+func (i irValue) goValue() any {
+	return i.value
 }
