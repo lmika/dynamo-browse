@@ -6,7 +6,6 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
@@ -46,16 +45,16 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
-func (a *astEqualityOp) rightOperandGoValue() (any, error) {
-	if a.Op == "" {
-		return a.Ref.rightOperandGoValue()
-	}
-	return nil, ValueMustBeLiteralError{}
-}
-
-func (a *astEqualityOp) leftOperandName() (string, bool) {
-	return a.Ref.unqualifiedName()
-}
+//func (a *astEqualityOp) rightOperandGoValue() (any, error) {
+//	if a.Op == "" {
+//		return a.Ref.rightOperandGoValue()
+//	}
+//	return nil, ValueMustBeLiteralError{}
+//}
+//
+//func (a *astEqualityOp) leftOperandName() (string, bool) {
+//	return a.Ref.unqualifiedName()
+//}
 
 func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error) {
 	left, err := a.Ref.evalItem(item)
@@ -80,21 +79,24 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 		}
 		return &types.AttributeValueMemberBOOL{Value: cmp == 0}, nil
 	case "^=":
-		rightVal, err := a.Value.rightOperandGoValue()
-		if err != nil {
-			return nil, err
-		}
+		panic("???")
+		/*
+			rightVal, err := a.Value.rightOperandGoValue()
+			if err != nil {
+				return nil, err
+			}
 
-		strValue, isStrValue := rightVal.(string)
-		if !isStrValue {
-			return nil, errors.New("operand '^=' must be string")
-		}
+			strValue, isStrValue := rightVal.(string)
+			if !isStrValue {
+				return nil, errors.New("operand '^=' must be string")
+			}
 
-		leftAsStr, canBeString := attrutils.AttributeToString(left)
-		if !canBeString {
-			return nil, ValueNotConvertableToString{Val: left}
-		}
-		return &types.AttributeValueMemberBOOL{Value: strings.HasPrefix(leftAsStr, strValue)}, nil
+			leftAsStr, canBeString := attrutils.AttributeToString(left)
+			if !canBeString {
+				return nil, ValueNotConvertableToString{Val: left}
+			}
+			return &types.AttributeValueMemberBOOL{Value: strings.HasPrefix(leftAsStr, strValue)}, nil
+		*/
 	}
 
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
@@ -106,7 +108,7 @@ func (a *astEqualityOp) String() string {
 
 type irFieldEq struct {
 	name  irNamePath
-	value irValue
+	value valueIRAtom
 }
 
 func (a irFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {

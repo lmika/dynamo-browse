@@ -10,7 +10,11 @@ import (
 )
 
 func (a *astLiteralValue) evalToIR(info *models.TableInfo) (irAtom, error) {
-	return irValue{value: a.goValue()}, nil
+	v, err := a.goValue()
+	if err != nil {
+		return nil, err
+	}
+	return irValue{value: v}, nil
 }
 
 func (a *astLiteralValue) dynamoValue() (types.AttributeValue, error) {
@@ -69,9 +73,9 @@ type irValue struct {
 	value any
 }
 
-func (i irValue) operandFieldName() string {
-	return ""
-}
+//func (i irValue) operandFieldName() string {
+//	return ""
+//}
 
 func (i irValue) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	return false

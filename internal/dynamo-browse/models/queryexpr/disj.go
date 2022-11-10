@@ -59,12 +59,12 @@ type irDisjunction struct {
 	conj []*irConjunction
 }
 
-func (a *irDisjunction) operandFieldName() string {
-	if len(a.conj) == 1 {
-		return a.conj[0].operandFieldName()
-	}
-	return ""
-}
+//func (a *irDisjunction) operandFieldName() string {
+//	if len(a.conj) == 1 {
+//		return a.conj[0].operandFieldName()
+//	}
+//	return ""
+//}
 
 func (d *irDisjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	// TODO: not entire accurate, as filter expressions are also possible
@@ -82,7 +82,7 @@ func (d *irDisjunction) calcQueryForQuery(info *models.TableInfo) (expression.Ke
 	return expression.KeyConditionBuilder{}, errors.New("expected exactly 1 operand for query")
 }
 
-func (d *irDisjunction) calcQueryForScan(info *models.TableInfo) (expressionBuilder, error) {
+func (d *irDisjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	if len(d.conj) == 1 {
 		return d.conj[0].calcQueryForScan(info)
 	}
@@ -92,7 +92,7 @@ func (d *irDisjunction) calcQueryForScan(info *models.TableInfo) (expressionBuil
 	for i, operand := range d.conj {
 		cond, err := operand.calcQueryForScan(info)
 		if err != nil {
-			return nil, err
+			return expression.ConditionBuilder{}, err
 		}
 		conds[i] = cond
 	}

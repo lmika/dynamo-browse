@@ -9,31 +9,46 @@ import (
 )
 
 func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
+	leftIR, err := a.Ref.evalToIR(info)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(a.Operand) == 0 {
-		return a.Ref.evalToIR(info)
+		return leftIR, nil
 	}
 
-	singleName, isSingleName := a.Ref.leftOperandName()
-	if !isSingleName {
-		return nil, errors.Errorf("%v: cannot use dereferences", singleName)
+	//singleName, isSingleName := a.Ref.leftOperandName()
+	//if !isSingleName {
+	//	return nil, errors.Errorf("%v: cannot use dereferences", singleName)
+	//}
+
+	nameIR, isNameIR := leftIR.(irNamePath)
+	if !isNameIR {
+		return nil, OperandNotANameError(a.Ref.String())
 	}
 
-	oprValues := make([]any, len(a.Operand))
+	oprValues := make([]valueIRAtom, len(a.Operand))
 	for i, o := range a.Operand {
-		v, err := o.rightOperandGoValue()
+		v, err := o.evalToIR(info)
 		if err != nil {
-			return nil, errors.Errorf("'in' operand %v: %v", i, o)
+			return nil, err
 		}
-		oprValues[i] = v
+
+		valueIR, isValueIR := v.(valueIRAtom)
+		if !isValueIR {
+			return nil, errors.Wrapf(ValueMustBeLiteralError{}, "'in' operand %v", i)
+		}
+		oprValues[i] = valueIR
 	}
 
 	// If there is a single operand value, and the name is either the partition or sort key, then
 	// convert this to an equality so that it could be run as a query
-	if len(oprValues) == 1 && (singleName == info.Keys.PartitionKey || singleName == info.Keys.SortKey) {
-		return irFieldEq{name: singleName, value: oprValues[0]}, nil
+	if len(oprValues) == 1 && (nameIR.keyName() == info.Keys.PartitionKey || nameIR.keyName() == info.Keys.SortKey) {
+		return irFieldEq{name: nameIR, value: oprValues[0]}, nil
 	}
 
-	return irIn{name: singleName, values: oprValues}, nil
+	return irIn{name: nameIR, values: oprValues}, nil
 }
 
 func (a *astIn) String() string {
@@ -53,13 +68,13 @@ func (a *astIn) String() string {
 }
 
 type irIn struct {
-	name   string
-	values []any
+	name   nameIRAtom
+	values []valueIRAtom
 }
 
-func (i irIn) operandFieldName() string {
-	return i.name
-}
+//func (i irIn) operandFieldName() string {
+//	return i.name
+//}
 
 func (i irIn) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	return false
@@ -70,10 +85,10 @@ func (i irIn) calcQueryForQuery(info *models.TableInfo) (expression.KeyCondition
 }
 
 func (i irIn) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	right := expression.Value(i.values[0])
-	others := sliceutils.Map(i.values[1:], func(x any) expression.OperandBuilder {
-		return expression.Value(x)
+	right := expression.Value(i.values[0].goValue())
+	others := sliceutils.Map(i.values[1:], func(x valueIRAtom) expression.OperandBuilder {
+		return expression.Value(x.goValue())
 	})
 
-	return expression.Name(i.name).In(right, others...), nil
+	return i.name.calcName(info).In(right, others...), nil
 }

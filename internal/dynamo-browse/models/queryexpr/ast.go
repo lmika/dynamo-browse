@@ -3,6 +3,7 @@ package queryexpr
 import (
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
@@ -81,6 +82,52 @@ func Parse(expr string) (*QueryExpr, error) {
 	}
 
 	return &QueryExpr{ast: ast}, nil
+}
+
+func (a *astExpr) calcQuery(info *models.TableInfo) (*models.QueryExecutionPlan, error) {
+	ir, err := a.evalToIR(info)
+	if err != nil {
+		return nil, err
+	}
+
+	var qci queryCalcInfo
+	if ir.canBeExecutedAsQuery(info, &qci) {
+		ke, err := ir.calcQueryForQuery(info)
+		if err != nil {
+			return nil, err
+		}
+
+		builder := expression.NewBuilder()
+		builder = builder.WithKeyCondition(ke)
+
+		expr, err := builder.Build()
+		if err != nil {
+			return nil, err
+		}
+
+		return &models.QueryExecutionPlan{
+			CanQuery:   true,
+			Expression: expr,
+		}, nil
+	}
+
+	cb, err := ir.calcQueryForScan(info)
+	if err != nil {
+		return nil, err
+	}
+
+	builder := expression.NewBuilder()
+	builder = builder.WithFilter(cb)
+
+	expr, err := builder.Build()
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.QueryExecutionPlan{
+		CanQuery:   false,
+		Expression: expr,
+	}, nil
 }
 
 func (a *astExpr) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {

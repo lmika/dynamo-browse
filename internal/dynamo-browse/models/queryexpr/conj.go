@@ -62,7 +62,7 @@ type irConjunction struct {
 func (d *irConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	switch len(d.atoms) {
 	case 1:
-		return d.atoms[0].operandFieldName() == info.Keys.PartitionKey && d.atoms[0].canBeExecutedAsQuery(info, qci)
+		return d.atoms[0].canBeExecutedAsQuery(info, qci)
 	case 2:
 		return d.atoms[0].canBeExecutedAsQuery(info, qci) && d.atoms[1].canBeExecutedAsQuery(info, qci)
 	}
@@ -86,7 +86,12 @@ func (d *irConjunction) calcQueryForQuery(info *models.TableInfo) (expression.Ke
 		return expression.KeyConditionBuilder{}, err
 	}
 
-	if d.atoms[0].operandFieldName() == info.Keys.PartitionKey {
+	// Check that the left size is the partition key
+	var qci queryCalcInfo
+	d.atoms[0].canBeExecutedAsQuery(info, &qci)
+	leftSizeIsPartitonKey := qci.hasSeenPrimaryKey(info)
+
+	if leftSizeIsPartitonKey {
 		return expression.KeyAnd(left, right), nil
 	}
 	return expression.KeyAnd(right, left), nil
@@ -112,12 +117,12 @@ func (d *irConjunction) calcQueryForScan(info *models.TableInfo) (expression.Con
 	return conjExpr, nil
 }
 
-func (d *irConjunction) operandFieldName() string {
-	if len(d.atoms) == 1 {
-		return d.atoms[0].operandFieldName()
-	}
-	return ""
-}
+//func (d *irConjunction) operandFieldName() string {
+//	if len(d.atoms) == 1 {
+//		return d.atoms[0].operandFieldName()
+//	}
+//	return ""
+//}
 
 func isAttributeTrue(attr types.AttributeValue) bool {
 	switch val := attr.(type) {
