@@ -73,7 +73,7 @@ func (i irNamePath) calcQueryForScan(info *models.TableInfo) (expression.Conditi
 }
 
 func (i irNamePath) keyName() string {
-	if len(i.quals) == 0 {
+	if len(i.quals) > 0 {
 		return ""
 	}
 	return i.name

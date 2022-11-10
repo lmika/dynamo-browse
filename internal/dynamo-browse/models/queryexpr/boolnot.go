@@ -8,13 +8,17 @@ import (
 	"strings"
 )
 
-func (a *astBooleanNot) evalToIR(tableInfo *models.TableInfo) (*irBoolNot, error) {
+func (a *astBooleanNot) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
 	irNode, err := a.Operand.evalToIR(tableInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	return &irBoolNot{hasNot: a.HasNot, atom: irNode}, nil
+	if !a.HasNot {
+		return irNode, nil
+	}
+
+	return &irBoolNot{atom: irNode}, nil
 }
 
 func (a *astBooleanNot) evalItem(item models.Item) (types.AttributeValue, error) {
@@ -51,8 +55,7 @@ func (d *astBooleanNot) String() string {
 }
 
 type irBoolNot struct {
-	hasNot bool
-	atom   irAtom
+	atom irAtom
 }
 
 //func (d *irBoolNot) operandFieldName() string {
@@ -63,18 +66,11 @@ type irBoolNot struct {
 //}
 
 func (d *irBoolNot) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	if d.hasNot {
-		return false
-	}
-	return d.atom.canBeExecutedAsQuery(info, qci)
+	return false
 }
 
 func (d *irBoolNot) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	if d.hasNot {
-		return expression.KeyConditionBuilder{}, errors.New("query not supported")
-	}
-
-	return d.atom.calcQueryForQuery(info)
+	return expression.KeyConditionBuilder{}, errors.New("query not supported")
 }
 
 func (d *irBoolNot) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
@@ -83,8 +79,5 @@ func (d *irBoolNot) calcQueryForScan(info *models.TableInfo) (expression.Conditi
 		return expression.ConditionBuilder{}, err
 	}
 
-	if d.hasNot {
-		return expression.Not(cb), nil
-	}
-	return cb, nil
+	return expression.Not(cb), nil
 }

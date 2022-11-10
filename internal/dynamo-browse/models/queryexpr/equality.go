@@ -117,7 +117,8 @@ func (a irFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcIn
 		return false
 	}
 
-	if keyName == info.Keys.PartitionKey || keyName == info.Keys.SortKey {
+	if keyName == info.Keys.PartitionKey ||
+		(keyName == info.Keys.SortKey && qci.hasSeenPrimaryKey(info)) {
 		return qci.addKey(info, keyName)
 	}
 

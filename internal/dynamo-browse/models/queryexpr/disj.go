@@ -9,7 +9,11 @@ import (
 )
 
 func (a *astDisjunction) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
-	conj := make([]*irConjunction, len(a.Operands))
+	if len(a.Operands) == 1 {
+		return a.Operands[0].evalToIR(tableInfo)
+	}
+
+	conj := make([]irAtom, len(a.Operands))
 	for i, op := range a.Operands {
 		var err error
 		conj[i], err = op.evalToIR(tableInfo)
@@ -56,7 +60,7 @@ func (d *astDisjunction) String() string {
 }
 
 type irDisjunction struct {
-	conj []*irConjunction
+	conj []irAtom
 }
 
 //func (a *irDisjunction) operandFieldName() string {

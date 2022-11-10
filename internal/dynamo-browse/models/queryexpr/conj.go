@@ -8,8 +8,24 @@ import (
 	"strings"
 )
 
-func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (*irConjunction, error) {
-	atoms := make([]*irBoolNot, len(a.Operands))
+func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
+	if len(a.Operands) == 1 {
+		return a.Operands[0].evalToIR(tableInfo)
+	} else if len(a.Operands) == 2 {
+		left, err := a.Operands[0].evalToIR(tableInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		right, err := a.Operands[1].evalToIR(tableInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		return &irDualConjunction{left: left, right: right}, nil
+	}
+
+	atoms := make([]irAtom, len(a.Operands))
 	for i, op := range a.Operands {
 		var err error
 		atoms[i], err = op.evalToIR(tableInfo)
@@ -18,7 +34,7 @@ func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (*irConjunction, 
 		}
 	}
 
-	return &irConjunction{atoms: atoms}, nil
+	return &irMultiConjunction{atoms: atoms}, nil
 }
 
 func (a *astConjunction) evalItem(item models.Item) (types.AttributeValue, error) {
@@ -55,54 +71,80 @@ func (d *astConjunction) String() string {
 	return sb.String()
 }
 
-type irConjunction struct {
-	atoms []*irBoolNot
+type irDualConjunction struct {
+	left     irAtom
+	right    irAtom
+	leftIsPK bool
 }
 
-func (d *irConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	switch len(d.atoms) {
-	case 1:
-		return d.atoms[0].canBeExecutedAsQuery(info, qci)
-	case 2:
-		return d.atoms[0].canBeExecutedAsQuery(info, qci) && d.atoms[1].canBeExecutedAsQuery(info, qci)
+func (i *irDualConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	qciCopy := qci.clone()
+
+	leftCanExecuteAsQuery := i.left.canBeExecutedAsQuery(info, qci)
+	if leftCanExecuteAsQuery {
+		i.leftIsPK = qci.hasSeenPrimaryKey(info)
+		return i.right.canBeExecutedAsQuery(info, qci)
 	}
+
+	// Might be that the right is the partition key, so test again with them swapped
+	rightCanExecuteAsQuery := i.right.canBeExecutedAsQuery(info, qciCopy)
+	if rightCanExecuteAsQuery {
+		return i.left.canBeExecutedAsQuery(info, qciCopy)
+	}
+
 	return false
 }
 
-func (d *irConjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	if len(d.atoms) == 1 {
-		return d.atoms[0].calcQueryForQuery(info)
-	} else if len(d.atoms) != 2 {
-		return expression.KeyConditionBuilder{}, errors.Errorf("internal error: expected len to be either 1 or 2, but was %v", len(d.atoms))
-	}
-
-	left, err := d.atoms[0].calcQueryForQuery(info)
+func (i *irDualConjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	left, err := i.left.calcQueryForQuery(info)
 	if err != nil {
 		return expression.KeyConditionBuilder{}, err
 	}
 
-	right, err := d.atoms[1].calcQueryForQuery(info)
+	right, err := i.right.calcQueryForQuery(info)
 	if err != nil {
 		return expression.KeyConditionBuilder{}, err
 	}
 
-	// Check that the left size is the partition key
-	var qci queryCalcInfo
-	d.atoms[0].canBeExecutedAsQuery(info, &qci)
-	leftSizeIsPartitonKey := qci.hasSeenPrimaryKey(info)
-
-	if leftSizeIsPartitonKey {
+	if i.leftIsPK {
 		return expression.KeyAnd(left, right), nil
 	}
 	return expression.KeyAnd(right, left), nil
 }
 
-func (d *irConjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	if len(d.atoms) == 1 {
-		return d.atoms[0].calcQueryForScan(info)
+func (i *irDualConjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	left, err := i.left.calcQueryForScan(info)
+	if err != nil {
+		return expression.ConditionBuilder{}, err
 	}
 
-	// TODO: check if can be query
+	right, err := i.right.calcQueryForScan(info)
+	if err != nil {
+		return expression.ConditionBuilder{}, err
+	}
+
+	return expression.And(left, right), nil
+}
+
+type irMultiConjunction struct {
+	atoms []irAtom
+}
+
+func (d *irMultiConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	//switch len(d.atoms) {
+	//case 1:
+	//	return d.atoms[0].canBeExecutedAsQuery(info, qci)
+	//case 2:
+	//	return d.atoms[0].canBeExecutedAsQuery(info, qci) && d.atoms[1].canBeExecutedAsQuery(info, qci)
+	//}
+	return false
+}
+
+func (d *irMultiConjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	return expression.KeyConditionBuilder{}, errors.New("cannot be query")
+}
+
+func (d *irMultiConjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	conds := make([]expression.ConditionBuilder, len(d.atoms))
 	for i, operand := range d.atoms {
 		cond, err := operand.calcQueryForScan(info)
