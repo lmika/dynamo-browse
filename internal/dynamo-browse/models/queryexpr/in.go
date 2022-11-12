@@ -45,17 +45,29 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 	// If there is a single operand value, and the name is either the partition or sort key, then
 	// convert this to an equality so that it could be run as a query
 	if len(oprValues) == 1 && (nameIR.keyName() == info.Keys.PartitionKey || nameIR.keyName() == info.Keys.SortKey) {
+		if a.HasNot {
+			return irFieldNe{name: nameIR, value: oprValues[0]}, nil
+		}
 		return irFieldEq{name: nameIR, value: oprValues[0]}, nil
 	}
 
-	return irIn{name: nameIR, values: oprValues}, nil
+	var ir = irIn{name: nameIR, values: oprValues}
+	if a.HasNot {
+		return &irBoolNot{atom: ir}, nil
+	}
+	return ir, nil
 }
 
 func (a *astIn) String() string {
 	var sb strings.Builder
 
 	sb.WriteString(a.Ref.String())
-	sb.WriteString(" in (")
+	if a.HasNot {
+		sb.WriteString(" not in (")
+	} else {
+		sb.WriteString(" in (")
+	}
+
 	for i, o := range a.Operand {
 		if i > 0 {
 			sb.WriteString(", ")

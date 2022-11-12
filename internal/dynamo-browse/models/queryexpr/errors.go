@@ -60,3 +60,17 @@ type ValueMustBeLiteralError struct{}
 func (n ValueMustBeLiteralError) Error() string {
 	return "value must be a literal"
 }
+
+type ValueMustBeStringError struct{}
+
+func (n ValueMustBeStringError) Error() string {
+	return "value must be a string"
+}
+
+type InvalidTypeForIs struct {
+	TypeName string
+}
+
+func (n InvalidTypeForIs) Error() string {
+	return "invalid type for 'is': " + n.TypeName
+}

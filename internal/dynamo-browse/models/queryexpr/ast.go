@@ -30,7 +30,8 @@ type astBooleanNot struct {
 }
 
 type astIn struct {
-	Ref     *astComparisonOp `parser:"@@ ('in' '('"`
+	Ref     *astComparisonOp `parser:"@@ ("`
+	HasNot  bool             `parser:"@'not'? 'in' '('"`
 	Operand []*astAtom       `parser:"@@ (',' @@ )*  ')')?"`
 }
 
@@ -41,9 +42,15 @@ type astComparisonOp struct {
 }
 
 type astEqualityOp struct {
-	Ref   *astAtom `parser:"@@"`
+	Ref   *astIsOp `parser:"@@"`
 	Op    string   `parser:"( @('^=' | '=' | '!=')"`
-	Value *astAtom `parser:"@@ )?"`
+	Value *astIsOp `parser:"@@ )?"`
+}
+
+type astIsOp struct {
+	Ref    *astAtom `parser:"@@ ( 'is' "`
+	HasNot bool     `parser:"@'not'?"`
+	Value  *astAtom `parser:"@@ )?"`
 }
 
 type astAtom struct {
