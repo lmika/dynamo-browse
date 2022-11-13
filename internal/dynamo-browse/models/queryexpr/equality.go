@@ -27,7 +27,7 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, err
 	}
 
-	valueIR, isValueIR := rightIR.(irValue)
+	valueIR, isValueIR := rightIR.(oprIRAtom)
 	if !isValueIR {
 		return nil, ValueMustBeLiteralError{}
 	}
@@ -38,7 +38,11 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	case "!=":
 		return irFieldNe{name: nameIR, value: valueIR}, nil
 	case "^=":
-		return irFieldBeginsWith{name: nameIR, value: valueIR}, nil
+		realValueIR, isRealValueIR := rightIR.(irValue)
+		if !isRealValueIR {
+			return nil, ValueMustBeLiteralError{}
+		}
+		return irFieldBeginsWith{name: nameIR, value: realValueIR}, nil
 	}
 
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
@@ -110,7 +114,7 @@ func (a *astEqualityOp) String() string {
 
 type irFieldEq struct {
 	name  irNamePath
-	value valueIRAtom
+	value oprIRAtom
 }
 
 func (a irFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
@@ -129,12 +133,12 @@ func (a irFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcIn
 
 func (a irFieldEq) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	nb := a.name.calcName(info)
-	vb := a.value.goValue()
-	return nb.Equal(expression.Value(vb)), nil
+	vb := a.value.calcOperand(info)
+	return nb.Equal(vb), nil
 }
 
 func (a irFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	vb := a.value.goValue()
+	vb := a.value.calcOperand(info)
 	return expression.Key(a.name.keyName()).Equal(expression.Value(vb)), nil
 }
 
@@ -144,7 +148,7 @@ func (a irFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyCond
 
 type irFieldNe struct {
 	name  irNamePath
-	value valueIRAtom
+	value oprIRAtom
 }
 
 func (a irFieldNe) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
@@ -153,8 +157,8 @@ func (a irFieldNe) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcIn
 
 func (a irFieldNe) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	nb := a.name.calcName(info)
-	vb := a.value.goValue()
-	return nb.NotEqual(expression.Value(vb)), nil
+	vb := a.value.calcOperand(info)
+	return nb.NotEqual(vb), nil
 }
 
 func (a irFieldNe) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {

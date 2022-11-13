@@ -57,7 +57,7 @@ func (a *astIsOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 
 	typeInfo, isValidType := validIsTypeNames[strings.ToUpper(strValue)]
 	if !isValidType {
-		return nil, InvalidTypeForIs{TypeName: strValue}
+		return nil, InvalidTypeForIsError{TypeName: strValue}
 	}
 
 	var ir = irIs{name: nameIR, typeInfo: typeInfo}

@@ -23,13 +23,20 @@ type irAtom interface {
 	calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error)
 }
 
+type oprIRAtom interface {
+	calcOperand(info *models.TableInfo) expression.OperandBuilder
+}
+
 type nameIRAtom interface {
+	oprIRAtom
+
 	// keyName returns the name as key if it can be a DB key.  Returns "" if this name cannot be a key
 	keyName() string
 	calcName(info *models.TableInfo) expression.NameBuilder
 }
 
 type valueIRAtom interface {
+	oprIRAtom
 	goValue() any
 }
 

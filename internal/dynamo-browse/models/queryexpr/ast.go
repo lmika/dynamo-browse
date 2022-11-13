@@ -48,16 +48,28 @@ type astEqualityOp struct {
 }
 
 type astIsOp struct {
-	Ref    *astAtom `parser:"@@ ( 'is' "`
-	HasNot bool     `parser:"@'not'?"`
-	Value  *astAtom `parser:"@@ )?"`
+	Ref    *astFunctionCall `parser:"@@ ( 'is' "`
+	HasNot bool             `parser:"@'not'?"`
+	Value  *astFunctionCall `parser:"@@ )?"`
+}
+
+type astFunctionCall struct {
+	Caller *astAtom   `parser:"@@"`
+	IsCall bool       `parser:"( @'(' "`
+	Args   []*astExpr `parser:"( @@ (',' @@ )*)? ')' )?"`
 }
 
 type astAtom struct {
 	Ref     *astDot          `parser:"@@ | "`
 	Literal *astLiteralValue `parser:"@@ | "`
-	Paren   *astExpr         `parser:"'(' @@ ')'"`
+	//FnCall  *astFunctionCall `parser:"@@ | "`
+	Paren *astExpr `parser:"'(' @@ ')'"`
 }
+
+//type astFunctionCall struct {
+//	Name string     `parser:"@Ident '('"`
+//	Args []*astExpr `parser:"( @@ (',' @@ )*)? ')'"`
+//}
 
 type astDot struct {
 	Name  string   `parser:"@Ident"`
@@ -80,7 +92,9 @@ var scanner = lexer.MustSimple([]lexer.SimpleRule{
 	{Name: "EOL", Pattern: `[\n\r]+`},
 	{Name: "whitespace", Pattern: `[ \t]+`},
 })
-var parser = participle.MustBuild[astExpr](participle.Lexer(scanner))
+var parser = participle.MustBuild[astExpr](
+	participle.Lexer(scanner),
+)
 
 func Parse(expr string) (*QueryExpr, error) {
 	ast, err := parser.ParseString("expr", expr)

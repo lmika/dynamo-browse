@@ -92,3 +92,7 @@ func (i irValue) calcQueryForScan(info *models.TableInfo) (expression.ConditionB
 func (i irValue) goValue() any {
 	return i.value
 }
+
+func (a irValue) calcOperand(info *models.TableInfo) expression.OperandBuilder {
+	return expression.Value(a.goValue())
+}

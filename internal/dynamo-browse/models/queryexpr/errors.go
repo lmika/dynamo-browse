@@ -67,10 +67,28 @@ func (n ValueMustBeStringError) Error() string {
 	return "value must be a string"
 }
 
-type InvalidTypeForIs struct {
+type InvalidTypeForIsError struct {
 	TypeName string
 }
 
-func (n InvalidTypeForIs) Error() string {
+func (n InvalidTypeForIsError) Error() string {
 	return "invalid type for 'is': " + n.TypeName
+}
+
+type InvalidArgumentNumberError struct {
+	Name     string
+	Expected int
+	Actual   int
+}
+
+func (e InvalidArgumentNumberError) Error() string {
+	return fmt.Sprintf("function '%v' expected %v args but received %v", e.Name, e.Expected, e.Actual)
+}
+
+type UnrecognisedFunctionError struct {
+	Name string
+}
+
+func (e UnrecognisedFunctionError) Error() string {
+	return "unrecognised function '" + e.Name + "'"
 }

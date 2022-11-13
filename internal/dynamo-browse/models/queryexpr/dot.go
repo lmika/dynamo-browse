@@ -72,6 +72,10 @@ func (i irNamePath) calcQueryForScan(info *models.TableInfo) (expression.Conditi
 	return expression.ConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
 }
 
+func (i irNamePath) calcOperand(info *models.TableInfo) expression.OperandBuilder {
+	return i.calcName(info)
+}
+
 func (i irNamePath) keyName() string {
 	if len(i.quals) > 0 {
 		return ""

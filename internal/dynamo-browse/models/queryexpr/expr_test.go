@@ -207,9 +207,10 @@ func TestModExpr_Query(t *testing.T) {
 				exprName(0, "pk"),
 			),
 
-			scanCase("this size function", `size(pk)`,
-				`size (#0)`,
-				exprName(0, "pk"),
+			scanCase("this size function", `ln=size(pk)`,
+				`#0 = size (#1)`,
+				exprName(0, "ln"),
+				exprName(1, "pk"),
 			),
 		}
 
