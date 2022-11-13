@@ -38,7 +38,16 @@ func (a *astAtom) unqualifiedName() (string, bool) {
 }
 
 func (a *astAtom) evalItem(item models.Item) (types.AttributeValue, error) {
-	return nil, errors.New("TODO")
+	switch {
+	case a.Ref != nil:
+		return a.Ref.evalItem(item)
+	case a.Literal != nil:
+		return a.Literal.dynamoValue()
+	case a.Paren != nil:
+		return a.Paren.evalItem(item)
+	}
+
+	return nil, errors.New("unhandled atom case")
 }
 
 func (a *astAtom) String() string {

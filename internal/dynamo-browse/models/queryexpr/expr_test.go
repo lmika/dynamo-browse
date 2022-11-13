@@ -252,7 +252,6 @@ func TestModExpr_Query(t *testing.T) {
 }
 
 func TestQueryExpr_EvalItem(t *testing.T) {
-	t.Skip("TO FIX")
 	var (
 		item = models.Item{
 			"alpha": &types.AttributeValueMemberS{Value: "alpha"},

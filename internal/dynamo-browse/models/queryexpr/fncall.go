@@ -2,6 +2,7 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
@@ -40,6 +41,13 @@ func (a *astFunctionCall) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return irSizeFn{name}, nil
 	}
 	return nil, UnrecognisedFunctionError{Name: nameIr.keyName()}
+}
+
+func (a *astFunctionCall) evalItem(item models.Item) (types.AttributeValue, error) {
+	if !a.IsCall {
+		return a.Caller.evalItem(item)
+	}
+	panic("TODO")
 }
 
 func (a *astFunctionCall) String() string {

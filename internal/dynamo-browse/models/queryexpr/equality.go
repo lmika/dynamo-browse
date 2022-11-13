@@ -4,7 +4,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
+	"strings"
 )
 
 func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
@@ -58,50 +60,39 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 }
 
 func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error) {
-	panic("TODO")
-	/*
-		left, err := a.Ref.evalItem(item)
-		if err != nil {
-			return nil, err
+	left, err := a.Ref.evalItem(item)
+	if err != nil {
+		return nil, err
+	}
+
+	if a.Op == "" {
+		return left, nil
+	}
+
+	right, err := a.Value.evalItem(item)
+	if err != nil {
+		return nil, err
+	}
+
+	switch a.Op {
+	case "=":
+		cmp, isComparable := attrutils.CompareScalarAttributes(left, right)
+		if !isComparable {
+			return nil, ValuesNotComparable{Left: left, Right: right}
+		}
+		return &types.AttributeValueMemberBOOL{Value: cmp == 0}, nil
+	case "^=":
+		strValue, isStrValue := right.(*types.AttributeValueMemberS)
+		if !isStrValue {
+			return nil, errors.New("operand '^=' must be string")
 		}
 
-		if a.Op == "" {
-			return left, nil
+		leftAsStr, canBeString := attrutils.AttributeToString(left)
+		if !canBeString {
+			return nil, ValueNotConvertableToString{Val: left}
 		}
-
-		right, err := a.Value.rightOperandDynamoValue()
-		if err != nil {
-			return nil, err
-		}
-
-		switch a.Op {
-		case "=":
-			cmp, isComparable := attrutils.CompareScalarAttributes(left, right)
-			if !isComparable {
-				return nil, ValuesNotComparable{Left: left, Right: right}
-			}
-			return &types.AttributeValueMemberBOOL{Value: cmp == 0}, nil
-		case "^=":
-			panic("???")
-			/*
-				rightVal, err := a.Value.rightOperandGoValue()
-				if err != nil {
-					return nil, err
-				}
-
-				strValue, isStrValue := rightVal.(string)
-				if !isStrValue {
-					return nil, errors.New("operand '^=' must be string")
-				}
-
-				leftAsStr, canBeString := attrutils.AttributeToString(left)
-				if !canBeString {
-					return nil, ValueNotConvertableToString{Val: left}
-				}
-				return &types.AttributeValueMemberBOOL{Value: strings.HasPrefix(leftAsStr, strValue)}, nil
-			* /
-		}
-	*/
+		return &types.AttributeValueMemberBOOL{Value: strings.HasPrefix(leftAsStr, strValue.Value)}, nil
+	}
 
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }

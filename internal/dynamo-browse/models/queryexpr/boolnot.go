@@ -4,7 +4,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -22,7 +21,16 @@ func (a *astBooleanNot) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
 }
 
 func (a *astBooleanNot) evalItem(item models.Item) (types.AttributeValue, error) {
-	return nil, errors.New("todo")
+	val, err := a.Operand.evalItem(item)
+	if err != nil {
+		return nil, err
+	}
+
+	if !a.HasNot {
+		return val, nil
+	}
+	
+	return &types.AttributeValueMemberBOOL{Value: isAttributeTrue(val)}, nil
 }
 
 func (d *astBooleanNot) String() string {

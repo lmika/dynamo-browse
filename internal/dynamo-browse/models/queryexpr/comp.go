@@ -2,6 +2,7 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
@@ -43,6 +44,18 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	}
 
 	return irGenericCmp{leftOpr, rightOpr, cmpType}, nil
+}
+
+func (a *astComparisonOp) evalItem(item models.Item) (types.AttributeValue, error) {
+	left, err := a.Ref.evalItem(item)
+	if err != nil {
+		return nil, err
+	}
+	if a.Op == "" {
+		return left, nil
+	}
+
+	panic("TODO")
 }
 
 func (a *astComparisonOp) String() string {
