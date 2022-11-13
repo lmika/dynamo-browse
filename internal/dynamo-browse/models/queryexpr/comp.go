@@ -42,26 +42,8 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return irKeyFieldCmp{nameIR, valueIR, cmpType}, nil
 	}
 
-	//if a.Op == "" {
-	//	return a.Ref.evalToIR(info)
-	//}
-	//
-	//v, err := a.Value.rightOperandGoValue()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//singleName, isSingleName := a.Ref.leftOperandName()
-	//if !isSingleName {
-	//	return nil, errors.Errorf("%v: cannot use dereferences", singleName)
-	//}
-
 	return irGenericCmp{leftOpr, rightOpr, cmpType}, nil
 }
-
-//func (a *astComparisonOp) leftOperandName() (string, bool) {
-//	return a.Ref.leftOperandName()
-//}
 
 func (a *astComparisonOp) String() string {
 	return a.Ref.String() + a.Op + a.Value.String()
@@ -140,10 +122,6 @@ type irGenericCmp struct {
 	cmpType int
 }
 
-func (a irGenericCmp) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	return false
-}
-
 func (a irGenericCmp) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	nb := a.left.calcOperand(info)
 	vb := a.right.calcOperand(info)
@@ -159,8 +137,4 @@ func (a irGenericCmp) calcQueryForScan(info *models.TableInfo) (expression.Condi
 		return expression.GreaterThanEqual(nb, vb), nil
 	}
 	return expression.ConditionBuilder{}, errors.New("unsupported cmp type")
-}
-
-func (a irGenericCmp) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, errors.New("unsupported cmp type")
 }

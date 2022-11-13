@@ -287,6 +287,7 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			// TODO: comparison
 			// TODO: in
 			// TODO: is
+			// TODO: size
 
 			// Dot values
 			{expr: `charlie.door`, expected: &types.AttributeValueMemberS{Value: "red"}},

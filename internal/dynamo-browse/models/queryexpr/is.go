@@ -3,7 +3,6 @@ package queryexpr
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -89,14 +88,6 @@ type irIs struct {
 	name     nameIRAtom
 	hasNot   bool
 	typeInfo isTypeInfo
-}
-
-func (i irIs) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	return false
-}
-
-func (i irIs) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, errors.New("queries are not supported")
 }
 
 func (i irIs) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {

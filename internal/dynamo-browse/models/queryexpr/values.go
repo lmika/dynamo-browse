@@ -73,18 +73,6 @@ type irValue struct {
 	value any
 }
 
-//func (i irValue) operandFieldName() string {
-//	return ""
-//}
-
-func (i irValue) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	return false
-}
-
-func (i irValue) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
-}
-
 func (i irValue) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	return expression.ConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
 }

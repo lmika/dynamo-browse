@@ -56,18 +56,6 @@ type irNamePath struct {
 	quals []string
 }
 
-func (i irNamePath) operandFieldName() string {
-	panic("implement me")
-}
-
-func (i irNamePath) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	return false
-}
-
-func (i irNamePath) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
-}
-
 func (i irNamePath) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	return expression.ConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
 }

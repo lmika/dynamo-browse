@@ -18,11 +18,6 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return leftIR, nil
 	}
 
-	//singleName, isSingleName := a.Ref.leftOperandName()
-	//if !isSingleName {
-	//	return nil, errors.Errorf("%v: cannot use dereferences", singleName)
-	//}
-
 	nameIR, isNameIR := leftIR.(irNamePath)
 	if !isNameIR {
 		return nil, OperandNotANameError(a.Ref.String())
@@ -82,18 +77,6 @@ func (a *astIn) String() string {
 type irIn struct {
 	name   nameIRAtom
 	values []valueIRAtom
-}
-
-//func (i irIn) operandFieldName() string {
-//	return i.name
-//}
-
-func (i irIn) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	return false
-}
-
-func (i irIn) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, errors.New("queries are not supported")
 }
 
 func (i irIn) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {

@@ -4,7 +4,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -80,28 +79,28 @@ type irDualConjunction struct {
 func (i *irDualConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	qciCopy := qci.clone()
 
-	leftCanExecuteAsQuery := i.left.canBeExecutedAsQuery(info, qci)
+	leftCanExecuteAsQuery := canExecuteAsQuery(i.left, info, qci)
 	if leftCanExecuteAsQuery {
 		i.leftIsPK = qci.hasSeenPrimaryKey(info)
-		return i.right.canBeExecutedAsQuery(info, qci)
+		return canExecuteAsQuery(i.right, info, qci)
 	}
 
 	// Might be that the right is the partition key, so test again with them swapped
-	rightCanExecuteAsQuery := i.right.canBeExecutedAsQuery(info, qciCopy)
+	rightCanExecuteAsQuery := canExecuteAsQuery(i.right, info, qciCopy)
 	if rightCanExecuteAsQuery {
-		return i.left.canBeExecutedAsQuery(info, qciCopy)
+		return canExecuteAsQuery(i.left, info, qciCopy)
 	}
 
 	return false
 }
 
 func (i *irDualConjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	left, err := i.left.calcQueryForQuery(info)
+	left, err := i.left.(queryableIRAtom).calcQueryForQuery(info)
 	if err != nil {
 		return expression.KeyConditionBuilder{}, err
 	}
 
-	right, err := i.right.calcQueryForQuery(info)
+	right, err := i.right.(queryableIRAtom).calcQueryForQuery(info)
 	if err != nil {
 		return expression.KeyConditionBuilder{}, err
 	}
@@ -130,20 +129,6 @@ type irMultiConjunction struct {
 	atoms []irAtom
 }
 
-func (d *irMultiConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	//switch len(d.atoms) {
-	//case 1:
-	//	return d.atoms[0].canBeExecutedAsQuery(info, qci)
-	//case 2:
-	//	return d.atoms[0].canBeExecutedAsQuery(info, qci) && d.atoms[1].canBeExecutedAsQuery(info, qci)
-	//}
-	return false
-}
-
-func (d *irMultiConjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, errors.New("cannot be query")
-}
-
 func (d *irMultiConjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	conds := make([]expression.ConditionBuilder, len(d.atoms))
 	for i, operand := range d.atoms {
@@ -158,13 +143,6 @@ func (d *irMultiConjunction) calcQueryForScan(info *models.TableInfo) (expressio
 	conjExpr := expression.And(conds[0], conds[1], conds[2:]...)
 	return conjExpr, nil
 }
-
-//func (d *irConjunction) operandFieldName() string {
-//	if len(d.atoms) == 1 {
-//		return d.atoms[0].operandFieldName()
-//	}
-//	return ""
-//}
 
 func isAttributeTrue(attr types.AttributeValue) bool {
 	switch val := attr.(type) {

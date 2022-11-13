@@ -22,11 +22,6 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, OperandNotAnOperandError{}
 	}
 
-	//nameIR, isNameIR := leftIR.(irNamePath)
-	//if !isNameIR {
-	//	return nil, OperandNotANameError(a.Ref.String())
-	//}
-
 	rightIR, err := a.Value.evalToIR(info)
 	if err != nil {
 		return nil, err
@@ -61,17 +56,6 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
-
-//func (a *astEqualityOp) rightOperandGoValue() (any, error) {
-//	if a.Op == "" {
-//		return a.Ref.rightOperandGoValue()
-//	}
-//	return nil, ValueMustBeLiteralError{}
-//}
-//
-//func (a *astEqualityOp) leftOperandName() (string, bool) {
-//	return a.Ref.unqualifiedName()
-//}
 
 func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error) {
 	panic("TODO")
@@ -161,31 +145,15 @@ type irGenericEq struct {
 	value oprIRAtom
 }
 
-func (a irGenericEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	return false
-}
-
 func (a irGenericEq) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	nb := a.name.calcOperand(info)
 	vb := a.value.calcOperand(info)
 	return expression.Equal(nb, vb), nil
 }
 
-func (a irGenericEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, errors.New("cannot run as query")
-}
-
-//func (a irFieldEq) operandFieldName() string {
-//	return a.name
-//}
-
 type irFieldNe struct {
 	name  oprIRAtom
 	value oprIRAtom
-}
-
-func (a irFieldNe) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	return false
 }
 
 func (a irFieldNe) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
@@ -193,14 +161,6 @@ func (a irFieldNe) calcQueryForScan(info *models.TableInfo) (expression.Conditio
 	vb := a.value.calcOperand(info)
 	return expression.NotEqual(nb, vb), nil
 }
-
-func (a irFieldNe) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, errors.New("cannot use as query")
-}
-
-//func (a irFieldNe) operandFieldName() string {
-//	return ""
-//}
 
 type irFieldBeginsWith struct {
 	name  nameIRAtom
@@ -240,27 +200,3 @@ func (a irFieldBeginsWith) calcQueryForQuery(info *models.TableInfo) (expression
 
 	return expression.Key(a.name.keyName()).BeginsWith(strValue), nil
 }
-
-//func (a irFieldBeginsWith) operandFieldName() string {
-//	return a.name
-//}
-
-//func getNameAndValue(info *models.TableInfo, name irNamePath, value irValue) (expression.NameBuilder, any, error) {
-//nqc, err := name.calcQueryForScan(info)
-//if err != nil {
-//	return expression.NameBuilder{}, nil, err
-//}
-//nb := name.calcName(info)
-
-//vqc, err := value.calcQueryForScan(info)
-//if err != nil {
-//	return nameScanQueryCalc{}, valueScanQueryCalc{}, err
-//}
-//vb, isVB := vqc.(valueScanQueryCalc)
-//if !isVB {
-//	return nameScanQueryCalc{}, valueScanQueryCalc{}, errors.New("value is not a value builder")
-//}
-//	vb := value.goValue()
-//
-//	return nb, vb, nil
-//}

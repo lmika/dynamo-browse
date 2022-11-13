@@ -4,7 +4,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -61,29 +60,6 @@ func (d *astDisjunction) String() string {
 
 type irDisjunction struct {
 	conj []irAtom
-}
-
-//func (a *irDisjunction) operandFieldName() string {
-//	if len(a.conj) == 1 {
-//		return a.conj[0].operandFieldName()
-//	}
-//	return ""
-//}
-
-func (d *irDisjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	// TODO: not entire accurate, as filter expressions are also possible
-	if len(d.conj) == 1 {
-		return d.conj[0].canBeExecutedAsQuery(info, qci)
-	}
-	return false
-}
-
-func (d *irDisjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	if len(d.conj) == 1 {
-		return d.conj[0].calcQueryForQuery(info)
-	}
-
-	return expression.KeyConditionBuilder{}, errors.New("expected exactly 1 operand for query")
 }
 
 func (d *irDisjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {

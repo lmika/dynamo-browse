@@ -62,14 +62,8 @@ type astFunctionCall struct {
 type astAtom struct {
 	Ref     *astDot          `parser:"@@ | "`
 	Literal *astLiteralValue `parser:"@@ | "`
-	//FnCall  *astFunctionCall `parser:"@@ | "`
-	Paren *astExpr `parser:"'(' @@ ')'"`
+	Paren   *astExpr         `parser:"'(' @@ ')'"`
 }
-
-//type astFunctionCall struct {
-//	Name string     `parser:"@Ident '('"`
-//	Args []*astExpr `parser:"( @@ (',' @@ )*)? ')'"`
-//}
 
 type astDot struct {
 	Name  string   `parser:"@Ident"`
@@ -112,8 +106,8 @@ func (a *astExpr) calcQuery(info *models.TableInfo) (*models.QueryExecutionPlan,
 	}
 
 	var qci queryCalcInfo
-	if ir.canBeExecutedAsQuery(info, &qci) {
-		ke, err := ir.calcQueryForQuery(info)
+	if canExecuteAsQuery(ir, info, &qci) {
+		ke, err := ir.(queryableIRAtom).calcQueryForQuery(info)
 		if err != nil {
 			return nil, err
 		}

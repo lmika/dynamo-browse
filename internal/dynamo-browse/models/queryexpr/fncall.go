@@ -63,14 +63,6 @@ type irSizeFn struct {
 	arg nameIRAtom
 }
 
-func (i irSizeFn) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	return false
-}
-
-func (i irSizeFn) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	return expression.KeyConditionBuilder{}, errors.New("cannot run as query")
-}
-
 func (i irSizeFn) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	return expression.ConditionBuilder{}, errors.New("cannot run as scan")
 }
