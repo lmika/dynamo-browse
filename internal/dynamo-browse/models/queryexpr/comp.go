@@ -16,9 +16,14 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return leftIR, nil
 	}
 
-	nameIR, isNameIR := leftIR.(irNamePath)
-	if !isNameIR {
-		return nil, OperandNotANameError(a.Ref.String())
+	cmpType, hasCmpType := opToCmdType[a.Op]
+	if !hasCmpType {
+		errors.Errorf("unrecognised operator: %v", a.Op)
+	}
+
+	leftOpr, isLeftOpr := leftIR.(oprIRAtom)
+	if !isLeftOpr {
+		return nil, OperandNotAnOperandError{}
 	}
 
 	rightIR, err := a.Value.evalToIR(info)
@@ -26,9 +31,15 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, err
 	}
 
-	valueIR, isValueIR := rightIR.(irValue)
-	if !isValueIR {
-		return nil, ValueMustBeLiteralError{}
+	rightOpr, isRightIR := rightIR.(oprIRAtom)
+	if !isRightIR {
+		return nil, OperandNotAnOperandError{}
+	}
+
+	nameIR, isNameIR := leftIR.(nameIRAtom)
+	valueIR, isValueIR := rightIR.(valueIRAtom)
+	if isNameIR && isValueIR {
+		return irKeyFieldCmp{nameIR, valueIR, cmpType}, nil
 	}
 
 	//if a.Op == "" {
@@ -45,18 +56,7 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	//	return nil, errors.Errorf("%v: cannot use dereferences", singleName)
 	//}
 
-	switch a.Op {
-	case "<":
-		return irFieldCmp{name: nameIR, value: valueIR, cmpType: cmpTypeLt}, nil
-	case "<=":
-		return irFieldCmp{name: nameIR, value: valueIR, cmpType: cmpTypeLe}, nil
-	case ">":
-		return irFieldCmp{name: nameIR, value: valueIR, cmpType: cmpTypeGt}, nil
-	case ">=":
-		return irFieldCmp{name: nameIR, value: valueIR, cmpType: cmpTypeGe}, nil
-	}
-
-	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
+	return irGenericCmp{leftOpr, rightOpr, cmpType}, nil
 }
 
 //func (a *astComparisonOp) leftOperandName() (string, bool) {
@@ -74,13 +74,20 @@ const (
 	cmpTypeGe int = 3
 )
 
-type irFieldCmp struct {
-	name    irNamePath
-	value   irValue
+var opToCmdType = map[string]int{
+	"<":  cmpTypeLt,
+	"<=": cmpTypeLe,
+	">":  cmpTypeGt,
+	">=": cmpTypeGe,
+}
+
+type irKeyFieldCmp struct {
+	name    nameIRAtom
+	value   valueIRAtom
 	cmpType int
 }
 
-func (a irFieldCmp) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+func (a irKeyFieldCmp) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	keyName := a.name.keyName()
 	if keyName == "" {
 		return false
@@ -93,7 +100,7 @@ func (a irFieldCmp) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcI
 	return false
 }
 
-func (a irFieldCmp) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+func (a irKeyFieldCmp) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	nb := a.name.calcName(info)
 	vb := a.value.goValue()
 
@@ -110,7 +117,7 @@ func (a irFieldCmp) calcQueryForScan(info *models.TableInfo) (expression.Conditi
 	return expression.ConditionBuilder{}, errors.New("unsupported cmp type")
 }
 
-func (a irFieldCmp) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+func (a irKeyFieldCmp) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
 	keyName := a.name.keyName()
 	vb := a.value.goValue()
 
@@ -127,6 +134,33 @@ func (a irFieldCmp) calcQueryForQuery(info *models.TableInfo) (expression.KeyCon
 	return expression.KeyConditionBuilder{}, errors.New("unsupported cmp type")
 }
 
-//func (a irFieldCmp) operandFieldName() string {
-//	return a.name
-//}
+type irGenericCmp struct {
+	left    oprIRAtom
+	right   oprIRAtom
+	cmpType int
+}
+
+func (a irGenericCmp) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	return false
+}
+
+func (a irGenericCmp) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	nb := a.left.calcOperand(info)
+	vb := a.right.calcOperand(info)
+
+	switch a.cmpType {
+	case cmpTypeLt:
+		return expression.LessThan(nb, vb), nil
+	case cmpTypeLe:
+		return expression.LessThanEqual(nb, vb), nil
+	case cmpTypeGt:
+		return expression.GreaterThan(nb, vb), nil
+	case cmpTypeGe:
+		return expression.GreaterThanEqual(nb, vb), nil
+	}
+	return expression.ConditionBuilder{}, errors.New("unsupported cmp type")
+}
+
+func (a irGenericCmp) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	return expression.KeyConditionBuilder{}, errors.New("unsupported cmp type")
+}

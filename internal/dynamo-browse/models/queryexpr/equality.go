@@ -17,27 +17,41 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return leftIR, nil
 	}
 
-	nameIR, isNameIR := leftIR.(irNamePath)
-	if !isNameIR {
-		return nil, OperandNotANameError(a.Ref.String())
+	leftOpr, isLeftOpr := leftIR.(oprIRAtom)
+	if !isLeftOpr {
+		return nil, OperandNotAnOperandError{}
 	}
+
+	//nameIR, isNameIR := leftIR.(irNamePath)
+	//if !isNameIR {
+	//	return nil, OperandNotANameError(a.Ref.String())
+	//}
 
 	rightIR, err := a.Value.evalToIR(info)
 	if err != nil {
 		return nil, err
 	}
 
-	valueIR, isValueIR := rightIR.(oprIRAtom)
-	if !isValueIR {
-		return nil, ValueMustBeLiteralError{}
+	rightOpr, isRightIR := rightIR.(oprIRAtom)
+	if !isRightIR {
+		return nil, OperandNotAnOperandError{}
 	}
 
 	switch a.Op {
 	case "=":
-		return irFieldEq{name: nameIR, value: valueIR}, nil
+		nameIR, isNameIR := leftIR.(nameIRAtom)
+		valueIR, isValueIR := rightIR.(valueIRAtom)
+		if isNameIR && isValueIR {
+			return irKeyFieldEq{name: nameIR, value: valueIR}, nil
+		}
+		return irGenericEq{name: leftOpr, value: rightOpr}, nil
 	case "!=":
-		return irFieldNe{name: nameIR, value: valueIR}, nil
+		return irFieldNe{name: leftOpr, value: rightOpr}, nil
 	case "^=":
+		nameIR, isNameIR := leftIR.(nameIRAtom)
+		if !isNameIR {
+			return nil, OperandNotANameError(a.Ref.String())
+		}
 		realValueIR, isRealValueIR := rightIR.(irValue)
 		if !isRealValueIR {
 			return nil, ValueMustBeLiteralError{}
@@ -112,12 +126,12 @@ func (a *astEqualityOp) String() string {
 	return a.Ref.String() + a.Op + a.Value.String()
 }
 
-type irFieldEq struct {
-	name  irNamePath
-	value oprIRAtom
+type irKeyFieldEq struct {
+	name  nameIRAtom
+	value valueIRAtom
 }
 
-func (a irFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+func (a irKeyFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
 	keyName := a.name.keyName()
 	if keyName == "" {
 		return false
@@ -131,15 +145,34 @@ func (a irFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcIn
 	return false
 }
 
-func (a irFieldEq) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+func (a irKeyFieldEq) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	nb := a.name.calcName(info)
 	vb := a.value.calcOperand(info)
 	return nb.Equal(vb), nil
 }
 
-func (a irFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	vb := a.value.calcOperand(info)
+func (a irKeyFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	vb := a.value.goValue()
 	return expression.Key(a.name.keyName()).Equal(expression.Value(vb)), nil
+}
+
+type irGenericEq struct {
+	name  oprIRAtom
+	value oprIRAtom
+}
+
+func (a irGenericEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	return false
+}
+
+func (a irGenericEq) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	nb := a.name.calcOperand(info)
+	vb := a.value.calcOperand(info)
+	return expression.Equal(nb, vb), nil
+}
+
+func (a irGenericEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	return expression.KeyConditionBuilder{}, errors.New("cannot run as query")
 }
 
 //func (a irFieldEq) operandFieldName() string {
@@ -147,7 +180,7 @@ func (a irFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyCond
 //}
 
 type irFieldNe struct {
-	name  irNamePath
+	name  oprIRAtom
 	value oprIRAtom
 }
 
@@ -156,9 +189,9 @@ func (a irFieldNe) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcIn
 }
 
 func (a irFieldNe) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	nb := a.name.calcName(info)
+	nb := a.name.calcOperand(info)
 	vb := a.value.calcOperand(info)
-	return nb.NotEqual(vb), nil
+	return expression.NotEqual(nb, vb), nil
 }
 
 func (a irFieldNe) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
@@ -170,7 +203,7 @@ func (a irFieldNe) calcQueryForQuery(info *models.TableInfo) (expression.KeyCond
 //}
 
 type irFieldBeginsWith struct {
-	name  irNamePath
+	name  nameIRAtom
 	value irValue
 }
 
@@ -181,7 +214,7 @@ func (a irFieldBeginsWith) canBeExecutedAsQuery(info *models.TableInfo, qci *que
 	}
 
 	if keyName == info.Keys.SortKey {
-		return qci.addKey(info, a.name.name)
+		return qci.addKey(info, a.name.keyName())
 	}
 
 	return false

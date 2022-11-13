@@ -207,10 +207,26 @@ func TestModExpr_Query(t *testing.T) {
 				exprName(0, "pk"),
 			),
 
-			scanCase("this size function", `ln=size(pk)`,
+			scanCase("the size function as a right-side operand", `ln=size(pk)`,
 				`#0 = size (#1)`,
 				exprName(0, "ln"),
 				exprName(1, "pk"),
+			),
+			scanCase("the size function as a left-side operand #1", `size(pk) = 123`,
+				`size (#0) = :0`,
+				exprNameIsNumber(0, 0, "pk", "123"),
+			),
+			scanCase("the size function as a left-side operand #2", `size(pk) > 123`,
+				`size (#0) > :0`,
+				exprNameIsNumber(0, 0, "pk", "123"),
+			),
+			scanCase("the size function on both sizes",
+				`size(pk) != size(sk) and size(pk) > size(third) and size(pk) = 131`,
+				`(size (#0) <> size (#1)) AND (size (#0) > size (#2)) AND (size (#0) = :0)`,
+				exprName(0, "pk"),
+				exprName(1, "sk"),
+				exprName(2, "third"),
+				exprValueIsNumber(0, "131"),
 			),
 		}
 
@@ -379,6 +395,12 @@ func exprName(idx int, name string) func(ss *scanScenario) {
 func exprValueIsString(valIdx int, expected string) func(ss *scanScenario) {
 	return func(ss *scanScenario) {
 		ss.expectedValues[fmt.Sprintf(":%d", valIdx)] = &types.AttributeValueMemberS{Value: expected}
+	}
+}
+
+func exprValueIsNumber(valIdx int, expected string) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.expectedValues[fmt.Sprintf(":%d", valIdx)] = &types.AttributeValueMemberN{Value: expected}
 	}
 }
 

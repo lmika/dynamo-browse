@@ -48,7 +48,7 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 		if a.HasNot {
 			return irFieldNe{name: nameIR, value: oprValues[0]}, nil
 		}
-		return irFieldEq{name: nameIR, value: oprValues[0]}, nil
+		return irKeyFieldEq{name: nameIR, value: oprValues[0]}, nil
 	}
 
 	var ir = irIn{name: nameIR, values: oprValues}

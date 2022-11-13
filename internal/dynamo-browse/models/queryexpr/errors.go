@@ -21,6 +21,12 @@ func (n OperandNotANameError) Error() string {
 	return fmt.Sprintf("operand '%v' is not a name", string(n))
 }
 
+type OperandNotAnOperandError struct{}
+
+func (n OperandNotAnOperandError) Error() string {
+	return "element must be an operand"
+}
+
 // ValueNotAMapError is return if the given name is not a map
 type ValueNotAMapError []string
 
