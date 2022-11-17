@@ -29,8 +29,8 @@ func (a *astBooleanNot) evalItem(item models.Item) (types.AttributeValue, error)
 	if !a.HasNot {
 		return val, nil
 	}
-	
-	return &types.AttributeValueMemberBOOL{Value: isAttributeTrue(val)}, nil
+
+	return &types.AttributeValueMemberBOOL{Value: !isAttributeTrue(val)}, nil
 }
 
 func (d *astBooleanNot) String() string {

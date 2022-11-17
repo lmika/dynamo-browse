@@ -4,26 +4,59 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
+	"reflect"
 	"strings"
 )
 
 type isTypeInfo struct {
 	isAny         bool
 	attributeType expression.DynamoDBAttributeType
+	goType        reflect.Type
 }
 
 var validIsTypeNames = map[string]isTypeInfo{
-	"ANY":  {isAny: true},
-	"B":    {attributeType: expression.Binary},
-	"BOOL": {attributeType: expression.Boolean},
-	"S":    {attributeType: expression.String},
-	"N":    {attributeType: expression.Number},
-	"NULL": {attributeType: expression.Null},
-	"L":    {attributeType: expression.List},
-	"M":    {attributeType: expression.Map},
-	"BS":   {attributeType: expression.BinarySet},
-	"NS":   {attributeType: expression.NumberSet},
-	"SS":   {attributeType: expression.StringSet},
+	"ANY": {isAny: true},
+	"B": {
+		attributeType: expression.Binary,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberB{}),
+	},
+	"BOOL": {
+		attributeType: expression.Boolean,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberBOOL{}),
+	},
+	"S": {
+		attributeType: expression.String,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberS{}),
+	},
+	"N": {
+		attributeType: expression.Number,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberN{}),
+	},
+	"NULL": {
+		attributeType: expression.Null,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberNULL{}),
+	},
+	"L": {
+		attributeType: expression.List,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberL{}),
+	},
+	"M": {
+		attributeType: expression.Map,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberM{}),
+	},
+	"BS": {
+		attributeType: expression.BinarySet,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberBS{}),
+	},
+	"NS": {
+		attributeType: expression.NumberSet,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberNS{}),
+	},
+	"SS": {
+		attributeType: expression.StringSet,
+		goType:        reflect.TypeOf(&types.AttributeValueMemberSS{}),
+	},
 }
 
 func (a *astIsOp) evalToIR(info *models.TableInfo) (irAtom, error) {
@@ -80,7 +113,31 @@ func (a *astIsOp) evalItem(item models.Item) (types.AttributeValue, error) {
 	if a.Value == nil {
 		return ref, nil
 	}
-	panic("TODO")
+
+	expTypeVal, err := a.Value.evalItem(item)
+	if err != nil {
+		return nil, err
+	}
+	str, canToStr := attrutils.AttributeToString(expTypeVal)
+	if !canToStr {
+		return nil, ValueMustBeStringError{}
+	}
+	typeInfo, hasTypeInfo := validIsTypeNames[strings.ToUpper(str)]
+	if !hasTypeInfo {
+		return nil, InvalidTypeForIsError{TypeName: str}
+	}
+
+	var resultOfIs bool
+	if typeInfo.isAny {
+		resultOfIs = ref != nil
+	} else {
+		refType := reflect.TypeOf(ref)
+		resultOfIs = typeInfo.goType.AssignableTo(refType)
+	}
+	if a.HasNot {
+		resultOfIs = !resultOfIs
+	}
+	return &types.AttributeValueMemberBOOL{Value: resultOfIs}, nil
 }
 
 func (a *astIsOp) String() string {

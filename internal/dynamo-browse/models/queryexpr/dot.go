@@ -21,7 +21,7 @@ func (dt *astDot) unqualifiedName() (string, bool) {
 func (dt *astDot) evalItem(item models.Item) (types.AttributeValue, error) {
 	res, hasV := item[dt.Name]
 	if !hasV {
-		return nil, NameNotFoundError(dt.String())
+		return nil, nil
 	}
 
 	for i, qualName := range dt.Quals {
@@ -32,7 +32,7 @@ func (dt *astDot) evalItem(item models.Item) (types.AttributeValue, error) {
 
 		res, hasV = mapRes.Value[qualName]
 		if !hasV {
-			return nil, NameNotFoundError(dt.String())
+			return nil, nil
 		}
 	}
 

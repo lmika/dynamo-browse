@@ -30,9 +30,10 @@ type astBooleanNot struct {
 }
 
 type astIn struct {
-	Ref     *astComparisonOp `parser:"@@ ("`
-	HasNot  bool             `parser:"@'not'? 'in' '('"`
-	Operand []*astAtom       `parser:"@@ (',' @@ )*  ')')?"`
+	Ref           *astComparisonOp `parser:"@@ ("`
+	HasNot        bool             `parser:"@'not'? 'in' "`
+	Operand       []*astExpr       `parser:"('(' @@ (',' @@ )*  ')' |"`
+	SingleOperand *astComparisonOp `parser:"@@ ))?"`
 }
 
 type astComparisonOp struct {

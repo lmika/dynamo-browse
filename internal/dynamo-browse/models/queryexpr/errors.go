@@ -45,6 +45,16 @@ func (n ValuesNotComparable) Error() string {
 	return fmt.Sprintf("values '%v' and '%v' are not comparable", leftStr, rightStr)
 }
 
+// ValuesNotInnable indicates that a values cannot be used on the right side of an in
+type ValuesNotInnableError struct {
+	Val types.AttributeValue
+}
+
+func (n ValuesNotInnableError) Error() string {
+	leftStr, _ := attrutils.AttributeToString(n.Val)
+	return fmt.Sprintf("values '%v' cannot be used as the right side of an 'in'", leftStr)
+}
+
 // ValueNotConvertableToString indicates that a value is not convertable to a string
 type ValueNotConvertableToString struct {
 	Val types.AttributeValue

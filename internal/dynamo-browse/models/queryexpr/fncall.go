@@ -39,6 +39,15 @@ func (a *astFunctionCall) evalToIR(info *models.TableInfo) (irAtom, error) {
 			return nil, OperandNotANameError(a.Args[0].String())
 		}
 		return irSizeFn{name}, nil
+	case "range":
+		if len(irNodes) != 2 {
+			return nil, InvalidArgumentNumberError{Name: "range", Expected: 2, Actual: len(irNodes)}
+		}
+
+		// TEMP
+		fromVal := irNodes[0].(valueIRAtom).goValue().(int64)
+		toVal := irNodes[1].(valueIRAtom).goValue().(int64)
+		return irRangeFn{fromVal, toVal}, nil
 	}
 	return nil, UnrecognisedFunctionError{Name: nameIr.keyName()}
 }
@@ -78,4 +87,21 @@ func (i irSizeFn) calcQueryForScan(info *models.TableInfo) (expression.Condition
 func (i irSizeFn) calcOperand(info *models.TableInfo) expression.OperandBuilder {
 	name := i.arg.calcName(info)
 	return name.Size()
+}
+
+type irRangeFn struct {
+	fromIdx int64
+	toIdx   int64
+}
+
+func (i irRangeFn) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	return expression.ConditionBuilder{}, errors.New("cannot run as scan")
+}
+
+func (i irRangeFn) calcGoValues(info *models.TableInfo) ([]any, error) {
+	xs := make([]any, 0)
+	for x := i.fromIdx; x <= i.toIdx; x++ {
+		xs = append(xs, x)
+	}
+	return xs, nil
 }

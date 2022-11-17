@@ -184,6 +184,15 @@ func TestModExpr_Query(t *testing.T) {
 				exprValueIsString(1, "bravo"),
 				exprValueIsString(2, "charlie"),
 			),
+			scanCase("with in with single operand returning a sequence", `pk in range(1, 5)`,
+				`#0 IN (:0, :1, :2, :3, :4)`,
+				exprName(0, "pk"),
+				exprValueIsNumber(0, "1"),
+				exprValueIsNumber(1, "2"),
+				exprValueIsNumber(2, "3"),
+				exprValueIsNumber(3, "4"),
+				exprValueIsNumber(4, "5"),
+			),
 			// TODO: in > 100 items ==> items OR items
 
 			scanCase("with is S", `pk is "S"`,
@@ -228,6 +237,8 @@ func TestModExpr_Query(t *testing.T) {
 				exprName(2, "third"),
 				exprValueIsNumber(0, "131"),
 			),
+
+			// TODO: the contains function
 		}
 
 		for _, scenario := range scenarios {
@@ -262,6 +273,15 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 					"tree": &types.AttributeValueMemberS{Value: "green"},
 				},
 			},
+			"prime": &types.AttributeValueMemberL{
+				Value: []types.AttributeValue{
+					&types.AttributeValueMemberN{Value: "2"},
+					&types.AttributeValueMemberN{Value: "3"},
+					&types.AttributeValueMemberN{Value: "5"},
+					&types.AttributeValueMemberN{Value: "7"},
+				},
+			},
+			"three": &types.AttributeValueMemberN{Value: "3"},
 		}
 	)
 
@@ -277,15 +297,53 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 
 			// Equality with literal
 			{expr: `alpha="alpha"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha!="not alpha"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `bravo=123`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `charlie.tree="green"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `alpha^="al"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `alpha="foobar"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
 			{expr: `alpha^="need-something"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
-			// TODO: negation
-			// TODO: comparison
-			// TODO: in
-			// TODO: is
+
+			// Comparison
+			{expr: "three > 4", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: "three >= 4", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: "three < 4", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three <= 4", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three > 3", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: "three >= 3", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three < 3", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: "three <= 3", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three > 2", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three >= 2", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three < 2", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: "three <= 2", expected: &types.AttributeValueMemberBOOL{Value: false}},
+
+			// In
+			{expr: "three in (2, 3, 4, 5)", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three in (20, 30, 40)", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `alpha in ("alpha", "beta", "gamma", "delta")`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha in ("ey", "be", "see")`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `three in prime`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `1 in prime`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `"door" in charlie`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `"sky" in charlie`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+
+			// Is
+			{expr: `alpha is "S"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `alpha is not "N"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `three is "N"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `three is not "S"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `(three = 3) is "BOOL"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `prime is "L"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `charlie is "M"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+
+			{expr: `alpha is "any"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `three is "any"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `(three = 3) is "any"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `charlie is "any"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `prime is "any"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `undef is not "any"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+
 			// TODO: size
 
 			// Dot values
@@ -307,6 +365,10 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: `alpha="bravo" or bravo=321`, expected: &types.AttributeValueMemberBOOL{Value: false}},
 			{expr: `alpha="alpha" or bravo=123 or charlie.tree="green"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `alpha="bravo" or bravo=321 or charlie.tree^="red"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+
+			// Bool negation
+			{expr: `not alpha="alpha"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `not alpha!="alpha"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 
 			// Order of operation
 			{expr: `alpha="alpha" and bravo=123 or charlie.door="green"`, expected: &types.AttributeValueMemberBOOL{Value: true}},

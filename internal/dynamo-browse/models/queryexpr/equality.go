@@ -81,6 +81,12 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 			return nil, ValuesNotComparable{Left: left, Right: right}
 		}
 		return &types.AttributeValueMemberBOOL{Value: cmp == 0}, nil
+	case "!=":
+		cmp, isComparable := attrutils.CompareScalarAttributes(left, right)
+		if !isComparable {
+			return nil, ValuesNotComparable{Left: left, Right: right}
+		}
+		return &types.AttributeValueMemberBOOL{Value: cmp != 0}, nil
 	case "^=":
 		strValue, isStrValue := right.(*types.AttributeValueMemberS)
 		if !isStrValue {

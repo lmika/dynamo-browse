@@ -4,6 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +20,7 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 
 	cmpType, hasCmpType := opToCmdType[a.Op]
 	if !hasCmpType {
-		errors.Errorf("unrecognised operator: %v", a.Op)
+		return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 	}
 
 	leftOpr, isLeftOpr := leftIR.(oprIRAtom)
@@ -55,7 +56,27 @@ func (a *astComparisonOp) evalItem(item models.Item) (types.AttributeValue, erro
 		return left, nil
 	}
 
-	panic("TODO")
+	right, err := a.Value.evalItem(item)
+	if err != nil {
+		return nil, err
+	}
+
+	cmp, isComparable := attrutils.CompareScalarAttributes(left, right)
+	if !isComparable {
+		return nil, ValuesNotComparable{Left: left, Right: right}
+	}
+
+	switch opToCmdType[a.Op] {
+	case cmpTypeLt:
+		return &types.AttributeValueMemberBOOL{Value: cmp < 0}, nil
+	case cmpTypeLe:
+		return &types.AttributeValueMemberBOOL{Value: cmp <= 0}, nil
+	case cmpTypeGt:
+		return &types.AttributeValueMemberBOOL{Value: cmp > 0}, nil
+	case cmpTypeGe:
+		return &types.AttributeValueMemberBOOL{Value: cmp >= 0}, nil
+	}
+	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
 func (a *astComparisonOp) String() string {
