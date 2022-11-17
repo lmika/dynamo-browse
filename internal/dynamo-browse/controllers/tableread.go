@@ -291,6 +291,10 @@ func (c *TableReadController) handleResultSetFromJobResult(filter string, pushba
 				return events.StatusMsg("Operation cancelled")
 			})
 		}
+
+		if newResultSet != nil {
+			return c.setResultSetAndFilter(newResultSet, filter, pushbackStack, op)
+		}
 		return events.Error(err)
 	}
 }

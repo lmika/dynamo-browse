@@ -4,11 +4,26 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/pkg/errors"
 	"strings"
 )
 
-func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (*irConjunction, error) {
+func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
+	if len(a.Operands) == 1 {
+		return a.Operands[0].evalToIR(tableInfo)
+	} else if len(a.Operands) == 2 {
+		left, err := a.Operands[0].evalToIR(tableInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		right, err := a.Operands[1].evalToIR(tableInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		return &irDualConjunction{left: left, right: right}, nil
+	}
+
 	atoms := make([]irAtom, len(a.Operands))
 	for i, op := range a.Operands {
 		var err error
@@ -18,7 +33,7 @@ func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (*irConjunction, 
 		}
 	}
 
-	return &irConjunction{atoms: atoms}, nil
+	return &irMultiConjunction{atoms: atoms}, nil
 }
 
 func (a *astConjunction) evalItem(item models.Item) (types.AttributeValue, error) {
@@ -55,49 +70,66 @@ func (d *astConjunction) String() string {
 	return sb.String()
 }
 
-type irConjunction struct {
-	atoms []irAtom
+type irDualConjunction struct {
+	left     irAtom
+	right    irAtom
+	leftIsPK bool
 }
 
-func (d *irConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
-	switch len(d.atoms) {
-	case 1:
-		return d.atoms[0].operandFieldName() == info.Keys.PartitionKey && d.atoms[0].canBeExecutedAsQuery(info, qci)
-	case 2:
-		return d.atoms[0].canBeExecutedAsQuery(info, qci) && d.atoms[1].canBeExecutedAsQuery(info, qci)
+func (i *irDualConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+	qciCopy := qci.clone()
+
+	leftCanExecuteAsQuery := canExecuteAsQuery(i.left, info, qci)
+	if leftCanExecuteAsQuery {
+		i.leftIsPK = qci.hasSeenPrimaryKey(info)
+		return canExecuteAsQuery(i.right, info, qci)
 	}
+
+	// Might be that the right is the partition key, so test again with them swapped
+	rightCanExecuteAsQuery := canExecuteAsQuery(i.right, info, qciCopy)
+	if rightCanExecuteAsQuery {
+		return canExecuteAsQuery(i.left, info, qciCopy)
+	}
+
 	return false
 }
 
-func (d *irConjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	if len(d.atoms) == 1 {
-		return d.atoms[0].calcQueryForQuery(info)
-	} else if len(d.atoms) != 2 {
-		return expression.KeyConditionBuilder{}, errors.Errorf("internal error: expected len to be either 1 or 2, but was %v", len(d.atoms))
-	}
-
-	left, err := d.atoms[0].calcQueryForQuery(info)
+func (i *irDualConjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+	left, err := i.left.(queryableIRAtom).calcQueryForQuery(info)
 	if err != nil {
 		return expression.KeyConditionBuilder{}, err
 	}
 
-	right, err := d.atoms[1].calcQueryForQuery(info)
+	right, err := i.right.(queryableIRAtom).calcQueryForQuery(info)
 	if err != nil {
 		return expression.KeyConditionBuilder{}, err
 	}
 
-	if d.atoms[0].operandFieldName() == info.Keys.PartitionKey {
+	if i.leftIsPK {
 		return expression.KeyAnd(left, right), nil
 	}
 	return expression.KeyAnd(right, left), nil
 }
 
-func (d *irConjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	if len(d.atoms) == 1 {
-		return d.atoms[0].calcQueryForScan(info)
+func (i *irDualConjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	left, err := i.left.calcQueryForScan(info)
+	if err != nil {
+		return expression.ConditionBuilder{}, err
 	}
 
-	// TODO: check if can be query
+	right, err := i.right.calcQueryForScan(info)
+	if err != nil {
+		return expression.ConditionBuilder{}, err
+	}
+
+	return expression.And(left, right), nil
+}
+
+type irMultiConjunction struct {
+	atoms []irAtom
+}
+
+func (d *irMultiConjunction) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	conds := make([]expression.ConditionBuilder, len(d.atoms))
 	for i, operand := range d.atoms {
 		cond, err := operand.calcQueryForScan(info)

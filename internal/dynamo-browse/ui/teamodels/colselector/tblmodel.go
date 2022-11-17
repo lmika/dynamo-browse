@@ -24,7 +24,7 @@ func (clr colListRowModel) Render(w io.Writer, model table.Model, index int) {
 
 	col := clr.m.colController.Columns().Columns[index]
 	if !col.Hidden {
-		fmt.Fprintln(w, style.Render(fmt.Sprintf(".\t%v", col.Name)))
+		fmt.Fprintln(w, style.Render(fmt.Sprintf("⋅\t%v", col.Name)))
 	} else {
 		fmt.Fprintln(w, style.Render(fmt.Sprintf("✕\t%v", col.Name)))
 	}

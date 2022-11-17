@@ -64,7 +64,10 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr 
 	}
 
 	if err != nil && len(results) == 0 {
-		return nil, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
+		return &models.ResultSet{
+			TableInfo: tableInfo,
+			Query:     expr,
+		}, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
 
 	models.Sort(results, tableInfo)

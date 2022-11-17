@@ -10,12 +10,7 @@ type QueryExpr struct {
 }
 
 func (md *QueryExpr) Plan(tableInfo *models.TableInfo) (*models.QueryExecutionPlan, error) {
-	ir, err := md.ast.evalToIR(tableInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return ir.calcQuery(tableInfo)
+	return md.ast.calcQuery(tableInfo)
 }
 
 func (md *QueryExpr) EvalItem(item models.Item) (types.AttributeValue, error) {
@@ -32,6 +27,19 @@ func (a *astExpr) String() string {
 
 type queryCalcInfo struct {
 	seenKeys map[string]struct{}
+}
+
+func (qc *queryCalcInfo) clone() *queryCalcInfo {
+	newKeys := make(map[string]struct{})
+	for k, v := range qc.seenKeys {
+		newKeys[k] = v
+	}
+	return &queryCalcInfo{seenKeys: newKeys}
+}
+
+func (qc *queryCalcInfo) hasSeenPrimaryKey(tableInfo *models.TableInfo) bool {
+	_, hasKey := qc.seenKeys[tableInfo.Keys.PartitionKey]
+	return hasKey
 }
 
 func (qc *queryCalcInfo) addKey(tableInfo *models.TableInfo, key string) bool {
