@@ -1,6 +1,8 @@
 package queryexpr
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
@@ -20,14 +22,14 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return leftIR, nil
 	}
 
-	nameIR, isNameIR := leftIR.(irNamePath)
-	if !isNameIR {
-		return nil, OperandNotANameError(a.Ref.String())
-	}
-
 	var ir irAtom
 	switch {
 	case len(a.Operand) > 0:
+		nameIR, isNameIR := leftIR.(irNamePath)
+		if !isNameIR {
+			return nil, OperandNotANameError(a.Ref.String())
+		}
+
 		oprValues := make([]oprIRAtom, len(a.Operand))
 		for i, o := range a.Operand {
 			v, err := o.evalToIR(info)
@@ -63,9 +65,25 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 		}
 
 		switch t := oprs.(type) {
+		case irNamePath:
+			lit, isLit := leftIR.(valueIRAtom)
+			if !isLit {
+				return nil, OperandNotANameError(a.Ref.String())
+			}
+			ir = irContains{needle: lit, haystack: t}
 		case oprIRAtom:
+			nameIR, isNameIR := leftIR.(irNamePath)
+			if !isNameIR {
+				return nil, OperandNotANameError(a.Ref.String())
+			}
+
 			ir = irIn{name: nameIR, values: []oprIRAtom{t}}
 		case multiValueIRAtom:
+			nameIR, isNameIR := leftIR.(irNamePath)
+			if !isNameIR {
+				return nil, OperandNotANameError(a.Ref.String())
+			}
+
 			ir = irLiteralValues{name: nameIR, values: t}
 		default:
 			return nil, OperandNotAnOperandError{}
@@ -109,6 +127,13 @@ func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
 		}
 
 		switch t := evalOp.(type) {
+		case *types.AttributeValueMemberS:
+			str, canToStr := attrutils.AttributeToString(val)
+			if !canToStr {
+				return &types.AttributeValueMemberBOOL{Value: false}, nil
+			}
+
+			return &types.AttributeValueMemberBOOL{Value: strings.Contains(t.Value, str)}, nil
 		case *types.AttributeValueMemberL:
 			for _, listItem := range t.Value {
 				cmp, isComparable := attrutils.CompareScalarAttributes(val, listItem)
@@ -119,6 +144,43 @@ func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
 				}
 			}
 			return &types.AttributeValueMemberBOOL{Value: false}, nil
+		case *types.AttributeValueMemberSS:
+			str, canToStr := attrutils.AttributeToString(val)
+			if !canToStr {
+				return &types.AttributeValueMemberBOOL{Value: false}, nil
+			}
+
+			for _, listItem := range t.Value {
+				if str != listItem {
+					return &types.AttributeValueMemberBOOL{Value: false}, nil
+				}
+			}
+			return &types.AttributeValueMemberBOOL{Value: true}, nil
+		case *types.AttributeValueMemberBS:
+			b, isB := val.(*types.AttributeValueMemberB)
+			if !isB {
+				return &types.AttributeValueMemberBOOL{Value: false}, nil
+			}
+
+			for _, listItem := range t.Value {
+				if !bytes.Equal(b.Value, listItem) {
+					return &types.AttributeValueMemberBOOL{Value: false}, nil
+				}
+			}
+			return &types.AttributeValueMemberBOOL{Value: true}, nil
+		case *types.AttributeValueMemberNS:
+			n, isN := val.(*types.AttributeValueMemberN)
+			if !isN {
+				return &types.AttributeValueMemberBOOL{Value: false}, nil
+			}
+
+			for _, listItem := range t.Value {
+				// TODO: this is not actually right
+				if n.Value != listItem {
+					return &types.AttributeValueMemberBOOL{Value: false}, nil
+				}
+			}
+			return &types.AttributeValueMemberBOOL{Value: true}, nil
 		case *types.AttributeValueMemberM:
 			str, canToStr := attrutils.AttributeToString(val)
 			if !canToStr {
@@ -126,7 +188,6 @@ func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
 			}
 			_, hasItem := t.Value[str]
 			return &types.AttributeValueMemberBOOL{Value: hasItem}, nil
-			// TODO: the sets
 		}
 		return nil, ValuesNotInnableError{Val: evalOp}
 	}
@@ -134,22 +195,32 @@ func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
 }
 
 func (a *astIn) String() string {
+	if len(a.Operand) == 0 && a.SingleOperand == nil {
+		return a.Ref.String()
+	}
+
 	var sb strings.Builder
 
 	sb.WriteString(a.Ref.String())
 	if a.HasNot {
-		sb.WriteString(" not in (")
+		sb.WriteString(" not in ")
 	} else {
-		sb.WriteString(" in (")
+		sb.WriteString(" in ")
 	}
 
-	for i, o := range a.Operand {
-		if i > 0 {
-			sb.WriteString(", ")
+	switch {
+	case len(a.Operand) > 0:
+		sb.WriteString("(")
+		for i, o := range a.Operand {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(o.String())
 		}
-		sb.WriteString(o.String())
+		sb.WriteString(")")
+	case a.SingleOperand != nil:
+		sb.WriteString(a.SingleOperand.String())
 	}
-	sb.WriteString(")")
 
 	return sb.String()
 }
@@ -183,4 +254,16 @@ func (i irLiteralValues) calcQueryForScan(info *models.TableInfo) (expression.Co
 		return expression.Value(t)
 	})
 	return i.name.calcName(info).In(oprValues[0], oprValues[1:]...), nil
+}
+
+type irContains struct {
+	needle   valueIRAtom
+	haystack nameIRAtom
+}
+
+func (i irContains) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	needle := i.needle.goValue()
+	haystack := i.haystack.calcName(info)
+
+	return haystack.Contains(fmt.Sprint(needle)), nil
 }

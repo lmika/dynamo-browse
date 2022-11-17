@@ -104,6 +104,9 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 }
 
 func (a *astEqualityOp) String() string {
+	if a.Op == "" {
+		return a.Ref.String()
+	}
 	return a.Ref.String() + a.Op + a.Value.String()
 }
 

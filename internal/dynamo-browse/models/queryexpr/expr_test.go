@@ -193,6 +193,10 @@ func TestModExpr_Query(t *testing.T) {
 				exprValueIsNumber(3, "4"),
 				exprValueIsNumber(4, "5"),
 			),
+			scanCase("with in with single operand not returning a literal", `"foobar" in pk`,
+				`contains (#0, :0)`,
+				exprNameIsString(0, 0, "pk", "foobar"),
+			),
 			// TODO: in > 100 items ==> items OR items
 
 			scanCase("with is S", `pk is "S"`,
@@ -294,6 +298,7 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: `alpha`, expected: &types.AttributeValueMemberS{Value: "alpha"}},
 			{expr: `bravo`, expected: &types.AttributeValueMemberN{Value: "123"}},
 			{expr: `charlie`, expected: item["charlie"]},
+			{expr: `missing`, expected: nil},
 
 			// Equality with literal
 			{expr: `alpha="alpha"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
@@ -327,6 +332,8 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: `1 in prime`, expected: &types.AttributeValueMemberBOOL{Value: false}},
 			{expr: `"door" in charlie`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `"sky" in charlie`, expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: `"al" in alpha`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `"cent" in "percentage"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 
 			// Is
 			{expr: `alpha is "S"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
@@ -344,7 +351,11 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: `prime is "any"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `undef is not "any"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 
-			// TODO: size
+			// Size
+			{expr: `size(alpha)`, expected: &types.AttributeValueMemberN{Value: "5"}},
+			{expr: `size("This is a test")`, expected: &types.AttributeValueMemberN{Value: "14"}},
+			{expr: `size(charlie)`, expected: &types.AttributeValueMemberN{Value: "2"}},
+			{expr: `size(prime)`, expected: &types.AttributeValueMemberN{Value: "4"}},
 
 			// Dot values
 			{expr: `charlie.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
@@ -408,7 +419,6 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			expr          string
 			expectedError error
 		}{
-			{expr: `not_present`, expectedError: queryexpr.NameNotFoundError("not_present")},
 			{expr: `alpha.bravo`, expectedError: queryexpr.ValueNotAMapError([]string{"alpha", "bravo"})},
 			{expr: `charlie.tree.bla`, expectedError: queryexpr.ValueNotAMapError([]string{"charlie", "tree", "bla"})},
 		}

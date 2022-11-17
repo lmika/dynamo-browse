@@ -80,6 +80,9 @@ func (a *astComparisonOp) evalItem(item models.Item) (types.AttributeValue, erro
 }
 
 func (a *astComparisonOp) String() string {
+	if a.Op == "" {
+		return a.Ref.String()
+	}
 	return a.Ref.String() + a.Op + a.Value.String()
 }
 

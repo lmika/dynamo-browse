@@ -1,6 +1,7 @@
 package queryexpr
 
 import (
+	"context"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
@@ -56,7 +57,24 @@ func (a *astFunctionCall) evalItem(item models.Item) (types.AttributeValue, erro
 	if !a.IsCall {
 		return a.Caller.evalItem(item)
 	}
-	panic("TODO")
+
+	name, isName := a.Caller.unqualifiedName()
+	if !isName {
+		return nil, OperandNotANameError(a.Args[0].String())
+	}
+	fn, isFn := nativeFuncs[name]
+	if !isFn {
+		return nil, UnrecognisedFunctionError{Name: name}
+	}
+
+	args, err := sliceutils.MapWithError(a.Args, func(a *astExpr) (types.AttributeValue, error) {
+		return a.evalItem(item)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return fn(context.Background(), args)
 }
 
 func (a *astFunctionCall) String() string {
