@@ -1,0 +1,37 @@
+builds:
+  - id: dynamo-browse
+    targets:
+      - windows_amd64
+      - linux_amd64
+    env:
+      - CGO_ENABLED=1
+    main: ./cmd/dynamo-browse/.
+    binary: dynamo-browse
+archives:
+  - id: zip
+    builds:
+      - dynamo-browse
+    wrap_in_directory: true
+    format_overrides:
+      - goos: windows
+        format: zip
+      - goos: linux
+        format: tar.gz
+nfpms:
+  - id: package_nfpms
+    package_name: audax
+    builds:
+      - dynamo-browse
+    vendor: lmika
+    homepage: https://audax.tools/
+    maintainer: Leon Mika <lmika@lmika.org>
+    description: TUI tools for AWS administration
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/local/bin
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
