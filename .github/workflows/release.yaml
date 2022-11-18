@@ -9,7 +9,35 @@ on:
     branches:
       - main
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack
+        ports:
+          - "4566:4566"
+        env:
+          SERVICES: ssm,dynamodb
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+      - name: Configure
+        run: |
+          git config --global url."https://${{ secrets.GO_MODULES_TOKEN }}:x-oauth-basic@github.com/lmika".insteadOf "https://github.com/lmika"
+      - name: Test
+        run: |
+          set -xue
+          go get ./...
+          go test -p 1 ./...
+        env:
+          GOPRIVATE: "github:com/lmika/*"
+
   release-macos:
+    needs: build
     runs-on: macos-12
     steps:
       - name: Checkout
@@ -35,7 +63,8 @@ jobs:
           HOMEBREW_GITHUB_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
 
   release-linux:
-    runs-on: ubuntu
+    needs: build
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
