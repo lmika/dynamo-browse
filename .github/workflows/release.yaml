@@ -4,10 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  # TEMP
-  pull_request:
-    branches:
-      - main
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -54,9 +50,8 @@ jobs:
           brew install goreleaser/tap/goreleaser
           brew install goreleaser
       - name: Release
-        #if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
-          # goreleaser release --skip-validate --rm-dist
           goreleaser release -f macos.goreleaser.yml --snapshot --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,11 +72,10 @@ jobs:
           git config --global url."https://${{ secrets.GO_MODULES_TOKEN }}:x-oauth-basic@github.com/lmika".insteadOf "https://github.com/lmika"
       - name: Release
         uses: goreleaser/goreleaser-action@v1
-#        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           version: latest
-#          args: release --skip-validate --rm-dist --skip-publish
-          args: release -f linux.goreleaser.yml --snapshot --rm-dist
+          args: release --skip-validate --rm-dist --skip-publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_GITHUB_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
