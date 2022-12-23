@@ -3,6 +3,7 @@ package controllers_test
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
@@ -10,13 +11,16 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
+	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
 	"github.com/lmika/audax/test/testdynamo"
 	"github.com/lmika/audax/test/testworkspace"
 	bus "github.com/lmika/events"
 	"github.com/stretchr/testify/assert"
+	"io/fs"
 	"testing"
+	"testing/fstest"
 )
 
 func TestTableWriteController_NewItem(t *testing.T) {
@@ -569,6 +573,7 @@ func TestTableWriteController_DeleteMarked(t *testing.T) {
 }
 
 type services struct {
+	msgSender          *msgSender
 	state              *controllers.State
 	settingProvider    controllers.SettingsProvider
 	readController     *controllers.TableReadController
@@ -576,11 +581,13 @@ type services struct {
 	settingsController *controllers.SettingsController
 	columnsController  *controllers.ColumnsController
 	exportController   *controllers.ExportController
+	scriptController   *controllers.ScriptController
 }
 
 type serviceConfig struct {
 	tableName  string
 	isReadOnly bool
+	scriptFS   fs.FS
 }
 
 func newService(t *testing.T, cfg serviceConfig) *services {
@@ -590,6 +597,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	settingStore := settingstore.New(ws)
 	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
+	scriptService := scriptmanager.New(cfg.scriptFS)
 
 	client := testdynamo.SetupTestTable(t, testData)
 
@@ -604,12 +612,16 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	settingsController := controllers.NewSettingsController(settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
+	scriptController := controllers.NewScriptController(scriptService)
 
 	if cfg.isReadOnly {
 		if err := settingStore.SetReadOnly(cfg.isReadOnly); err != nil {
 			t.Errorf("cannot set ro: %v", err)
 		}
 	}
+
+	msgSender := &msgSender{}
+	scriptController.SetMessageSender(msgSender.send)
 
 	return &services{
 		state:              state,
@@ -619,5 +631,26 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 		settingsController: settingsController,
 		columnsController:  columnsController,
 		exportController:   exportController,
+		scriptController:   scriptController,
+		msgSender:          msgSender,
 	}
+}
+
+func testScriptFile(t *testing.T, filename, code string) fs.FS {
+	t.Helper()
+
+	testFs := fstest.MapFS{
+		filename: &fstest.MapFile{
+			Data: []byte(code),
+		},
+	}
+	return testFs
+}
+
+type msgSender struct {
+	msgs []tea.Msg
+}
+
+func (s *msgSender) send(msg tea.Msg) {
+	s.msgs = append(s.msgs, msg)
 }

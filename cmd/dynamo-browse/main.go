@@ -18,6 +18,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
+	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
@@ -95,6 +96,7 @@ func main() {
 	tableService := tables.NewService(dynamoProvider, settingStore)
 	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
+	scriptManagerService := scriptmanager.New(os.DirFS("/Users/leonmika/tmp"))
 	jobsService := jobs.NewService(eventBus)
 
 	state := controllers.NewState()
@@ -105,6 +107,7 @@ func main() {
 	exportController := controllers.NewExportController(state, columnsController)
 	settingsController := controllers.NewSettingsController(settingStore)
 	keyBindings := keybindings.Default()
+	scriptController := controllers.NewScriptController(scriptManagerService)
 
 	keyBindingService := keybindings_service.NewService(keyBindings)
 	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
@@ -120,6 +123,7 @@ func main() {
 		jobsController,
 		itemRendererService,
 		commandController,
+		scriptController,
 		keyBindingController,
 		keyBindings,
 	)
@@ -130,6 +134,7 @@ func main() {
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	jobsController.SetMessageSender(p.Send)
+	scriptController.SetMessageSender(p.Send)
 
 	log.Println("launching")
 	if err := p.Start(); err != nil {

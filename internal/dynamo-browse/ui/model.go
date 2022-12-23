@@ -43,6 +43,7 @@ type Model struct {
 	settingsController   *controllers.SettingsController
 	exportController     *controllers.ExportController
 	commandController    *commandctrl.CommandController
+	scriptController     *controllers.ScriptController
 	jobController        *controllers.JobsController
 	colSelector          *colselector.Model
 	itemEdit             *dynamoitemedit.Model
@@ -67,6 +68,7 @@ func NewModel(
 	jobController *controllers.JobsController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
+	scriptController *controllers.ScriptController,
 	keyBindingController *controllers.KeyBindingController,
 	defaultKeyMap *keybindings.KeyBindings,
 ) Model {
@@ -183,6 +185,13 @@ func NewModel(
 				return keyBindingController.Rebind(args[0], args[1], ctx.FromFile)
 			},
 
+			"run-script": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				if len(args) != 1 {
+					return events.Error(errors.New("expected: script name"))
+				}
+				return scriptController.RunScript(args[0])
+			},
+
 			// Aliases
 			"unmark": cc.Alias("mark", []string{"none"}),
 			"sa":     cc.Alias("set-attr", nil),
@@ -198,6 +207,7 @@ func NewModel(
 		tableReadController:  rc,
 		tableWriteController: wc,
 		commandController:    cc,
+		scriptController:     scriptController,
 		jobController:        jobController,
 		itemEdit:             itemEdit,
 		colSelector:          colSelector,
