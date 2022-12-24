@@ -189,7 +189,7 @@ func NewModel(
 				if len(args) != 1 {
 					return events.Error(errors.New("expected: script name"))
 				}
-				return scriptController.RunScript(args[0])
+				return scriptController.RunScript(args[0], scriptController.WaitAndPrintScriptError())
 			},
 
 			// Aliases

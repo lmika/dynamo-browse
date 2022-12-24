@@ -13,9 +13,11 @@ func TestScriptController_RunScript(t *testing.T) {
 				ui.print("Hello world")
 			`),
 		})
+		doneChan := make(chan error)
 
-		msg := srv.scriptController.RunScript("test.tm")
+		msg := srv.scriptController.RunScript("test.tm", doneChan)
 		assert.Nil(t, msg)
+		assert.NoError(t, <-doneChan)
 
 		assert.Len(t, srv.msgSender.msgs, 1)
 		assert.Equal(t, events.StatusMsg("Hello world"), srv.msgSender.msgs[0])

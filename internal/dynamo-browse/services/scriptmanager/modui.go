@@ -2,6 +2,7 @@ package scriptmanager
 
 import (
 	"context"
+	"github.com/cloudcmds/tamarin/arg"
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/cloudcmds/tamarin/scope"
 	"strings"
@@ -19,8 +20,28 @@ func (um *uiModule) print(ctx context.Context, args ...object.Object) object.Obj
 		}
 	}
 
-	um.uiService.PrintMessage(msg.String())
+	um.uiService.PrintMessage(ctx, msg.String())
 	return object.Nil
+}
+
+func (um *uiModule) prompt(ctx context.Context, args ...object.Object) object.Object {
+	if err := arg.Require("ui.prompt", 1, args); err != nil {
+		return err
+	}
+
+	msg, _ := object.AsString(args[0])
+	respChan := um.uiService.Prompt(ctx, msg)
+
+	select {
+	case resp, hasResp := <-respChan:
+		if hasResp {
+			return object.NewString(resp)
+		} else {
+			return object.NewError("cancelled prompt: %v", ctx.Err())
+		}
+	case <-ctx.Done():
+		return object.NewError("ctx error: %v", ctx.Err())
+	}
 }
 
 func (um *uiModule) register(scp *scope.Scope) {
@@ -29,6 +50,7 @@ func (um *uiModule) register(scp *scope.Scope) {
 
 	modScope.AddBuiltins([]*object.Builtin{
 		{Name: "print", Module: mod, Fn: um.print},
+		{Name: "prompt", Module: mod, Fn: um.prompt},
 	})
 
 	scp.Declare("ui", mod, true)

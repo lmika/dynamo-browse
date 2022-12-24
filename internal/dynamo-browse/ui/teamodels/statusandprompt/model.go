@@ -9,7 +9,6 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
-	"log"
 )
 
 // StatusAndPrompt is a resizing model which displays a submodel and a status bar.  When the start prompt
@@ -89,6 +88,13 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if s.pendingInput != nil {
 			switch msg.Type {
 			case tea.KeyCtrlC, tea.KeyEsc:
+				if s.pendingInput.OnCancel != nil {
+					pendingInput := s.pendingInput
+					cc.Add(func() tea.Msg {
+						m := pendingInput.OnCancel()
+						return m
+					})
+				}
 				s.pendingInput = nil
 			case tea.KeyEnter:
 				pendingInput := s.pendingInput
@@ -96,7 +102,6 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				return s, func() tea.Msg {
 					m := pendingInput.OnDone(s.textInput.Value())
-					log.Printf("return msg type = %T", m)
 					return m
 				}
 			default:

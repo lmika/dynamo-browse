@@ -5,6 +5,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
 	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"io/fs"
 	"testing"
 	"testing/fstest"
@@ -17,7 +18,7 @@ func TestService_RunAdHocScript(t *testing.T) {
 		`)
 
 		mockedUIService := mocks.NewUIService(t)
-		mockedUIService.EXPECT().PrintMessage("Hello, world")
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, world")
 
 		srv := scriptmanager.New(testFS)
 		srv.SetIFaces(scriptmanager.Ifaces{
@@ -25,7 +26,7 @@ func TestService_RunAdHocScript(t *testing.T) {
 		})
 
 		ctx := context.Background()
-		err := srv.RunAdHocScript(ctx, "test.tm")
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
 		assert.NoError(t, err)
 
 		mockedUIService.AssertExpectations(t)

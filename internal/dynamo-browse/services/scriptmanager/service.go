@@ -27,10 +27,23 @@ func (s *Service) LoadScript(filename string) error {
 	return nil
 }
 
-func (s *Service) RunAdHocScript(ctx context.Context, filename string) error {
+func (s *Service) RunAdHocScript(ctx context.Context, filename string) chan error {
+	errChan := make(chan error)
+	go s.startAdHocScript(ctx, filename, errChan)
+	return errChan
+}
+
+func (s *Service) StartAdHocScript(ctx context.Context, filename string, errChan chan error) {
+	go s.startAdHocScript(ctx, filename, errChan)
+}
+
+func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan chan error) {
+	defer close(errChan)
+
 	code, err := fs.ReadFile(s.fs, filename)
 	if err != nil {
-		return errors.Wrapf(err, "cannot load script file %v", filename)
+		errChan <- errors.Wrapf(err, "cannot load script file %v", filename)
+		return
 	}
 
 	// TODO: this should probably be a single scope with registered modules
@@ -42,8 +55,7 @@ func (s *Service) RunAdHocScript(ctx context.Context, filename string) error {
 		File:  filename,
 		Scope: scp,
 	}); err != nil {
-		return errors.Wrapf(err, "script %v", filename)
+		errChan <- errors.Wrapf(err, "script %v", filename)
+		return
 	}
-
-	return nil
 }
