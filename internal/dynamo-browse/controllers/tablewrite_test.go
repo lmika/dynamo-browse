@@ -612,7 +612,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	settingsController := controllers.NewSettingsController(settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
-	scriptController := controllers.NewScriptController(scriptService)
+	scriptController := controllers.NewScriptController(scriptService, readController)
 
 	if cfg.isReadOnly {
 		if err := settingStore.SetReadOnly(cfg.isReadOnly); err != nil {

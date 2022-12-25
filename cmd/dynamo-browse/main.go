@@ -107,7 +107,7 @@ func main() {
 	exportController := controllers.NewExportController(state, columnsController)
 	settingsController := controllers.NewSettingsController(settingStore)
 	keyBindings := keybindings.Default()
-	scriptController := controllers.NewScriptController(scriptManagerService)
+	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController)
 
 	keyBindingService := keybindings_service.NewService(keyBindings)
 	keyBindingController := controllers.NewKeyBindingController(keyBindingService)

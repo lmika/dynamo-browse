@@ -15,8 +15,11 @@ type uiModule struct {
 func (um *uiModule) print(ctx context.Context, args ...object.Object) object.Object {
 	var msg strings.Builder
 	for _, arg := range args {
-		if s, err := object.AsString(arg); err == nil {
-			msg.WriteString(s)
+		switch a := arg.(type) {
+		case *object.String:
+			msg.WriteString(a.Value)
+		default:
+			msg.WriteString(a.Inspect())
 		}
 	}
 

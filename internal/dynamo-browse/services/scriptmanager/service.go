@@ -49,6 +49,7 @@ func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan
 	// TODO: this should probably be a single scope with registered modules
 	scp := scope.New(scope.Opts{})
 	(&uiModule{uiService: s.ifaces.UI}).register(scp)
+	(&sessionModule{sessionService: s.ifaces.Session}).register(scp)
 
 	if _, err = exec.Execute(ctx, exec.Opts{
 		Input: string(code),
