@@ -25,10 +25,17 @@ func TestModSession_Query(t *testing.T) {
 
 		mockedUIService := mocks.NewUIService(t)
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "2")
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "res[0]['pk'].S = abc")
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "res[1]['pk'].S = 1232")
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "res[1].value('size(pk)') = 4")
 
 		testFS := testScriptFile(t, "test.tm", `
 			res := session.query("some expr").unwrap()
 			ui.print(res.length)
+			// res[0]["pk"].S
+			ui.print("res[0]['pk'].S = ", res.at(0).value("pk"))
+			ui.print("res[1]['pk'].S = ", res.at(1).value("pk"))
+			ui.print("res[1].value('size(pk)') = ", res.at(1).value("size(pk)"))
 		`)
 
 		srv := scriptmanager.New(testFS)

@@ -5,7 +5,6 @@ import (
 	"github.com/cloudcmds/tamarin/arg"
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/cloudcmds/tamarin/scope"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
 type sessionModule struct {
@@ -48,35 +47,4 @@ func (um *sessionModule) register(scp *scope.Scope) {
 	})
 
 	scp.Declare("session", mod, true)
-}
-
-type resultSetProxy struct {
-	resultSet *models.ResultSet
-}
-
-func (r *resultSetProxy) Type() object.Type {
-	return "ResultSet"
-}
-
-func (r *resultSetProxy) Inspect() string {
-	return "ResultSet"
-}
-
-func (r *resultSetProxy) ToInterface() interface{} {
-	return r.resultSet
-}
-
-func (r *resultSetProxy) Equals(other object.Object) object.Object {
-	// TODO
-	return object.False
-}
-
-func (r *resultSetProxy) GetAttr(name string) (object.Object, bool) {
-	// TODO: this should implement the container interface
-	switch name {
-	case "length":
-		return object.NewInt(int64(len(r.resultSet.Items()))), true
-	}
-
-	return nil, false
 }
