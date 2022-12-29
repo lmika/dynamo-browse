@@ -15,3 +15,7 @@ type CommandList struct {
 
 	parent *CommandList
 }
+
+type CommandLookupExtension interface {
+	LookupCommand(name string) Command
+}

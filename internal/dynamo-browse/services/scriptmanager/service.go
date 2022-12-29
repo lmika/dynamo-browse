@@ -6,11 +6,13 @@ import (
 	"github.com/cloudcmds/tamarin/scope"
 	"github.com/pkg/errors"
 	"io/fs"
+	"path/filepath"
 )
 
 type Service struct {
-	fs     fs.FS
-	ifaces Ifaces
+	fs      fs.FS
+	ifaces  Ifaces
+	plugins []*ScriptPlugin
 }
 
 func New(fs fs.FS) *Service {
@@ -23,8 +25,27 @@ func (s *Service) SetIFaces(ifaces Ifaces) {
 	s.ifaces = ifaces
 }
 
-func (s *Service) LoadScript(filename string) error {
-	return nil
+func (s *Service) LoadScript(ctx context.Context, filename string) (*ScriptPlugin, error) {
+	resChan := make(chan loadedScriptResult)
+	go s.loadScript(ctx, filename, resChan)
+
+	res := <-resChan
+	if res.err != nil {
+		return nil, res.err
+	}
+
+	// Look for the previous version.  If one is there, replace it, otherwise add it
+	// TODO: this should probably be protected by a mutex
+	newPlugin := res.scriptPlugin
+	for i, p := range s.plugins {
+		if p.name == newPlugin.name {
+			s.plugins[i] = newPlugin
+			return newPlugin, nil
+		}
+	}
+
+	s.plugins = append(s.plugins, newPlugin)
+	return newPlugin, nil
 }
 
 func (s *Service) RunAdHocScript(ctx context.Context, filename string) chan error {
@@ -59,4 +80,53 @@ func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan
 		errChan <- errors.Wrapf(err, "script %v", filename)
 		return
 	}
+}
+
+type loadedScriptResult struct {
+	scriptPlugin *ScriptPlugin
+	err          error
+}
+
+func (s *Service) loadScript(ctx context.Context, filename string, resChan chan loadedScriptResult) {
+	defer close(resChan)
+
+	code, err := fs.ReadFile(s.fs, filename)
+	if err != nil {
+		resChan <- loadedScriptResult{err: errors.Wrapf(err, "cannot load script file %v", filename)}
+		return
+	}
+
+	newPlugin := &ScriptPlugin{
+		name: filepath.Base(filename),
+	}
+
+	// TODO: this should probably be a single scope with registered modules
+	scp := scope.New(scope.Opts{})
+	(&uiModule{uiService: s.ifaces.UI}).register(scp)
+	(&sessionModule{sessionService: s.ifaces.Session}).register(scp)
+	// END TODO
+
+	(&extModule{scriptPlugin: newPlugin}).register(scp)
+
+	if _, err = exec.Execute(ctx, exec.Opts{
+		Input: string(code),
+		File:  filename,
+		Scope: scp,
+	}); err != nil {
+		resChan <- loadedScriptResult{err: errors.Wrapf(err, "script %v", filename)}
+		return
+	}
+
+	resChan <- loadedScriptResult{scriptPlugin: newPlugin}
+}
+
+// LookupCommand looks up a command defined by a script.
+// TODO: Command should probably accept/return a chan error to indicate that this will run in a separate goroutine
+func (s *Service) LookupCommand(name string) Command {
+	for _, p := range s.plugins {
+		if cmd, hasCmd := p.definedCommands[name]; hasCmd {
+			return cmd
+		}
+	}
+	return nil
 }

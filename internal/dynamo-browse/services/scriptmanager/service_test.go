@@ -33,6 +33,90 @@ func TestService_RunAdHocScript(t *testing.T) {
 	})
 }
 
+func TestService_LoadScript(t *testing.T) {
+	t.Run("successfully loads a script and exposes it as a plugin", func(t *testing.T) {
+		testFS := testScriptFile(t, "test.tm", `
+			ext.command("somewhere", func(a) {
+				ui.print("Hello, " + a)
+			})
+		`)
+
+		ctx := context.Background()
+
+		mockedUIService := mocks.NewUIService(t)
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, someone")
+
+		srv := scriptmanager.New(testFS)
+		srv.SetIFaces(scriptmanager.Ifaces{
+			UI: mockedUIService,
+		})
+
+		err := srv.LoadScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		cmd := srv.LookupCommand("somewhere")
+		assert.NotNil(t, cmd)
+
+		err = cmd(ctx, []string{"someone"})
+		assert.NoError(t, err)
+
+		mockedUIService.AssertExpectations(t)
+	})
+
+	t.Run("reloading a script with the same name should remove the old one", func(t *testing.T) {
+		testFS := fstest.MapFS{
+			"test.tm": &fstest.MapFile{
+				Data: []byte(`
+					ext.command("somewhere", func(a) {
+						ui.print("Hello, " + a)
+					})
+				`),
+			},
+		}
+
+		ctx := context.Background()
+
+		mockedUIService := mocks.NewUIService(t)
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, someone").Once()
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Goodbye, someone").Once()
+
+		srv := scriptmanager.New(testFS)
+		srv.SetIFaces(scriptmanager.Ifaces{
+			UI: mockedUIService,
+		})
+
+		// Execute the old script
+		err := srv.LoadScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		cmd := srv.LookupCommand("somewhere")
+		assert.NotNil(t, cmd)
+
+		err = cmd(ctx, []string{"someone"})
+		assert.NoError(t, err)
+
+		// Change the script and reload
+		testFS["test.tm"] = &fstest.MapFile{
+			Data: []byte(`
+				ext.command("somewhere", func(a) {
+					ui.print("Goodbye, " + a)
+				})
+			`),
+		}
+
+		err = srv.LoadScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		cmd = srv.LookupCommand("somewhere")
+		assert.NotNil(t, cmd)
+
+		err = cmd(ctx, []string{"someone"})
+		assert.NoError(t, err)
+
+		mockedUIService.AssertExpectations(t)
+	})
+}
+
 func testScriptFile(t *testing.T, filename, code string) fs.FS {
 	t.Helper()
 

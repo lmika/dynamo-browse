@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
@@ -32,6 +34,16 @@ func (sc *ScriptController) SetMessageSender(sendMsg func(msg tea.Msg)) {
 	sc.sendMsg = sendMsg
 }
 
+func (sc *ScriptController) LoadScript(filename string) tea.Msg {
+	ctx := context.Background()
+	plugin, err := sc.scriptManager.LoadScript(ctx, filename)
+	if err != nil {
+		return events.Error(err)
+	}
+
+	return events.SetStatus(fmt.Sprintf("Script '%v' loaded", plugin.Name()))
+}
+
 func (sc *ScriptController) RunScript(filename string, doneChan chan error) tea.Msg {
 	ctx := context.Background()
 	sc.scriptManager.StartAdHocScript(ctx, filename, doneChan)
@@ -46,6 +58,23 @@ func (sc *ScriptController) WaitAndPrintScriptError() chan error {
 		}
 	}()
 	return errChan
+}
+
+func (sc *ScriptController) LookupCommand(name string) commandctrl.Command {
+	cmd := sc.scriptManager.LookupCommand(name)
+	if cmd == nil {
+		return nil
+	}
+
+	return func(execCtx commandctrl.ExecContext, args []string) tea.Msg {
+		go func() {
+			ctx := context.Background()
+			if err := cmd(ctx, args); err != nil {
+				sc.sendMsg(events.Error(err))
+			}
+		}()
+		return nil
+	}
 }
 
 type uiImpl struct {

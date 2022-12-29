@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
@@ -19,6 +20,7 @@ import (
 	bus "github.com/lmika/events"
 	"github.com/stretchr/testify/assert"
 	"io/fs"
+	"sync"
 	"testing"
 	"testing/fstest"
 )
@@ -582,6 +584,7 @@ type services struct {
 	columnsController  *controllers.ColumnsController
 	exportController   *controllers.ExportController
 	scriptController   *controllers.ScriptController
+	commandController  *commandctrl.CommandController
 }
 
 type serviceConfig struct {
@@ -614,6 +617,9 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	exportController := controllers.NewExportController(state, columnsController)
 	scriptController := controllers.NewScriptController(scriptService, readController)
 
+	commandController := commandctrl.NewCommandController()
+	commandController.AddCommandLookupExtension(scriptController)
+
 	if cfg.isReadOnly {
 		if err := settingStore.SetReadOnly(cfg.isReadOnly); err != nil {
 			t.Errorf("cannot set ro: %v", err)
@@ -632,6 +638,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 		columnsController:  columnsController,
 		exportController:   exportController,
 		scriptController:   scriptController,
+		commandController:  commandController,
 		msgSender:          msgSender,
 	}
 }
@@ -648,9 +655,30 @@ func testScriptFile(t *testing.T, filename, code string) fs.FS {
 }
 
 type msgSender struct {
-	msgs []tea.Msg
+	mutex    sync.Mutex
+	msgs     []tea.Msg
+	waitChan chan struct{}
 }
 
 func (s *msgSender) send(msg tea.Msg) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	s.msgs = append(s.msgs, msg)
+	if s.waitChan != nil {
+		close(s.waitChan)
+		s.waitChan = nil
+	}
+}
+
+func (s *msgSender) afterNextMessage() chan struct{} {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.waitChan != nil {
+		panic("More than one wait chan")
+	}
+	newWaitChan := make(chan struct{})
+	s.waitChan = newWaitChan
+	return newWaitChan
 }

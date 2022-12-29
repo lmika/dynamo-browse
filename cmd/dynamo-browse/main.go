@@ -113,6 +113,7 @@ func main() {
 	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
 
 	commandController := commandctrl.NewCommandController()
+	commandController.AddCommandLookupExtension(scriptController)
 
 	model := ui.NewModel(
 		tableReadController,
