@@ -41,16 +41,18 @@ func (sc *ScriptController) LoadScript(filename string) tea.Msg {
 		return events.Error(err)
 	}
 
-	return events.SetStatus(fmt.Sprintf("Script '%v' loaded", plugin.Name()))
+	return events.StatusMsg(fmt.Sprintf("Script '%v' loaded", plugin.Name()))
 }
 
-func (sc *ScriptController) RunScript(filename string, doneChan chan error) tea.Msg {
+func (sc *ScriptController) RunScript(filename string) tea.Msg {
 	ctx := context.Background()
-	sc.scriptManager.StartAdHocScript(ctx, filename, doneChan)
+	if err := sc.scriptManager.StartAdHocScript(ctx, filename, sc.waitAndPrintScriptError()); err != nil {
+		return events.Error(err)
+	}
 	return nil
 }
 
-func (sc *ScriptController) WaitAndPrintScriptError() chan error {
+func (sc *ScriptController) waitAndPrintScriptError() chan error {
 	errChan := make(chan error)
 	go func() {
 		if err := <-errChan; err != nil {
@@ -67,12 +69,12 @@ func (sc *ScriptController) LookupCommand(name string) commandctrl.Command {
 	}
 
 	return func(execCtx commandctrl.ExecContext, args []string) tea.Msg {
-		go func() {
-			ctx := context.Background()
-			if err := cmd(ctx, args); err != nil {
-				sc.sendMsg(events.Error(err))
-			}
-		}()
+		errChan := sc.waitAndPrintScriptError()
+		ctx := context.Background()
+
+		if err := cmd.Invoke(ctx, args, errChan); err != nil {
+			return events.Error(err)
+		}
 		return nil
 	}
 }

@@ -14,11 +14,11 @@ func TestScriptController_RunScript(t *testing.T) {
 				ui.print("Hello world")
 			`),
 		})
-		doneChan := make(chan error)
 
-		msg := srv.scriptController.RunScript("test.tm", doneChan)
+		msg := srv.scriptController.RunScript("test.tm")
 		assert.Nil(t, msg)
-		assert.NoError(t, <-doneChan)
+
+		srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
 
 		assert.Len(t, srv.msgSender.msgs, 1)
 		assert.Equal(t, events.StatusMsg("Hello world"), srv.msgSender.msgs[0])
@@ -33,12 +33,13 @@ func TestScriptController_RunScript(t *testing.T) {
 					ui.print(rs.length)
 				`),
 			})
-			doneChan := make(chan error)
 
 			invokeCommand(t, srv.readController.Init())
-			msg := srv.scriptController.RunScript("test.tm", doneChan)
+
+			msg := srv.scriptController.RunScript("test.tm")
 			assert.Nil(t, msg)
-			assert.NoError(t, <-doneChan)
+
+			srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
 
 			assert.Len(t, srv.msgSender.msgs, 1)
 			assert.Equal(t, events.StatusMsg("3"), srv.msgSender.msgs[0])
@@ -54,12 +55,12 @@ func TestScriptController_RunScript(t *testing.T) {
 					ui.print(rs.length)
 				`),
 			})
-			doneChan := make(chan error)
 
 			invokeCommand(t, srv.readController.Init())
-			msg := srv.scriptController.RunScript("test.tm", doneChan)
+			msg := srv.scriptController.RunScript("test.tm")
 			assert.Nil(t, msg)
-			assert.NoError(t, <-doneChan)
+
+			srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
 
 			assert.Len(t, srv.msgSender.msgs, 1)
 			assert.Equal(t, events.StatusMsg("2"), srv.msgSender.msgs[0])
@@ -78,18 +79,35 @@ func TestScriptController_LookupCommand(t *testing.T) {
 			`),
 		})
 
-		waitChan := srv.msgSender.afterNextMessage()
-
 		invokeCommand(t, srv.scriptController.LoadScript("test.tm"))
 		invokeCommand(t, srv.commandController.Execute(`mycommand "test name"`))
 
-		select {
-		case <-waitChan:
-		case <-time.After(5 * time.Second):
-			t.Fatalf("timeout waiting for next message")
-		}
+		srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
 
 		assert.Len(t, srv.msgSender.msgs, 1)
 		assert.Equal(t, events.StatusMsg("Hello, test name"), srv.msgSender.msgs[0])
 	})
+
+	t.Run("should only allow one script to run at a time", func(t *testing.T) {
+		srv := newService(t, serviceConfig{
+			tableName: "alpha-table",
+			scriptFS: testScriptFile(t, "test.tm", `
+				ext.command("mycommand", func() {
+					for i := 0; i < 2000000; i++ { }
+					ui.print("Done my thing")
+				})
+			`),
+		})
+
+		invokeCommand(t, srv.scriptController.LoadScript("test.tm"))
+
+		invokeCommand(t, srv.commandController.Execute(`mycommand`))
+		invokeCommandExpectingError(t, srv.commandController.Execute(`mycommand`))
+
+		srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
+
+		assert.Len(t, srv.msgSender.msgs, 1)
+		assert.Equal(t, events.StatusMsg("Hello, test name"), srv.msgSender.msgs[0])
+	})
+
 }

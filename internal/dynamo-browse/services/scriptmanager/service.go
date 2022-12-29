@@ -12,12 +12,14 @@ import (
 type Service struct {
 	fs      fs.FS
 	ifaces  Ifaces
+	sched   *scriptScheduler
 	plugins []*ScriptPlugin
 }
 
 func New(fs fs.FS) *Service {
 	return &Service{
-		fs: fs,
+		fs:    fs,
+		sched: newScriptScheduler(),
 	}
 }
 
@@ -27,7 +29,12 @@ func (s *Service) SetIFaces(ifaces Ifaces) {
 
 func (s *Service) LoadScript(ctx context.Context, filename string) (*ScriptPlugin, error) {
 	resChan := make(chan loadedScriptResult)
-	go s.loadScript(ctx, filename, resChan)
+
+	if err := s.sched.startJobOnceFree(ctx, func(ctx context.Context) {
+		s.loadScript(ctx, filename, resChan)
+	}); err != nil {
+		return nil, err
+	}
 
 	res := <-resChan
 	if res.err != nil {
@@ -54,8 +61,10 @@ func (s *Service) RunAdHocScript(ctx context.Context, filename string) chan erro
 	return errChan
 }
 
-func (s *Service) StartAdHocScript(ctx context.Context, filename string, errChan chan error) {
-	go s.startAdHocScript(ctx, filename, errChan)
+func (s *Service) StartAdHocScript(ctx context.Context, filename string, errChan chan error) error {
+	return s.sched.startJobOnceFree(ctx, func(ctx context.Context) {
+		s.startAdHocScript(ctx, filename, errChan)
+	})
 }
 
 func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan chan error) {
@@ -97,7 +106,8 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 	}
 
 	newPlugin := &ScriptPlugin{
-		name: filepath.Base(filename),
+		name:          filepath.Base(filename),
+		scriptService: s,
 	}
 
 	// TODO: this should probably be a single scope with registered modules
@@ -122,7 +132,7 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 
 // LookupCommand looks up a command defined by a script.
 // TODO: Command should probably accept/return a chan error to indicate that this will run in a separate goroutine
-func (s *Service) LookupCommand(name string) Command {
+func (s *Service) LookupCommand(name string) *Command {
 	for _, p := range s.plugins {
 		if cmd, hasCmd := p.definedCommands[name]; hasCmd {
 			return cmd

@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"testing"
 	"testing/fstest"
+	"time"
 )
 
 func TestService_RunAdHocScript(t *testing.T) {
@@ -51,14 +52,18 @@ func TestService_LoadScript(t *testing.T) {
 			UI: mockedUIService,
 		})
 
-		err := srv.LoadScript(ctx, "test.tm")
+		plugin, err := srv.LoadScript(ctx, "test.tm")
 		assert.NoError(t, err)
+		assert.NotNil(t, plugin)
+		assert.Equal(t, "test.tm", plugin.Name())
 
 		cmd := srv.LookupCommand("somewhere")
 		assert.NotNil(t, cmd)
 
-		err = cmd(ctx, []string{"someone"})
+		errChan := make(chan error)
+		err = cmd.Invoke(ctx, []string{"someone"}, errChan)
 		assert.NoError(t, err)
+		assert.NoError(t, waitForErr(t, errChan))
 
 		mockedUIService.AssertExpectations(t)
 	})
@@ -86,14 +91,16 @@ func TestService_LoadScript(t *testing.T) {
 		})
 
 		// Execute the old script
-		err := srv.LoadScript(ctx, "test.tm")
+		_, err := srv.LoadScript(ctx, "test.tm")
 		assert.NoError(t, err)
 
 		cmd := srv.LookupCommand("somewhere")
 		assert.NotNil(t, cmd)
 
-		err = cmd(ctx, []string{"someone"})
+		errChan := make(chan error)
+		err = cmd.Invoke(ctx, []string{"someone"}, errChan)
 		assert.NoError(t, err)
+		assert.NoError(t, waitForErr(t, errChan))
 
 		// Change the script and reload
 		testFS["test.tm"] = &fstest.MapFile{
@@ -104,14 +111,16 @@ func TestService_LoadScript(t *testing.T) {
 			`),
 		}
 
-		err = srv.LoadScript(ctx, "test.tm")
+		_, err = srv.LoadScript(ctx, "test.tm")
 		assert.NoError(t, err)
 
 		cmd = srv.LookupCommand("somewhere")
 		assert.NotNil(t, cmd)
 
-		err = cmd(ctx, []string{"someone"})
+		errChan = make(chan error)
+		err = cmd.Invoke(ctx, []string{"someone"}, errChan)
 		assert.NoError(t, err)
+		assert.NoError(t, waitForErr(t, errChan))
 
 		mockedUIService.AssertExpectations(t)
 	})
@@ -126,4 +135,16 @@ func testScriptFile(t *testing.T, filename, code string) fs.FS {
 		},
 	}
 	return testFs
+}
+
+func waitForErr(t *testing.T, errChan chan error) error {
+	t.Helper()
+
+	select {
+	case err := <-errChan:
+		return err
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed-out waiting for an error")
+	}
+	return nil
 }

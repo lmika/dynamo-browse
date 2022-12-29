@@ -42,13 +42,13 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 		return object.NewError("no callFn found in context")
 	}
 
+	// This command function will be executed by the script scheduler
 	newCommand := func(ctx context.Context, args []string) error {
 		objArgs := make([]object.Object, len(args))
 		for i, a := range args {
 			objArgs[i] = object.NewString(a)
 		}
 
-		// TODO: this should be on a separate thread
 		res := callFn(ctx, fnRes.Scope, fnRes, objArgs)
 		if object.IsError(res) {
 			errObj := res.(*object.Error)
@@ -58,8 +58,8 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 	}
 
 	if m.scriptPlugin.definedCommands == nil {
-		m.scriptPlugin.definedCommands = make(map[string]Command)
+		m.scriptPlugin.definedCommands = make(map[string]*Command)
 	}
-	m.scriptPlugin.definedCommands[cmdName] = newCommand
+	m.scriptPlugin.definedCommands[cmdName] = &Command{plugin: m.scriptPlugin, cmdFn: newCommand}
 	return nil
 }

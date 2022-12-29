@@ -189,7 +189,13 @@ func NewModel(
 				if len(args) != 1 {
 					return events.Error(errors.New("expected: script name"))
 				}
-				return scriptController.RunScript(args[0], scriptController.WaitAndPrintScriptError())
+				return scriptController.RunScript(args[0])
+			},
+			"load-script": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				if len(args) != 1 {
+					return events.Error(errors.New("expected: script name"))
+				}
+				return scriptController.LoadScript(args[0])
 			},
 
 			// Aliases

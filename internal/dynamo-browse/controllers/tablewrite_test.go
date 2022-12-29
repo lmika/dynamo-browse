@@ -23,6 +23,7 @@ import (
 	"sync"
 	"testing"
 	"testing/fstest"
+	"time"
 )
 
 func TestTableWriteController_NewItem(t *testing.T) {
@@ -668,6 +669,27 @@ func (s *msgSender) send(msg tea.Msg) {
 	if s.waitChan != nil {
 		close(s.waitChan)
 		s.waitChan = nil
+	}
+}
+
+func (s *msgSender) waitForAtLeastOneMessages(t *testing.T, d time.Duration) {
+	t.Helper()
+
+	s.mutex.Lock()
+	msgLen := len(s.msgs)
+	s.mutex.Unlock()
+
+	if msgLen > 0 {
+		return
+	}
+
+	// Wait for a message
+	waitChan := s.afterNextMessage()
+
+	select {
+	case <-waitChan:
+	case <-time.After(d):
+		t.Fatalf("timeout waiting for next message")
 	}
 }
 
