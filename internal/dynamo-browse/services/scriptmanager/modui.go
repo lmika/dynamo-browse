@@ -17,7 +17,7 @@ func (um *uiModule) print(ctx context.Context, args ...object.Object) object.Obj
 	for _, arg := range args {
 		switch a := arg.(type) {
 		case *object.String:
-			msg.WriteString(a.Value)
+			msg.WriteString(a.Value())
 		default:
 			msg.WriteString(a.Inspect())
 		}
@@ -40,20 +40,20 @@ func (um *uiModule) prompt(ctx context.Context, args ...object.Object) object.Ob
 		if hasResp {
 			return object.NewString(resp)
 		} else {
-			return object.NewError("cancelled prompt: %v", ctx.Err())
+			return object.NewError(ctx.Err())
 		}
 	case <-ctx.Done():
-		return object.NewError("ctx error: %v", ctx.Err())
+		return object.NewError(ctx.Err())
 	}
 }
 
 func (um *uiModule) register(scp *scope.Scope) {
 	modScope := scope.New(scope.Opts{})
-	mod := &object.Module{Name: "ui", Scope: modScope}
+	mod := object.NewModule("ui", modScope)
 
 	modScope.AddBuiltins([]*object.Builtin{
-		{Name: "print", Module: mod, Fn: um.print},
-		{Name: "prompt", Module: mod, Fn: um.prompt},
+		object.NewBuiltin("print", um.print, mod),
+		object.NewBuiltin("prompt", um.prompt, mod),
 	})
 
 	scp.Declare("ui", mod, true)

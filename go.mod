@@ -48,7 +48,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.14.0 // indirect
 	github.com/aws/smithy-go v1.11.3 // indirect
 	github.com/aymanbagabas/go-osc52 v1.0.3 // indirect
-	github.com/cloudcmds/tamarin v0.0.12 // indirect
+	github.com/cloudcmds/tamarin v0.0.14 // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect

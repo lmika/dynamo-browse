@@ -7,11 +7,20 @@ import (
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
+	"github.com/pkg/errors"
 	"strconv"
 )
 
 type resultSetProxy struct {
 	resultSet *models.ResultSet
+}
+
+func (r *resultSetProxy) Interface() interface{} {
+	return r.resultSet
+}
+
+func (r *resultSetProxy) IsTruthy() bool {
+	return true
 }
 
 func (r *resultSetProxy) Type() object.Type {
@@ -20,10 +29,6 @@ func (r *resultSetProxy) Type() object.Type {
 
 func (r *resultSetProxy) Inspect() string {
 	return "resultset"
-}
-
-func (r *resultSetProxy) ToInterface() interface{} {
-	return r.resultSet
 }
 
 func (r *resultSetProxy) Equals(other object.Object) object.Object {
@@ -37,7 +42,7 @@ func (r *resultSetProxy) GetAttr(name string) (object.Object, bool) {
 	case "length":
 		return object.NewInt(int64(len(r.resultSet.Items()))), true
 	case "at":
-		return &object.Builtin{Name: "at", Fn: r.at}, true
+		return object.NewBuiltin("at", r.at), true
 	}
 
 	return nil, false
@@ -48,7 +53,7 @@ func (r *resultSetProxy) at(ctx context.Context, args ...object.Object) object.O
 		return err
 	}
 
-	idx, err := object.AsInteger(args[0])
+	idx, err := object.AsInt(args[0])
 	if err != nil {
 		return err
 	}
@@ -59,7 +64,7 @@ func (r *resultSetProxy) at(ctx context.Context, args ...object.Object) object.O
 	}
 
 	if realIdx < 0 || realIdx >= len(r.resultSet.Items()) {
-		return object.NewError("index error: index out of range: %v", idx)
+		return object.NewError(errors.Errorf("index error: index out of range: %v", idx))
 	}
 
 	return &itemProxy{r.resultSet.Items()[realIdx]}
@@ -69,16 +74,20 @@ type itemProxy struct {
 	item models.Item
 }
 
+func (i *itemProxy) Interface() interface{} {
+	return i.item
+}
+
+func (i *itemProxy) IsTruthy() bool {
+	return true
+}
+
 func (i *itemProxy) Type() object.Type {
 	return "item"
 }
 
 func (i *itemProxy) Inspect() string {
 	return "item"
-}
-
-func (i *itemProxy) ToInterface() interface{} {
-	return i.item
 }
 
 func (i *itemProxy) Equals(other object.Object) object.Object {
@@ -90,7 +99,7 @@ func (i *itemProxy) GetAttr(name string) (object.Object, bool) {
 	// TODO: this should implement the container interface
 	switch name {
 	case "value":
-		return &object.Builtin{Name: "value", Fn: i.value}, true
+		return object.NewBuiltin("value", i.value), true
 	}
 
 	return nil, false
@@ -108,11 +117,11 @@ func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Obj
 
 	modExpr, err := queryexpr.Parse(str)
 	if err != nil {
-		return object.NewError("arg error: invalid path expression: %v", err)
+		return object.NewError(errors.Errorf("arg error: invalid path expression: %v", err))
 	}
 	av, err := modExpr.EvalItem(i.item)
 	if err != nil {
-		return object.NewError("arg error: path expression evaluate error: %v", err)
+		return object.NewError(errors.Errorf("arg error: path expression evaluate error: %v", err))
 	}
 
 	// TODO
@@ -123,9 +132,9 @@ func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Obj
 		// TODO: better
 		f, err := strconv.ParseFloat(v.Value, 64)
 		if err != nil {
-			return object.NewError("value error: invalid N value: %v", v.Value)
+			return object.NewError(errors.Errorf("value error: invalid N value: %v", v.Value))
 		}
 		return object.NewFloat(f)
 	}
-	return object.NewError("TODO")
+	return object.NewError(errors.New("TODO"))
 }

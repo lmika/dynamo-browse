@@ -58,7 +58,7 @@ func TestModSession_Query(t *testing.T) {
 
 		mockedUIService := mocks.NewUIService(t)
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "true")
-		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Error(bang)")
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "err(\"bang\")")
 
 		testFS := testScriptFile(t, "test.tm", `
 			res := session.query("some expr")

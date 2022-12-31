@@ -92,6 +92,8 @@ github.com/charmbracelet/lipgloss v0.6.0 h1:1StyZB9vBSOyuZxQUcUwGr17JmojPNm87ini
 github.com/charmbracelet/lipgloss v0.6.0/go.mod h1:tHh2wr34xcHjC2HCXIlGSG1jaDF0S0atAUvBMP6Ppuk=
 github.com/cloudcmds/tamarin v0.0.12 h1:xigMcfala5I81fh+6FSaJpjiKyWTOqzdf/GIQnsk/oc=
 github.com/cloudcmds/tamarin v0.0.12/go.mod h1:U1aHBoAFtJbI9jzgaj8TUo9C6vfzUKzn1OhWKIdigVM=
+github.com/cloudcmds/tamarin v0.0.14 h1:LNHz/CplhiM9u4SVy/9dGjyXpMTvKMmWcuO0+f0t5Ls=
+github.com/cloudcmds/tamarin v0.0.14/go.mod h1:U1aHBoAFtJbI9jzgaj8TUo9C6vfzUKzn1OhWKIdigVM=
 github.com/containerd/console v1.0.3 h1:lIr7SlA5PxZyMV30bDW0MGbiOPXwc63yRuCP0ARubLw=
 github.com/containerd/console v1.0.3/go.mod h1:7LqA/THxQ86k76b8c/EMSiaJ3h1eZkMkXar0TQ1gf3U=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

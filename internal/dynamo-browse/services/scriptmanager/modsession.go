@@ -5,6 +5,7 @@ import (
 	"github.com/cloudcmds/tamarin/arg"
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/cloudcmds/tamarin/scope"
+	"github.com/pkg/errors"
 )
 
 type sessionModule struct {
@@ -23,7 +24,7 @@ func (um *sessionModule) query(ctx context.Context, args ...object.Object) objec
 	resp, err := um.sessionService.Query(ctx, expr)
 
 	if err != nil {
-		return object.NewErrorResult("%v", err)
+		return object.NewErrResult(object.NewError(err))
 	}
 	return object.NewOkResult(&resultSetProxy{resultSet: resp})
 }
@@ -47,7 +48,7 @@ func (um *sessionModule) setResultSet(ctx context.Context, args ...object.Object
 
 	resultSetProxy, isResultSetProxy := args[0].(*resultSetProxy)
 	if !isResultSetProxy {
-		return object.NewError("type error: expected a resultsset (got %v)", args[0])
+		return object.NewError(errors.Errorf("type error: expected a resultsset (got %v)", args[0]))
 	}
 
 	um.sessionService.SetResultSet(ctx, resultSetProxy.resultSet)
@@ -56,12 +57,12 @@ func (um *sessionModule) setResultSet(ctx context.Context, args ...object.Object
 
 func (um *sessionModule) register(scp *scope.Scope) {
 	modScope := scope.New(scope.Opts{})
-	mod := &object.Module{Name: "session", Scope: modScope}
+	mod := object.NewModule("session", modScope)
 
 	modScope.AddBuiltins([]*object.Builtin{
-		{Name: "query", Module: mod, Fn: um.query},
-		{Name: "result_set", Module: mod, Fn: um.resultSet},
-		{Name: "set_result_set", Module: mod, Fn: um.setResultSet},
+		object.NewBuiltin("query", um.query, mod),
+		object.NewBuiltin("result_set", um.resultSet, mod),
+		object.NewBuiltin("set_result_set", um.setResultSet, mod),
 	})
 
 	scp.Declare("session", mod, true)

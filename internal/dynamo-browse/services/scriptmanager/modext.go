@@ -14,10 +14,10 @@ type extModule struct {
 
 func (m *extModule) register(scp *scope.Scope) {
 	modScope := scope.New(scope.Opts{})
-	mod := &object.Module{Name: "ext", Scope: modScope}
+	mod := object.NewModule("ext", modScope)
 
 	modScope.AddBuiltins([]*object.Builtin{
-		{Name: "command", Module: mod, Fn: m.command},
+		object.NewBuiltin("command", m.command, mod),
 	})
 
 	scp.Declare("ext", mod, true)
@@ -34,12 +34,12 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 	}
 	fnRes, isFnRes := args[1].(*object.Function)
 	if !isFnRes {
-		return object.NewError("expected second arg to be a function")
+		return object.NewError(errors.New("expected second arg to be a function"))
 	}
 
 	callFn, hasCallFn := object.GetCallFunc(ctx)
 	if !hasCallFn {
-		return object.NewError("no callFn found in context")
+		return object.NewError(errors.New("no callFn found in context"))
 	}
 
 	// This command function will be executed by the script scheduler
@@ -49,10 +49,10 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 			objArgs[i] = object.NewString(a)
 		}
 
-		res := callFn(ctx, fnRes.Scope, fnRes, objArgs)
+		res := callFn(ctx, fnRes.Scope(), fnRes, objArgs)
 		if object.IsError(res) {
 			errObj := res.(*object.Error)
-			return errors.Errorf("command error '%v':%v - %v", m.scriptPlugin.name, cmdName, errObj.Message)
+			return errors.Errorf("command error '%v':%v - %v", m.scriptPlugin.name, cmdName, errObj.Inspect())
 		}
 		return nil
 	}
