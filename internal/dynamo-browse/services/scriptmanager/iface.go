@@ -24,5 +24,6 @@ type UIService interface {
 type SessionService interface {
 	Query(ctx context.Context, expr string) (*models.ResultSet, error)
 
-	ResultSet() *models.ResultSet
+	ResultSet(ctx context.Context) *models.ResultSet
+	SetResultSet(ctx context.Context, newResultSet *models.ResultSet)
 }

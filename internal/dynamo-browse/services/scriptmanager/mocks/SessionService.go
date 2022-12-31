@@ -69,13 +69,13 @@ func (_c *SessionService_Query_Call) Return(_a0 *models.ResultSet, _a1 error) *S
 	return _c
 }
 
-// ResultSet provides a mock function with given fields:
-func (_m *SessionService) ResultSet() *models.ResultSet {
-	ret := _m.Called()
+// ResultSet provides a mock function with given fields: ctx
+func (_m *SessionService) ResultSet(ctx context.Context) *models.ResultSet {
+	ret := _m.Called(ctx)
 
 	var r0 *models.ResultSet
-	if rf, ok := ret.Get(0).(func() *models.ResultSet); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) *models.ResultSet); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.ResultSet)
@@ -91,19 +91,49 @@ type SessionService_ResultSet_Call struct {
 }
 
 // ResultSet is a helper method to define mock.On call
-func (_e *SessionService_Expecter) ResultSet() *SessionService_ResultSet_Call {
-	return &SessionService_ResultSet_Call{Call: _e.mock.On("ResultSet")}
+//  - ctx context.Context
+func (_e *SessionService_Expecter) ResultSet(ctx interface{}) *SessionService_ResultSet_Call {
+	return &SessionService_ResultSet_Call{Call: _e.mock.On("ResultSet", ctx)}
 }
 
-func (_c *SessionService_ResultSet_Call) Run(run func()) *SessionService_ResultSet_Call {
+func (_c *SessionService_ResultSet_Call) Run(run func(ctx context.Context)) *SessionService_ResultSet_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
 
 func (_c *SessionService_ResultSet_Call) Return(_a0 *models.ResultSet) *SessionService_ResultSet_Call {
 	_c.Call.Return(_a0)
+	return _c
+}
+
+// SetResultSet provides a mock function with given fields: ctx, newResultSet
+func (_m *SessionService) SetResultSet(ctx context.Context, newResultSet *models.ResultSet) {
+	_m.Called(ctx, newResultSet)
+}
+
+// SessionService_SetResultSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetResultSet'
+type SessionService_SetResultSet_Call struct {
+	*mock.Call
+}
+
+// SetResultSet is a helper method to define mock.On call
+//  - ctx context.Context
+//  - newResultSet *models.ResultSet
+func (_e *SessionService_Expecter) SetResultSet(ctx interface{}, newResultSet interface{}) *SessionService_SetResultSet_Call {
+	return &SessionService_SetResultSet_Call{Call: _e.mock.On("SetResultSet", ctx, newResultSet)}
+}
+
+func (_c *SessionService_SetResultSet_Call) Run(run func(ctx context.Context, newResultSet *models.ResultSet)) *SessionService_SetResultSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*models.ResultSet))
+	})
+	return _c
+}
+
+func (_c *SessionService_SetResultSet_Call) Return() *SessionService_SetResultSet_Call {
+	_c.Call.Return()
 	return _c
 }
 

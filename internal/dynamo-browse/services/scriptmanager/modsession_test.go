@@ -80,3 +80,37 @@ func TestModSession_Query(t *testing.T) {
 		mockedSessionService.AssertExpectations(t)
 	})
 }
+
+func TestModSession_SetResultSet(t *testing.T) {
+	t.Run("should set the result set on the session", func(t *testing.T) {
+		rs := &models.ResultSet{}
+		rs.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}},
+			{"pk": &types.AttributeValueMemberS{Value: "1232"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr").Return(rs, nil)
+		mockedSessionService.EXPECT().SetResultSet(mock.Anything, rs)
+
+		mockedUIService := mocks.NewUIService(t)
+
+		testFS := testScriptFile(t, "test.tm", `
+			res := session.query("some expr").unwrap()
+			session.set_result_set(res)
+		`)
+
+		srv := scriptmanager.New(testFS)
+		srv.SetIFaces(scriptmanager.Ifaces{
+			UI:      mockedUIService,
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedUIService.AssertExpectations(t)
+		mockedSessionService.AssertExpectations(t)
+	})
+}

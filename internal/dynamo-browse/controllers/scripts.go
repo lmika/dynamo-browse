@@ -107,8 +107,14 @@ type sessionImpl struct {
 	sc *ScriptController
 }
 
-func (s sessionImpl) ResultSet() *models.ResultSet {
+func (s sessionImpl) ResultSet(ctx context.Context) *models.ResultSet {
 	return s.sc.tableReadController.state.ResultSet()
+}
+
+func (s sessionImpl) SetResultSet(ctx context.Context, newResultSet *models.ResultSet) {
+	state := s.sc.tableReadController.state
+	state.setResultSetAndFilter(newResultSet, state.Filter())
+	s.sc.sendMsg(state.buildNewResultSetMessage(""))
 }
 
 func (s sessionImpl) Query(ctx context.Context, query string) (*models.ResultSet, error) {

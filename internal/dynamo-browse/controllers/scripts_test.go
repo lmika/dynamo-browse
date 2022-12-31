@@ -2,6 +2,7 @@ package controllers_test
 
 import (
 	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -64,6 +65,27 @@ func TestScriptController_RunScript(t *testing.T) {
 
 			assert.Len(t, srv.msgSender.msgs, 1)
 			assert.Equal(t, events.StatusMsg("2"), srv.msgSender.msgs[0])
+		})
+	})
+
+	t.Run("session.set_result_set", func(t *testing.T) {
+		t.Run("should set the result set from the result of a query", func(t *testing.T) {
+			srv := newService(t, serviceConfig{
+				tableName: "alpha-table",
+				scriptFS: testScriptFile(t, "test.tm", `
+					rs := session.query('pk="abc"').unwrap()
+					session.set_result_set(rs)
+				`),
+			})
+
+			invokeCommand(t, srv.readController.Init())
+			msg := srv.scriptController.RunScript("test.tm")
+			assert.Nil(t, msg)
+
+			srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
+
+			assert.Len(t, srv.msgSender.msgs, 1)
+			assert.IsType(t, controllers.NewResultSet{}, srv.msgSender.msgs[0])
 		})
 	})
 }

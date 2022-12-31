@@ -16,7 +16,10 @@ func (um *sessionModule) query(ctx context.Context, args ...object.Object) objec
 		return err
 	}
 
-	expr, _ := object.AsString(args[0])
+	expr, objErr := object.AsString(args[0])
+	if objErr != nil {
+		return objErr
+	}
 	resp, err := um.sessionService.Query(ctx, expr)
 
 	if err != nil {
@@ -30,11 +33,25 @@ func (um *sessionModule) resultSet(ctx context.Context, args ...object.Object) o
 		return err
 	}
 
-	rs := um.sessionService.ResultSet()
+	rs := um.sessionService.ResultSet(ctx)
 	if rs == nil {
 		return object.Nil
 	}
 	return &resultSetProxy{resultSet: rs}
+}
+
+func (um *sessionModule) setResultSet(ctx context.Context, args ...object.Object) object.Object {
+	if err := arg.Require("session.set_result_set", 1, args); err != nil {
+		return err
+	}
+
+	resultSetProxy, isResultSetProxy := args[0].(*resultSetProxy)
+	if !isResultSetProxy {
+		return object.NewError("type error: expected a resultsset (got %v)", args[0])
+	}
+
+	um.sessionService.SetResultSet(ctx, resultSetProxy.resultSet)
+	return nil
 }
 
 func (um *sessionModule) register(scp *scope.Scope) {
@@ -44,6 +61,7 @@ func (um *sessionModule) register(scp *scope.Scope) {
 	modScope.AddBuiltins([]*object.Builtin{
 		{Name: "query", Module: mod, Fn: um.query},
 		{Name: "result_set", Module: mod, Fn: um.resultSet},
+		{Name: "set_result_set", Module: mod, Fn: um.setResultSet},
 	})
 
 	scp.Declare("session", mod, true)
