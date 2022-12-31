@@ -1,6 +1,7 @@
 package controllers_test
 
 import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/stretchr/testify/assert"
@@ -86,6 +87,29 @@ func TestScriptController_RunScript(t *testing.T) {
 
 			assert.Len(t, srv.msgSender.msgs, 1)
 			assert.IsType(t, controllers.NewResultSet{}, srv.msgSender.msgs[0])
+		})
+
+		t.Run("changed attributes of the result set should show up as modified", func(t *testing.T) {
+			srv := newService(t, serviceConfig{
+				tableName: "alpha-table",
+				scriptFS: testScriptFile(t, "test.tm", `
+						rs := session.query('pk="abc"').unwrap()
+						rs[0].set_value("pk", "131")
+						session.set_result_set(rs)
+					`),
+			})
+
+			invokeCommand(t, srv.readController.Init())
+			msg := srv.scriptController.RunScript("test.tm")
+			assert.Nil(t, msg)
+
+			srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
+
+			assert.Len(t, srv.msgSender.msgs, 1)
+			assert.IsType(t, controllers.NewResultSet{}, srv.msgSender.msgs[0])
+
+			assert.Equal(t, "131", srv.state.ResultSet().Items()[0]["pk"].(*types.AttributeValueMemberS).Value)
+			assert.True(t, srv.state.ResultSet().IsDirty(0))
 		})
 	})
 }

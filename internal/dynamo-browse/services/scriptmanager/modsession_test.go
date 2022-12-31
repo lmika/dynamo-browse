@@ -31,11 +31,11 @@ func TestModSession_Query(t *testing.T) {
 
 		testFS := testScriptFile(t, "test.tm", `
 			res := session.query("some expr").unwrap()
+			// ui.print(len(res))
 			ui.print(res.length)
-			// res[0]["pk"].S
-			ui.print("res[0]['pk'].S = ", res.at(0).value("pk"))
-			ui.print("res[1]['pk'].S = ", res.at(1).value("pk"))
-			ui.print("res[1].value('size(pk)') = ", res.at(1).value("size(pk)"))
+			ui.print("res[0]['pk'].S = ", res[0].value("pk"))
+			ui.print("res[1]['pk'].S = ", res[1].value("pk"))
+			ui.print("res[1].value('size(pk)') = ", res[1].value("size(pk)"))
 		`)
 
 		srv := scriptmanager.New(testFS)

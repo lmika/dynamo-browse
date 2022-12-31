@@ -36,6 +36,61 @@ func (r *resultSetProxy) Equals(other object.Object) object.Object {
 	return object.False
 }
 
+// GetItem implements the [key] operator for a container type.
+func (r *resultSetProxy) GetItem(key object.Object) (object.Object, *object.Error) {
+	idx, err := object.AsInt(key)
+	if err != nil {
+		return nil, err
+	}
+
+	realIdx := int(idx)
+	if realIdx < 0 {
+		realIdx = len(r.resultSet.Items()) + realIdx
+	}
+
+	if realIdx < 0 || realIdx >= len(r.resultSet.Items()) {
+		return nil, object.NewError(errors.Errorf("index error: index out of range: %v", idx))
+	}
+
+	return &itemProxy{
+		resultSet: r.resultSet,
+		itemIndex: realIdx,
+		item:      r.resultSet.Items()[realIdx],
+	}, nil
+}
+
+// GetSlice implements the [start:stop] operator for a container type.
+func (r *resultSetProxy) GetSlice(s object.Slice) (object.Object, *object.Error) {
+	return nil, object.NewError(errors.New("TODO"))
+}
+
+// SetItem implements the [key] = value operator for a container type.
+func (r *resultSetProxy) SetItem(key, value object.Object) *object.Error {
+	return object.NewError(errors.New("TODO"))
+}
+
+// DelItem implements the del [key] operator for a container type.
+func (r *resultSetProxy) DelItem(key object.Object) *object.Error {
+	return object.NewError(errors.New("TODO"))
+}
+
+// Contains returns true if the given item is found in this container.
+func (r *resultSetProxy) Contains(item object.Object) *object.Bool {
+	// TODO
+	return object.False
+}
+
+// Len returns the number of items in this container.
+func (r *resultSetProxy) Len() *object.Int {
+	return object.NewInt(int64(len(r.resultSet.Items())))
+}
+
+// Iter returns an iterator for this container.
+func (r *resultSetProxy) Iter() object.Iterator {
+	// TODO
+	return nil
+}
+
 func (r *resultSetProxy) GetAttr(name string) (object.Object, bool) {
 	// TODO: this should implement the container interface
 	switch name {
@@ -67,11 +122,17 @@ func (r *resultSetProxy) at(ctx context.Context, args ...object.Object) object.O
 		return object.NewError(errors.Errorf("index error: index out of range: %v", idx))
 	}
 
-	return &itemProxy{r.resultSet.Items()[realIdx]}
+	return &itemProxy{
+		resultSet: r.resultSet,
+		itemIndex: realIdx,
+		item:      r.resultSet.Items()[realIdx],
+	}
 }
 
 type itemProxy struct {
-	item models.Item
+	resultSet *models.ResultSet
+	itemIndex int
+	item      models.Item
 }
 
 func (i *itemProxy) Interface() interface{} {
@@ -100,6 +161,8 @@ func (i *itemProxy) GetAttr(name string) (object.Object, bool) {
 	switch name {
 	case "value":
 		return object.NewBuiltin("value", i.value), true
+	case "set_value":
+		return object.NewBuiltin("set_value", i.setValue), true
 	}
 
 	return nil, false
@@ -137,4 +200,45 @@ func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Obj
 		return object.NewFloat(f)
 	}
 	return object.NewError(errors.New("TODO"))
+}
+
+func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.Object {
+	if objErr := arg.Require("item.set_value", 2, args); objErr != nil {
+		return objErr
+	}
+
+	path, objErr := object.AsString(args[0])
+	if objErr != nil {
+		return objErr
+	}
+
+	// TODO: use paths
+
+	//modExpr, err := queryexpr.Parse(str)
+	//if err != nil {
+	//	return object.NewError(errors.Errorf("arg error: invalid path expression: %v", err))
+	//}
+	//av, err := modExpr.EvalItem(i.item)
+	//if err != nil {
+	//	return object.NewError(errors.Errorf("arg error: path expression evaluate error: %v", err))
+	//}
+
+	// TODO
+	newValue := args[1]
+	switch v := newValue.(type) {
+	case *object.String:
+		i.item[path] = &types.AttributeValueMemberS{Value: v.Value()}
+	//case *types.AttributeValueMemberN:
+	//	// TODO: better
+	//	f, err := strconv.ParseFloat(v.Value, 64)
+	//	if err != nil {
+	//		return object.NewError(errors.Errorf("value error: invalid N value: %v", v.Value))
+	//	}
+	//	return object.NewFloat(f)
+	default:
+		return object.Errorf("type error: unsupported value type (got %v)", newValue.Type())
+	}
+
+	i.resultSet.SetDirty(i.itemIndex, true)
+	return nil
 }
