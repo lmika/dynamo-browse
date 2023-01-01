@@ -35,7 +35,7 @@ func TestModSession_Query(t *testing.T) {
 			ui.print(res.length)
 			ui.print("res[0]['pk'].S = ", res[0].value("pk"))
 			ui.print("res[1]['pk'].S = ", res[1].value("pk"))
-			ui.print("res[1].value('size(pk)') = ", res[1].value("size(pk)"))
+			ui.print("res[1].attr('size(pk)') = ", res[1].attr("size(pk)"))
 		`)
 
 		srv := scriptmanager.New(testFS)

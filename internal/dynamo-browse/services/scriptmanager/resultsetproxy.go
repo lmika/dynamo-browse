@@ -158,17 +158,19 @@ func (i *itemProxy) Equals(other object.Object) object.Object {
 func (i *itemProxy) GetAttr(name string) (object.Object, bool) {
 	// TODO: this should implement the container interface
 	switch name {
-	case "value":
-		return object.NewBuiltin("value", i.value), true
-	case "set_value":
-		return object.NewBuiltin("set_value", i.setValue), true
+	case "attr":
+		return object.NewBuiltin("attr", i.value), true
+	case "set_attr":
+		return object.NewBuiltin("set_attr", i.setValue), true
+	case "delete_attr":
+		return object.NewBuiltin("delete_attr", i.deleteAttr), true
 	}
 
 	return nil, false
 }
 
 func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Object {
-	if objErr := arg.Require("item.value", 1, args); objErr != nil {
+	if objErr := arg.Require("item.attr", 1, args); objErr != nil {
 		return objErr
 	}
 
@@ -202,7 +204,7 @@ func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Obj
 }
 
 func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.Object {
-	if objErr := arg.Require("item.set_value", 2, args); objErr != nil {
+	if objErr := arg.Require("item.set_attr", 2, args); objErr != nil {
 		return objErr
 	}
 
@@ -241,6 +243,28 @@ func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.
 	//	return object.NewFloat(f)
 	default:
 		return object.Errorf("type error: unsupported value type (got %v)", newValue.Type())
+	}
+
+	i.resultSet.SetDirty(i.itemIndex, true)
+	return nil
+}
+
+func (i *itemProxy) deleteAttr(ctx context.Context, args ...object.Object) object.Object {
+	if objErr := arg.Require("item.delete_attr", 1, args); objErr != nil {
+		return objErr
+	}
+
+	str, objErr := object.AsString(args[0])
+	if objErr != nil {
+		return objErr
+	}
+
+	modExpr, err := queryexpr.Parse(str)
+	if err != nil {
+		return object.Errorf("arg error: invalid path expression: %v", err)
+	}
+	if err := modExpr.DeleteAttribute(i.item); err != nil {
+		return object.NewError(errors.Errorf("arg error: path expression evaluate error: %v", err))
 	}
 
 	i.resultSet.SetDirty(i.itemIndex, true)

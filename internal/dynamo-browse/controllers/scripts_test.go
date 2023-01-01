@@ -94,7 +94,7 @@ func TestScriptController_RunScript(t *testing.T) {
 				tableName: "alpha-table",
 				scriptFS: testScriptFile(t, "test.tm", `
 						rs := session.query('pk="abc"').unwrap()
-						rs[0].set_value("pk", "131")
+						rs[0].set_attr("pk", "131")
 						session.set_result_set(rs)
 					`),
 			})
