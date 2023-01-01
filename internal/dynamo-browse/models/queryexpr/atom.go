@@ -50,6 +50,36 @@ func (a *astAtom) evalItem(item models.Item) (types.AttributeValue, error) {
 	return nil, errors.New("unhandled atom case")
 }
 
+func (a *astAtom) canModifyItem(item models.Item) bool {
+	switch {
+	case a.Ref != nil:
+		return a.Ref.canModifyItem(item)
+	case a.Paren != nil:
+		return a.Paren.canModifyItem(item)
+	}
+	return false
+}
+
+func (a *astAtom) setEvalItem(item models.Item, value types.AttributeValue) error {
+	switch {
+	case a.Ref != nil:
+		return a.Ref.setEvalItem(item, value)
+	case a.Paren != nil:
+		return a.Paren.setEvalItem(item, value)
+	}
+	return PathNotSettableError{}
+}
+
+func (a *astAtom) deleteAttribute(item models.Item) error {
+	switch {
+	case a.Ref != nil:
+		return a.Ref.deleteAttribute(item)
+	case a.Paren != nil:
+		return a.Paren.deleteAttribute(item)
+	}
+	return PathNotSettableError{}
+}
+
 func (a *astAtom) String() string {
 	switch {
 	case a.Ref != nil:

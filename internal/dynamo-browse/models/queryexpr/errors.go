@@ -108,3 +108,10 @@ type UnrecognisedFunctionError struct {
 func (e UnrecognisedFunctionError) Error() string {
 	return "unrecognised function '" + e.Name + "'"
 }
+
+type PathNotSettableError struct {
+}
+
+func (e PathNotSettableError) Error() string {
+	return "path cannot be set a value"
+}

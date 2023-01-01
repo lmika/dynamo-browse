@@ -79,6 +79,28 @@ func (a *astComparisonOp) evalItem(item models.Item) (types.AttributeValue, erro
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
+func (a *astComparisonOp) canModifyItem(item models.Item) bool {
+	if a.Op != "" {
+		return false
+	}
+	return a.Ref.canModifyItem(item)
+}
+
+func (a *astComparisonOp) setEvalItem(item models.Item, value types.AttributeValue) error {
+	if a.Op != "" {
+		return PathNotSettableError{}
+	}
+	return a.Ref.setEvalItem(item, value)
+}
+
+func (a *astComparisonOp) deleteAttribute(item models.Item) error {
+	if a.Op != "" {
+		return PathNotSettableError{}
+	}
+	return a.Ref.deleteAttribute(item)
+
+}
+
 func (a *astComparisonOp) String() string {
 	if a.Op == "" {
 		return a.Ref.String()

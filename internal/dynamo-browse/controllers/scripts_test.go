@@ -139,7 +139,7 @@ func TestScriptController_LookupCommand(t *testing.T) {
 			tableName: "alpha-table",
 			scriptFS: testScriptFile(t, "test.tm", `
 				ext.command("mycommand", func() {
-					for i := 0; i < 2000000; i++ { }
+					time.sleep(1.5)
 					ui.print("Done my thing")
 				})
 			`),
@@ -153,7 +153,7 @@ func TestScriptController_LookupCommand(t *testing.T) {
 		srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
 
 		assert.Len(t, srv.msgSender.msgs, 1)
-		assert.Equal(t, events.StatusMsg("Hello, test name"), srv.msgSender.msgs[0])
+		assert.Equal(t, events.StatusMsg("Done my thing"), srv.msgSender.msgs[0])
 	})
 
 }

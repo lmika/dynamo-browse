@@ -39,6 +39,54 @@ func (dt *astDot) evalItem(item models.Item) (types.AttributeValue, error) {
 	return res, nil
 }
 
+func (dt *astDot) canModifyItem(item models.Item) bool {
+	return true
+}
+
+func (dt *astDot) setEvalItem(item models.Item, value types.AttributeValue) error {
+	if len(dt.Quals) == 0 {
+		item[dt.Name] = value
+		return nil
+	}
+
+	parentItem := item[dt.Name]
+	for i, key := range dt.Quals {
+		mapItem, isMapItem := parentItem.(*types.AttributeValueMemberM)
+		if !isMapItem {
+			return PathNotSettableError{}
+		}
+
+		if isLast := i == len(dt.Quals)-1; isLast {
+			mapItem.Value[key] = value
+		} else {
+			parentItem = mapItem.Value[key]
+		}
+	}
+	return nil
+}
+
+func (dt *astDot) deleteAttribute(item models.Item) error {
+	if len(dt.Quals) == 0 {
+		delete(item, dt.Name)
+		return nil
+	}
+
+	parentItem := item[dt.Name]
+	for i, key := range dt.Quals {
+		mapItem, isMapItem := parentItem.(*types.AttributeValueMemberM)
+		if !isMapItem {
+			return PathNotSettableError{}
+		}
+
+		if isLast := i == len(dt.Quals)-1; isLast {
+			delete(mapItem.Value, key)
+		} else {
+			parentItem = mapItem.Value[key]
+		}
+	}
+	return nil
+}
+
 func (a *astDot) String() string {
 	var sb strings.Builder
 

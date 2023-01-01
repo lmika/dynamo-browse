@@ -33,6 +33,27 @@ func (a *astBooleanNot) evalItem(item models.Item) (types.AttributeValue, error)
 	return &types.AttributeValueMemberBOOL{Value: !isAttributeTrue(val)}, nil
 }
 
+func (a *astBooleanNot) canModifyItem(item models.Item) bool {
+	if a.HasNot {
+		return false
+	}
+	return a.Operand.canModifyItem(item)
+}
+
+func (a *astBooleanNot) setEvalItem(item models.Item, value types.AttributeValue) error {
+	if a.HasNot {
+		return PathNotSettableError{}
+	}
+	return a.Operand.setEvalItem(item, value)
+}
+
+func (a *astBooleanNot) deleteAttribute(item models.Item) error {
+	if a.HasNot {
+		return PathNotSettableError{}
+	}
+	return a.Operand.deleteAttribute(item)
+}
+
 func (d *astBooleanNot) String() string {
 	sb := new(strings.Builder)
 	if d.HasNot {

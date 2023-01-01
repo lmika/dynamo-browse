@@ -194,6 +194,28 @@ func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
 	return nil, errors.New("internal error: unhandled 'in' case")
 }
 
+func (a *astIn) canModifyItem(item models.Item) bool {
+	if len(a.Operand) != 0 || a.SingleOperand != nil {
+		return false
+	}
+	return a.Ref.canModifyItem(item)
+}
+
+func (a *astIn) setEvalItem(item models.Item, value types.AttributeValue) error {
+	if len(a.Operand) != 0 || a.SingleOperand != nil {
+		return PathNotSettableError{}
+	}
+	return a.Ref.setEvalItem(item, value)
+}
+
+func (a *astIn) deleteAttribute(item models.Item) error {
+	if len(a.Operand) != 0 || a.SingleOperand != nil {
+		return PathNotSettableError{}
+	}
+	return a.Ref.deleteAttribute(item)
+
+}
+
 func (a *astIn) String() string {
 	if len(a.Operand) == 0 && a.SingleOperand == nil {
 		return a.Ref.String()

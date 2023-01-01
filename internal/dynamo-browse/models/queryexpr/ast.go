@@ -153,3 +153,15 @@ func (a *astExpr) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
 func (a *astExpr) evalItem(item models.Item) (types.AttributeValue, error) {
 	return a.Root.evalItem(item)
 }
+
+func (a *astExpr) setEvalItem(item models.Item, value types.AttributeValue) error {
+	return a.Root.setEvalItem(item, value)
+}
+
+func (a *astExpr) deleteAttribute(item models.Item) error {
+	return a.Root.deleteAttribute(item)
+}
+
+func (md *astExpr) canModifyItem(item models.Item) bool {
+	return md.Root.canModifyItem(item)
+}

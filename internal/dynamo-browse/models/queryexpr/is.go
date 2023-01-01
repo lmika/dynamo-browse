@@ -140,6 +140,27 @@ func (a *astIsOp) evalItem(item models.Item) (types.AttributeValue, error) {
 	return &types.AttributeValueMemberBOOL{Value: resultOfIs}, nil
 }
 
+func (a *astIsOp) canModifyItem(item models.Item) bool {
+	if a.Value != nil {
+		return false
+	}
+	return a.Ref.canModifyItem(item)
+}
+
+func (a *astIsOp) setEvalItem(item models.Item, value types.AttributeValue) error {
+	if a.Value != nil {
+		return PathNotSettableError{}
+	}
+	return a.Ref.setEvalItem(item, value)
+}
+
+func (a *astIsOp) deleteAttribute(item models.Item) error {
+	if a.Value != nil {
+		return PathNotSettableError{}
+	}
+	return a.Ref.deleteAttribute(item)
+}
+
 func (a *astIsOp) String() string {
 	var sb strings.Builder
 

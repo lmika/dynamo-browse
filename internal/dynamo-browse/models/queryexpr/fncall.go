@@ -77,6 +77,30 @@ func (a *astFunctionCall) evalItem(item models.Item) (types.AttributeValue, erro
 	return fn(context.Background(), args)
 }
 
+func (a *astFunctionCall) canModifyItem(item models.Item) bool {
+	// TODO: Should a function vall return an item?
+	if a.IsCall {
+		return false
+	}
+	return a.Caller.canModifyItem(item)
+}
+
+func (a *astFunctionCall) setEvalItem(item models.Item, value types.AttributeValue) error {
+	// TODO: Should a function vall return an item?
+	if a.IsCall {
+		return PathNotSettableError{}
+	}
+	return a.Caller.setEvalItem(item, value)
+}
+
+func (a *astFunctionCall) deleteAttribute(item models.Item) error {
+	// TODO: Should a function vall return an item?
+	if a.IsCall {
+		return PathNotSettableError{}
+	}
+	return a.Caller.deleteAttribute(item)
+}
+
 func (a *astFunctionCall) String() string {
 	var sb strings.Builder
 

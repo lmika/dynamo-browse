@@ -59,6 +59,30 @@ func (a *astConjunction) evalItem(item models.Item) (types.AttributeValue, error
 	return &types.AttributeValueMemberBOOL{Value: isAttributeTrue(val)}, nil
 }
 
+func (a *astConjunction) canModifyItem(item models.Item) bool {
+	if len(a.Operands) == 1 {
+		return a.Operands[0].canModifyItem(item)
+	}
+
+	return false
+}
+
+func (a *astConjunction) setEvalItem(item models.Item, value types.AttributeValue) error {
+	if len(a.Operands) == 1 {
+		return a.Operands[0].setEvalItem(item, value)
+	}
+
+	return PathNotSettableError{}
+}
+
+func (a *astConjunction) deleteAttribute(item models.Item) error {
+	if len(a.Operands) == 1 {
+		return a.Operands[0].deleteAttribute(item)
+	}
+
+	return PathNotSettableError{}
+}
+
 func (d *astConjunction) String() string {
 	sb := new(strings.Builder)
 	for i, operand := range d.Operands {

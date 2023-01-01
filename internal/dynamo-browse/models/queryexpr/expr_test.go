@@ -436,6 +436,104 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 	})
 }
 
+func TestQueryExpr_SetEvalItem(t *testing.T) {
+	var templateItem = func() models.Item {
+		return models.Item{
+			"alpha": &types.AttributeValueMemberS{Value: "alpha"},
+			"bravo": &types.AttributeValueMemberN{Value: "123"},
+			"charlie": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"door": &types.AttributeValueMemberS{Value: "red"},
+					"tree": &types.AttributeValueMemberS{Value: "green"},
+				},
+			},
+			"prime": &types.AttributeValueMemberL{
+				Value: []types.AttributeValue{
+					&types.AttributeValueMemberN{Value: "2"},
+					&types.AttributeValueMemberN{Value: "3"},
+					&types.AttributeValueMemberN{Value: "5"},
+					&types.AttributeValueMemberN{Value: "7"},
+				},
+			},
+			"three": &types.AttributeValueMemberN{Value: "3"},
+		}
+	}
+
+	t.Run("simple values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse("alpha")
+		assert.NoError(t, err)
+		assert.True(t, modExpr.IsModifiablePath(item))
+
+		err = modExpr.SetEvalItem(item, &types.AttributeValueMemberS{Value: "not alpha"})
+		assert.NoError(t, err)
+		assert.Equal(t, "not alpha", item["alpha"].(*types.AttributeValueMemberS).Value)
+	})
+
+	t.Run("dot values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse("charlie.tree")
+		assert.NoError(t, err)
+		assert.True(t, modExpr.IsModifiablePath(item))
+
+		err = modExpr.SetEvalItem(item, &types.AttributeValueMemberS{Value: "Birch"})
+		assert.NoError(t, err)
+		assert.Equal(t, "Birch", item["charlie"].(*types.AttributeValueMemberM).Value["tree"].(*types.AttributeValueMemberS).Value)
+	})
+}
+
+func TestQueryExpr_DeleteAttribute(t *testing.T) {
+	var templateItem = func() models.Item {
+		return models.Item{
+			"alpha": &types.AttributeValueMemberS{Value: "alpha"},
+			"bravo": &types.AttributeValueMemberN{Value: "123"},
+			"charlie": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"door": &types.AttributeValueMemberS{Value: "red"},
+					"tree": &types.AttributeValueMemberS{Value: "green"},
+				},
+			},
+			"prime": &types.AttributeValueMemberL{
+				Value: []types.AttributeValue{
+					&types.AttributeValueMemberN{Value: "2"},
+					&types.AttributeValueMemberN{Value: "3"},
+					&types.AttributeValueMemberN{Value: "5"},
+					&types.AttributeValueMemberN{Value: "7"},
+				},
+			},
+			"three": &types.AttributeValueMemberN{Value: "3"},
+		}
+	}
+
+	t.Run("simple values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse("alpha")
+		assert.NoError(t, err)
+
+		err = modExpr.DeleteAttribute(item)
+		assert.NoError(t, err)
+
+		_, hasKey := item["alpha"]
+		assert.False(t, hasKey)
+	})
+
+	t.Run("dot values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse("charlie.tree")
+		assert.NoError(t, err)
+
+		err = modExpr.DeleteAttribute(item)
+		assert.NoError(t, err)
+
+		_, hasKey := item["charlie"].(*types.AttributeValueMemberM).Value["tree"]
+		assert.False(t, hasKey)
+	})
+}
+
 type scanScenario struct {
 	description    string
 	expression     string

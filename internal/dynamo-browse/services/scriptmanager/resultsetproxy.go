@@ -92,7 +92,6 @@ func (r *resultSetProxy) Iter() object.Iterator {
 }
 
 func (r *resultSetProxy) GetAttr(name string) (object.Object, bool) {
-	// TODO: this should implement the container interface
 	switch name {
 	case "length":
 		return object.NewInt(int64(len(r.resultSet.Items()))), true
@@ -180,7 +179,7 @@ func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Obj
 
 	modExpr, err := queryexpr.Parse(str)
 	if err != nil {
-		return object.NewError(errors.Errorf("arg error: invalid path expression: %v", err))
+		return object.Errorf("arg error: invalid path expression: %v", err)
 	}
 	av, err := modExpr.EvalItem(i.item)
 	if err != nil {
@@ -207,12 +206,15 @@ func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.
 		return objErr
 	}
 
-	path, objErr := object.AsString(args[0])
+	pathExpr, objErr := object.AsString(args[0])
 	if objErr != nil {
 		return objErr
 	}
 
-	// TODO: use paths
+	path, err := queryexpr.Parse(pathExpr)
+	if err != nil {
+		return object.Errorf("arg error: invalid path expression: %v", err)
+	}
 
 	//modExpr, err := queryexpr.Parse(str)
 	//if err != nil {
@@ -227,7 +229,9 @@ func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.
 	newValue := args[1]
 	switch v := newValue.(type) {
 	case *object.String:
-		i.item[path] = &types.AttributeValueMemberS{Value: v.Value()}
+		if err := path.SetEvalItem(i.item, &types.AttributeValueMemberS{Value: v.Value()}); err != nil {
+			return object.NewError(err)
+		}
 	//case *types.AttributeValueMemberN:
 	//	// TODO: better
 	//	f, err := strconv.ParseFloat(v.Value, 64)

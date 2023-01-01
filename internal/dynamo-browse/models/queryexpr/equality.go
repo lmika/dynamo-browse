@@ -103,6 +103,27 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
+func (a *astEqualityOp) canModifyItem(item models.Item) bool {
+	if a.Op != "" {
+		return false
+	}
+	return a.Ref.canModifyItem(item)
+}
+
+func (a *astEqualityOp) setEvalItem(item models.Item, value types.AttributeValue) error {
+	if a.Op != "" {
+		return PathNotSettableError{}
+	}
+	return a.Ref.setEvalItem(item, value)
+}
+
+func (a *astEqualityOp) deleteAttribute(item models.Item) error {
+	if a.Op != "" {
+		return PathNotSettableError{}
+	}
+	return a.Ref.deleteAttribute(item)
+}
+
 func (a *astEqualityOp) String() string {
 	if a.Op == "" {
 		return a.Ref.String()
