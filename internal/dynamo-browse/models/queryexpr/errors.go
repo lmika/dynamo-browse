@@ -115,3 +115,11 @@ type PathNotSettableError struct {
 func (e PathNotSettableError) Error() string {
 	return "path cannot be set a value"
 }
+
+type MissingPlaceholderError struct {
+	Placeholder string
+}
+
+func (e MissingPlaceholderError) Error() string {
+	return "undefined placeholder '" + e.Placeholder + "'"
+}

@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-func (a *astFunctionCall) evalToIR(info *models.TableInfo) (irAtom, error) {
-	callerIr, err := a.Caller.evalToIR(info)
+func (a *astFunctionCall) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
+	callerIr, err := a.Caller.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func (a *astFunctionCall) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, OperandNotANameError("")
 	}
 
-	irNodes, err := sliceutils.MapWithError(a.Args, func(x *astExpr) (irAtom, error) { return x.evalToIR(info) })
+	irNodes, err := sliceutils.MapWithError(a.Args, func(x *astExpr) (irAtom, error) { return x.evalToIR(ctx, info) })
 	if err != nil {
 		return nil, err
 	}
@@ -53,9 +53,9 @@ func (a *astFunctionCall) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return nil, UnrecognisedFunctionError{Name: nameIr.keyName()}
 }
 
-func (a *astFunctionCall) evalItem(item models.Item) (types.AttributeValue, error) {
+func (a *astFunctionCall) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
 	if !a.IsCall {
-		return a.Caller.evalItem(item)
+		return a.Caller.evalItem(ctx, item)
 	}
 
 	name, isName := a.Caller.unqualifiedName()
@@ -68,7 +68,7 @@ func (a *astFunctionCall) evalItem(item models.Item) (types.AttributeValue, erro
 	}
 
 	args, err := sliceutils.MapWithError(a.Args, func(a *astExpr) (types.AttributeValue, error) {
-		return a.evalItem(item)
+		return a.evalItem(ctx, item)
 	})
 	if err != nil {
 		return nil, err

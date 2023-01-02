@@ -31,7 +31,6 @@ func TestModSession_Query(t *testing.T) {
 
 		testFS := testScriptFile(t, "test.tm", `
 			res := session.query("some expr").unwrap()
-			// ui.print(len(res))
 			ui.print(res.length)
 			ui.print("res[0]['pk'].S = ", res[0].value("pk"))
 			ui.print("res[1]['pk'].S = ", res[1].value("pk"))

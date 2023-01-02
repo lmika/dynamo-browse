@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
-	leftIR, err := a.Ref.evalToIR(info)
+func (a *astComparisonOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
+	leftIR, err := a.Ref.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, OperandNotAnOperandError{}
 	}
 
-	rightIR, err := a.Value.evalToIR(info)
+	rightIR, err := a.Value.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +47,8 @@ func (a *astComparisonOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return irGenericCmp{leftOpr, rightOpr, cmpType}, nil
 }
 
-func (a *astComparisonOp) evalItem(item models.Item) (types.AttributeValue, error) {
-	left, err := a.Ref.evalItem(item)
+func (a *astComparisonOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+	left, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (a *astComparisonOp) evalItem(item models.Item) (types.AttributeValue, erro
 		return left, nil
 	}
 
-	right, err := a.Value.evalItem(item)
+	right, err := a.Value.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}

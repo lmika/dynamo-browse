@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func (dt *astDot) evalToIR(info *models.TableInfo) (irAtom, error) {
+func (dt *astDot) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
 	return irNamePath{dt.Name, dt.Quals}, nil
 }
 
@@ -18,7 +18,7 @@ func (dt *astDot) unqualifiedName() (string, bool) {
 	return "", false
 }
 
-func (dt *astDot) evalItem(item models.Item) (types.AttributeValue, error) {
+func (dt *astDot) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
 	res, hasV := item[dt.Name]
 	if !hasV {
 		return nil, nil

@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *astLiteralValue) evalToIR(info *models.TableInfo) (irAtom, error) {
+func (a *astLiteralValue) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
 	v, err := a.goValue()
 	if err != nil {
 		return nil, err

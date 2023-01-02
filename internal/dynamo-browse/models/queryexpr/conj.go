@@ -7,16 +7,16 @@ import (
 	"strings"
 )
 
-func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
+func (a *astConjunction) evalToIR(ctx *evalContext, tableInfo *models.TableInfo) (irAtom, error) {
 	if len(a.Operands) == 1 {
-		return a.Operands[0].evalToIR(tableInfo)
+		return a.Operands[0].evalToIR(ctx, tableInfo)
 	} else if len(a.Operands) == 2 {
-		left, err := a.Operands[0].evalToIR(tableInfo)
+		left, err := a.Operands[0].evalToIR(ctx, tableInfo)
 		if err != nil {
 			return nil, err
 		}
 
-		right, err := a.Operands[1].evalToIR(tableInfo)
+		right, err := a.Operands[1].evalToIR(ctx, tableInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -27,7 +27,7 @@ func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
 	atoms := make([]irAtom, len(a.Operands))
 	for i, op := range a.Operands {
 		var err error
-		atoms[i], err = op.evalToIR(tableInfo)
+		atoms[i], err = op.evalToIR(ctx, tableInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -36,8 +36,8 @@ func (a *astConjunction) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
 	return &irMultiConjunction{atoms: atoms}, nil
 }
 
-func (a *astConjunction) evalItem(item models.Item) (types.AttributeValue, error) {
-	val, err := a.Operands[0].evalItem(item)
+func (a *astConjunction) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+	val, err := a.Operands[0].evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (a *astConjunction) evalItem(item models.Item) (types.AttributeValue, error
 			return &types.AttributeValueMemberBOOL{Value: false}, nil
 		}
 
-		val, err = opr.evalItem(item)
+		val, err = opr.evalItem(ctx, item)
 		if err != nil {
 			return nil, err
 		}

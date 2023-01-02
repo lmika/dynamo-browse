@@ -6,15 +6,33 @@ import (
 )
 
 type QueryExpr struct {
-	ast *astExpr
+	ast    *astExpr
+	names  map[string]string
+	values map[string]types.AttributeValue
+}
+
+func (md *QueryExpr) WithNameParams(value map[string]string) *QueryExpr {
+	return &QueryExpr{
+		ast:    md.ast,
+		names:  value,
+		values: md.values,
+	}
+}
+
+func (md *QueryExpr) WithValueParams(value map[string]types.AttributeValue) *QueryExpr {
+	return &QueryExpr{
+		ast:    md.ast,
+		names:  md.names,
+		values: value,
+	}
 }
 
 func (md *QueryExpr) Plan(tableInfo *models.TableInfo) (*models.QueryExecutionPlan, error) {
-	return md.ast.calcQuery(tableInfo)
+	return md.ast.calcQuery(md.evalContext(), tableInfo)
 }
 
 func (md *QueryExpr) EvalItem(item models.Item) (types.AttributeValue, error) {
-	return md.ast.evalItem(item)
+	return md.ast.evalItem(md.evalContext(), item)
 }
 
 func (md *QueryExpr) DeleteAttribute(item models.Item) error {
@@ -27,6 +45,13 @@ func (md *QueryExpr) SetEvalItem(item models.Item, newValue types.AttributeValue
 
 func (md *QueryExpr) IsModifiablePath(item models.Item) bool {
 	return md.ast.canModifyItem(item)
+}
+
+func (md *QueryExpr) evalContext() *evalContext {
+	return &evalContext{
+		namePlaceholders:  md.names,
+		valuePlaceholders: md.values,
+	}
 }
 
 func (md *QueryExpr) String() string {
@@ -68,4 +93,37 @@ func (qc *queryCalcInfo) addKey(tableInfo *models.TableInfo, key string) bool {
 
 	qc.seenKeys[key] = struct{}{}
 	return true
+}
+
+type evalContext struct {
+	namePlaceholders  map[string]string
+	nameLookup        func(string) (string, bool)
+	valuePlaceholders map[string]types.AttributeValue
+	valueLookup       func(string) (types.AttributeValue, bool)
+}
+
+func (ec *evalContext) lookupName(name string) (string, bool) {
+	val, hasVal := ec.namePlaceholders[name]
+	if hasVal {
+		return val, true
+	}
+
+	if fn := ec.nameLookup; fn != nil {
+		return fn(name)
+	}
+
+	return "", false
+}
+
+func (ec *evalContext) lookupValue(name string) (types.AttributeValue, bool) {
+	val, hasVal := ec.valuePlaceholders[name]
+	if hasVal {
+		return val, true
+	}
+
+	if fn := ec.valueLookup; fn != nil {
+		return fn(name)
+	}
+
+	return nil, false
 }

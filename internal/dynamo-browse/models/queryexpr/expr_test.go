@@ -95,12 +95,29 @@ func TestModExpr_Query(t *testing.T) {
 				exprNameIsString(0, 0, "pk", "prefix"),
 				exprNameIsNumber(1, 1, "sk", "100"),
 			),
+
+			scanCase("with placeholders",
+				`:partition=$valuePrefix and :sort=$valueAnother`,
+				`(#0 = :0) AND (#1 = :1)`,
+				placeholderNames(map[string]string{
+					"partition": "pk",
+					"sort":      "sk",
+				}),
+				placeholderValues(map[string]types.AttributeValue{
+					"valuePrefix":  &types.AttributeValueMemberS{Value: "prefix"},
+					"valueAnother": &types.AttributeValueMemberS{Value: "another"},
+				}),
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
 		}
 
 		for _, scenario := range scenarios {
 			t.Run(scenario.description, func(t *testing.T) {
 				modExpr, err := queryexpr.Parse(scenario.expression)
 				assert.NoError(t, err)
+
+				modExpr = modExpr.WithNameParams(scenario.placeholderNames).WithValueParams(scenario.placeholderValues)
 
 				plan, err := modExpr.Plan(tableInfo)
 				assert.NoError(t, err)
@@ -243,12 +260,30 @@ func TestModExpr_Query(t *testing.T) {
 			),
 
 			// TODO: the contains function
+
+			// Placeholders
+			scanCase("with placeholders",
+				`:partition=$valuePrefix or :sort=$valueAnother`,
+				`(#0 = :0) OR (#1 = :1)`,
+				placeholderNames(map[string]string{
+					"partition": "pk",
+					"sort":      "sk",
+				}),
+				placeholderValues(map[string]types.AttributeValue{
+					"valuePrefix":  &types.AttributeValueMemberS{Value: "prefix"},
+					"valueAnother": &types.AttributeValueMemberS{Value: "another"},
+				}),
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
 		}
 
 		for _, scenario := range scenarios {
 			t.Run(scenario.description, func(t *testing.T) {
 				modExpr, err := queryexpr.Parse(scenario.expression)
 				assert.NoError(t, err)
+
+				modExpr = modExpr.WithNameParams(scenario.placeholderNames).WithValueParams(scenario.placeholderValues)
 
 				plan, err := modExpr.Plan(tableInfo)
 				assert.NoError(t, err)
@@ -434,6 +469,34 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("value placeholders", func(t *testing.T) {
+		modExpr, err := queryexpr.Parse(`alpha = $a`)
+		assert.NoError(t, err)
+
+		modExpr = modExpr.WithValueParams(map[string]types.AttributeValue{
+			"a": &types.AttributeValueMemberS{Value: "alpha"},
+		})
+
+		res, err := modExpr.EvalItem(item)
+		assert.NoError(t, err)
+
+		assert.Equal(t, &types.AttributeValueMemberBOOL{Value: true}, res)
+	})
+
+	t.Run("name placeholders", func(t *testing.T) {
+		modExpr, err := queryexpr.Parse(`:theBName = 123`)
+		assert.NoError(t, err)
+
+		modExpr = modExpr.WithNameParams(map[string]string{
+			"theBName": "bravo",
+		})
+
+		res, err := modExpr.EvalItem(item)
+		assert.NoError(t, err)
+
+		assert.Equal(t, &types.AttributeValueMemberBOOL{Value: true}, res)
+	})
 }
 
 func TestQueryExpr_SetEvalItem(t *testing.T) {
@@ -535,11 +598,13 @@ func TestQueryExpr_DeleteAttribute(t *testing.T) {
 }
 
 type scanScenario struct {
-	description    string
-	expression     string
-	expectedFilter string
-	expectedNames  map[string]string
-	expectedValues map[string]types.AttributeValue
+	description       string
+	expression        string
+	expectedFilter    string
+	expectedNames     map[string]string
+	expectedValues    map[string]types.AttributeValue
+	placeholderNames  map[string]string
+	placeholderValues map[string]types.AttributeValue
 }
 
 func scanCase(description, expression, expectedFilter string, options ...func(ss *scanScenario)) scanScenario {
@@ -554,6 +619,18 @@ func scanCase(description, expression, expectedFilter string, options ...func(ss
 		opt(&ss)
 	}
 	return ss
+}
+
+func placeholderNames(placeholderNames map[string]string) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.placeholderNames = placeholderNames
+	}
+}
+
+func placeholderValues(placeholderValues map[string]types.AttributeValue) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.placeholderValues = placeholderValues
+	}
 }
 
 func exprName(idx int, name string) func(ss *scanScenario) {

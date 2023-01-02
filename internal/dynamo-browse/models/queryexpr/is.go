@@ -59,8 +59,8 @@ var validIsTypeNames = map[string]isTypeInfo{
 	},
 }
 
-func (a *astIsOp) evalToIR(info *models.TableInfo) (irAtom, error) {
-	leftIR, err := a.Ref.evalToIR(info)
+func (a *astIsOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
+	leftIR, err := a.Ref.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (a *astIsOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, OperandNotANameError(a.Ref.String())
 	}
 
-	rightIR, err := a.Value.evalToIR(info)
+	rightIR, err := a.Value.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func (a *astIsOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return ir, nil
 }
 
-func (a *astIsOp) evalItem(item models.Item) (types.AttributeValue, error) {
-	ref, err := a.Ref.evalItem(item)
+func (a *astIsOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+	ref, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (a *astIsOp) evalItem(item models.Item) (types.AttributeValue, error) {
 		return ref, nil
 	}
 
-	expTypeVal, err := a.Value.evalItem(item)
+	expTypeVal, err := a.Value.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
