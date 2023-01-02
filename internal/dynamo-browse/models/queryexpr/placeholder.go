@@ -6,18 +6,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	valuePlaceholderPrefix = '$'
+	namePlaceholderPrefix  = ':'
+)
+
 func (p *astPlaceholder) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
 	placeholderType := p.Placeholder[0]
 	placeholder := p.Placeholder[1:]
 
-	if placeholderType == '$' {
+	if placeholderType == valuePlaceholderPrefix {
 		val, hasVal := ctx.lookupValue(placeholder)
 		if !hasVal {
 			return nil, MissingPlaceholderError{Placeholder: p.Placeholder}
 		}
 
 		return irValue{value: val}, nil
-	} else if placeholderType == ':' {
+	} else if placeholderType == namePlaceholderPrefix {
 		name, hasName := ctx.lookupName(placeholder)
 		if !hasName {
 			return nil, MissingPlaceholderError{Placeholder: p.Placeholder}
@@ -33,13 +38,13 @@ func (p *astPlaceholder) evalItem(ctx *evalContext, item models.Item) (types.Att
 	placeholderType := p.Placeholder[0]
 	placeholder := p.Placeholder[1:]
 
-	if placeholderType == '$' {
+	if placeholderType == valuePlaceholderPrefix {
 		val, hasVal := ctx.lookupValue(placeholder)
 		if !hasVal {
 			return nil, MissingPlaceholderError{Placeholder: p.Placeholder}
 		}
 		return val, nil
-	} else if placeholderType == ':' {
+	} else if placeholderType == namePlaceholderPrefix {
 		name, hasName := ctx.lookupName(placeholder)
 		if !hasName {
 			return nil, MissingPlaceholderError{Placeholder: p.Placeholder}
@@ -54,4 +59,47 @@ func (p *astPlaceholder) evalItem(ctx *evalContext, item models.Item) (types.Att
 	}
 
 	return nil, errors.New("unrecognised placeholder")
+}
+
+func (p *astPlaceholder) canModifyItem(ctx *evalContext, item models.Item) bool {
+	placeholderType := p.Placeholder[0]
+	return placeholderType == namePlaceholderPrefix
+}
+
+func (p *astPlaceholder) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+	placeholderType := p.Placeholder[0]
+	placeholder := p.Placeholder[1:]
+
+	if placeholderType == valuePlaceholderPrefix {
+		return PathNotSettableError{}
+	} else if placeholderType == namePlaceholderPrefix {
+		name, hasName := ctx.lookupName(placeholder)
+		if !hasName {
+			return MissingPlaceholderError{Placeholder: p.Placeholder}
+		}
+
+		item[name] = value
+		return nil
+	}
+
+	return errors.New("unrecognised placeholder")
+}
+
+func (p *astPlaceholder) deleteAttribute(ctx *evalContext, item models.Item) error {
+	placeholderType := p.Placeholder[0]
+	placeholder := p.Placeholder[1:]
+
+	if placeholderType == valuePlaceholderPrefix {
+		return PathNotSettableError{}
+	} else if placeholderType == namePlaceholderPrefix {
+		name, hasName := ctx.lookupName(placeholder)
+		if !hasName {
+			return MissingPlaceholderError{Placeholder: p.Placeholder}
+		}
+
+		delete(item, name)
+		return nil
+	}
+
+	return errors.New("unrecognised placeholder")
 }

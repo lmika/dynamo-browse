@@ -36,15 +36,15 @@ func (md *QueryExpr) EvalItem(item models.Item) (types.AttributeValue, error) {
 }
 
 func (md *QueryExpr) DeleteAttribute(item models.Item) error {
-	return md.ast.deleteAttribute(item)
+	return md.ast.deleteAttribute(md.evalContext(), item)
 }
 
 func (md *QueryExpr) SetEvalItem(item models.Item, newValue types.AttributeValue) error {
-	return md.ast.setEvalItem(item, newValue)
+	return md.ast.setEvalItem(md.evalContext(), item, newValue)
 }
 
 func (md *QueryExpr) IsModifiablePath(item models.Item) bool {
-	return md.ast.canModifyItem(item)
+	return md.ast.canModifyItem(md.evalContext(), item)
 }
 
 func (md *QueryExpr) evalContext() *evalContext {

@@ -54,32 +54,38 @@ func (a *astAtom) evalItem(ctx *evalContext, item models.Item) (types.AttributeV
 	return nil, errors.New("unhandled atom case")
 }
 
-func (a *astAtom) canModifyItem(item models.Item) bool {
+func (a *astAtom) canModifyItem(ctx *evalContext, item models.Item) bool {
 	switch {
 	case a.Ref != nil:
-		return a.Ref.canModifyItem(item)
+		return a.Ref.canModifyItem(ctx, item)
+	case a.Placeholder != nil:
+		return a.Placeholder.canModifyItem(ctx, item)
 	case a.Paren != nil:
-		return a.Paren.canModifyItem(item)
+		return a.Paren.canModifyItem(ctx, item)
 	}
 	return false
 }
 
-func (a *astAtom) setEvalItem(item models.Item, value types.AttributeValue) error {
+func (a *astAtom) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
 	switch {
 	case a.Ref != nil:
-		return a.Ref.setEvalItem(item, value)
+		return a.Ref.setEvalItem(ctx, item, value)
+	case a.Placeholder != nil:
+		return a.Placeholder.setEvalItem(ctx, item, value)
 	case a.Paren != nil:
-		return a.Paren.setEvalItem(item, value)
+		return a.Paren.setEvalItem(ctx, item, value)
 	}
 	return PathNotSettableError{}
 }
 
-func (a *astAtom) deleteAttribute(item models.Item) error {
+func (a *astAtom) deleteAttribute(ctx *evalContext, item models.Item) error {
 	switch {
 	case a.Ref != nil:
-		return a.Ref.deleteAttribute(item)
+		return a.Ref.deleteAttribute(ctx, item)
 	case a.Paren != nil:
-		return a.Paren.deleteAttribute(item)
+		return a.Paren.deleteAttribute(ctx, item)
+	case a.Placeholder != nil:
+		return a.Placeholder.deleteAttribute(ctx, item)
 	}
 	return PathNotSettableError{}
 }

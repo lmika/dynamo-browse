@@ -259,6 +259,20 @@ func TestModExpr_Query(t *testing.T) {
 				exprValueIsNumber(0, "131"),
 			),
 
+			// Dots
+			scanCase("with the dot", `this.value = "something"`, `#0.#1 = :0`,
+				exprName(0, "this"),
+				exprName(1, "value"),
+				exprValueIsString(0, "something"),
+			),
+			scanCase("with multiple dots", `this.that.other.value = "else"`, `#0.#1.#2.#3 = :0`,
+				exprName(0, "this"),
+				exprName(1, "that"),
+				exprName(2, "other"),
+				exprName(3, "value"),
+				exprValueIsString(0, "else"),
+			),
+
 			// TODO: the contains function
 
 			// Placeholders
@@ -394,6 +408,7 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 
 			// Dot values
 			{expr: `charlie.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
+			{expr: `(charlie).door`, expected: &types.AttributeValueMemberS{Value: "red"}},
 			{expr: `charlie.tree`, expected: &types.AttributeValueMemberS{Value: "green"}},
 
 			// Conjunction
@@ -470,32 +485,34 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 		}
 	})
 
-	t.Run("value placeholders", func(t *testing.T) {
-		modExpr, err := queryexpr.Parse(`alpha = $a`)
-		assert.NoError(t, err)
+	t.Run("name and value placeholders", func(t *testing.T) {
+		scenarios := []struct {
+			expr     string
+			expected types.AttributeValue
+		}{
+			{expr: `alpha = $a`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `:theBName = 123`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `:theCMap.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
+		}
 
-		modExpr = modExpr.WithValueParams(map[string]types.AttributeValue{
-			"a": &types.AttributeValueMemberS{Value: "alpha"},
-		})
+		for _, scenario := range scenarios {
+			t.Run(scenario.expr, func(t *testing.T) {
+				modExpr, err := queryexpr.Parse(scenario.expr)
+				assert.NoError(t, err)
 
-		res, err := modExpr.EvalItem(item)
-		assert.NoError(t, err)
+				modExpr = modExpr.WithValueParams(map[string]types.AttributeValue{
+					"a": &types.AttributeValueMemberS{Value: "alpha"},
+				}).WithNameParams(map[string]string{
+					"theBName": "bravo",
+					"theCMap":  "charlie",
+				})
 
-		assert.Equal(t, &types.AttributeValueMemberBOOL{Value: true}, res)
-	})
+				res, err := modExpr.EvalItem(item)
+				assert.NoError(t, err)
 
-	t.Run("name placeholders", func(t *testing.T) {
-		modExpr, err := queryexpr.Parse(`:theBName = 123`)
-		assert.NoError(t, err)
-
-		modExpr = modExpr.WithNameParams(map[string]string{
-			"theBName": "bravo",
-		})
-
-		res, err := modExpr.EvalItem(item)
-		assert.NoError(t, err)
-
-		assert.Equal(t, &types.AttributeValueMemberBOOL{Value: true}, res)
+				assert.Equal(t, scenario.expected, res)
+			})
+		}
 	})
 }
 
@@ -583,6 +600,21 @@ func TestQueryExpr_DeleteAttribute(t *testing.T) {
 		assert.False(t, hasKey)
 	})
 
+	t.Run("placeholder values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse(":a")
+		assert.NoError(t, err)
+
+		modExpr = modExpr.WithNameParams(map[string]string{"a": "alpha"})
+
+		err = modExpr.DeleteAttribute(item)
+		assert.NoError(t, err)
+
+		_, hasKey := item["alpha"]
+		assert.False(t, hasKey)
+	})
+
 	t.Run("dot values", func(t *testing.T) {
 		item := templateItem()
 
@@ -595,6 +627,39 @@ func TestQueryExpr_DeleteAttribute(t *testing.T) {
 		_, hasKey := item["charlie"].(*types.AttributeValueMemberM).Value["tree"]
 		assert.False(t, hasKey)
 	})
+
+	t.Run("dot values with placeholders", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse(":c.tree")
+		assert.NoError(t, err)
+
+		modExpr = modExpr.WithNameParams(map[string]string{"c": "charlie"})
+
+		err = modExpr.DeleteAttribute(item)
+		assert.NoError(t, err)
+
+		_, hasKey := item["charlie"].(*types.AttributeValueMemberM).Value["tree"]
+		assert.False(t, hasKey)
+	})
+
+	//t.Run("dot values with multiple placeholders", func(t *testing.T) {
+	//	item := templateItem()
+	//
+	//	modExpr, err := queryexpr.Parse(":c.:t")
+	//	assert.NoError(t, err)
+	//
+	//	modExpr = modExpr.WithNameParams(map[string]string{
+	//		"c": "charlie",
+	//		"t": "tree",
+	//	})
+	//
+	//	err = modExpr.DeleteAttribute(item)
+	//	assert.NoError(t, err)
+	//
+	//	_, hasKey := item["charlie"].(*types.AttributeValueMemberM).Value["tree"]
+	//	assert.False(t, hasKey)
+	//})
 }
 
 type scanScenario struct {

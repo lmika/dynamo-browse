@@ -49,9 +49,14 @@ type astEqualityOp struct {
 }
 
 type astIsOp struct {
-	Ref    *astFunctionCall `parser:"@@ ( 'is' "`
-	HasNot bool             `parser:"@'not'?"`
-	Value  *astFunctionCall `parser:"@@ )?"`
+	Ref    *astSubRef `parser:"@@ ( 'is' "`
+	HasNot bool       `parser:"@'not'?"`
+	Value  *astSubRef `parser:"@@ )?"`
+}
+
+type astSubRef struct {
+	Ref   *astFunctionCall `parser:"@@"`
+	Quals []string         `parser:"('.' @Ident)*"`
 }
 
 type astFunctionCall struct {
@@ -61,15 +66,14 @@ type astFunctionCall struct {
 }
 
 type astAtom struct {
-	Ref         *astDot          `parser:"@@ | "`
+	Ref         *astRef          `parser:"@@ | "`
 	Literal     *astLiteralValue `parser:"@@ | "`
 	Placeholder *astPlaceholder  `parser:"@@ | "`
 	Paren       *astExpr         `parser:"'(' @@ ')'"`
 }
 
-type astDot struct {
-	Name  string   `parser:"@Ident"`
-	Quals []string `parser:"('.' @Ident)*"`
+type astRef struct {
+	Name string `parser:"@Ident"`
 }
 
 type astPlaceholder struct {
@@ -160,14 +164,14 @@ func (a *astExpr) evalItem(ctx *evalContext, item models.Item) (types.AttributeV
 	return a.Root.evalItem(ctx, item)
 }
 
-func (a *astExpr) setEvalItem(item models.Item, value types.AttributeValue) error {
-	return a.Root.setEvalItem(item, value)
+func (a *astExpr) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+	return a.Root.setEvalItem(ctx, item, value)
 }
 
-func (a *astExpr) deleteAttribute(item models.Item) error {
-	return a.Root.deleteAttribute(item)
+func (a *astExpr) deleteAttribute(ctx *evalContext, item models.Item) error {
+	return a.Root.deleteAttribute(ctx, item)
 }
 
-func (md *astExpr) canModifyItem(item models.Item) bool {
-	return md.Root.canModifyItem(item)
+func (md *astExpr) canModifyItem(ctx *evalContext, item models.Item) bool {
+	return md.Root.canModifyItem(ctx, item)
 }

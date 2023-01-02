@@ -59,25 +59,25 @@ func (a *astConjunction) evalItem(ctx *evalContext, item models.Item) (types.Att
 	return &types.AttributeValueMemberBOOL{Value: isAttributeTrue(val)}, nil
 }
 
-func (a *astConjunction) canModifyItem(item models.Item) bool {
+func (a *astConjunction) canModifyItem(ctx *evalContext, item models.Item) bool {
 	if len(a.Operands) == 1 {
-		return a.Operands[0].canModifyItem(item)
+		return a.Operands[0].canModifyItem(ctx, item)
 	}
 
 	return false
 }
 
-func (a *astConjunction) setEvalItem(item models.Item, value types.AttributeValue) error {
+func (a *astConjunction) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
 	if len(a.Operands) == 1 {
-		return a.Operands[0].setEvalItem(item, value)
+		return a.Operands[0].setEvalItem(ctx, item, value)
 	}
 
 	return PathNotSettableError{}
 }
 
-func (a *astConjunction) deleteAttribute(item models.Item) error {
+func (a *astConjunction) deleteAttribute(ctx *evalContext, item models.Item) error {
 	if len(a.Operands) == 1 {
-		return a.Operands[0].deleteAttribute(item)
+		return a.Operands[0].deleteAttribute(ctx, item)
 	}
 
 	return PathNotSettableError{}
