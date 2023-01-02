@@ -14,15 +14,16 @@ import (
 // StatusAndPrompt is a resizing model which displays a submodel and a status bar.  When the start prompt
 // event is received, focus will be torn away and the user will be given a prompt the enter text.
 type StatusAndPrompt struct {
-	model          layout.ResizingModel
-	style          Style
-	modeLine       string
-	statusMessage  string
-	spinner        spinner.Model
-	spinnerVisible bool
-	pendingInput   *events.PromptForInputMsg
-	textInput      textinput.Model
-	width          int
+	model              layout.ResizingModel
+	style              Style
+	modeLine           string
+	statusMessage      string
+	spinner            spinner.Model
+	spinnerVisible     bool
+	pendingInput       *events.PromptForInputMsg
+	textInput          textinput.Model
+	width, height      int
+	lastModeLineHeight int
 }
 
 type Style struct {
@@ -83,7 +84,6 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.textInput.Focus()
 		s.textInput.SetValue("")
 		s.pendingInput = &msg
-		return s, nil
 	case tea.KeyMsg:
 		if s.pendingInput != nil {
 			switch msg.Type {
@@ -121,6 +121,11 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.spinner = cc.Collect(s.spinner.Update(msg)).(spinner.Model)
 	}
 	s.model = cc.Collect(s.model.Update(msg)).(layout.ResizingModel)
+
+	// If the height of the modeline has changed, request a relayout
+	if s.lastModeLineHeight != lipgloss.Height(s.viewStatus()) {
+		cc.Add(events.SetTeaMessage(layout.RequestLayout{}))
+	}
 	return s, cc.Cmd()
 }
 
@@ -134,7 +139,9 @@ func (s *StatusAndPrompt) View() string {
 
 func (s *StatusAndPrompt) Resize(w, h int) layout.ResizingModel {
 	s.width = w
-	submodelHeight := h - lipgloss.Height(s.viewStatus())
+	s.height = h
+	s.lastModeLineHeight = lipgloss.Height(s.viewStatus())
+	submodelHeight := h - s.lastModeLineHeight
 	s.model = s.model.Resize(w, submodelHeight)
 	return s
 }

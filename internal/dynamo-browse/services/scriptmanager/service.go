@@ -12,6 +12,7 @@ import (
 type Service struct {
 	fs      fs.FS
 	ifaces  Ifaces
+	options Options
 	sched   *scriptScheduler
 	plugins []*ScriptPlugin
 }
@@ -21,6 +22,10 @@ func New(fs fs.FS) *Service {
 		fs:    fs,
 		sched: newScriptScheduler(),
 	}
+}
+
+func (s *Service) SetDefaultOptions(options Options) {
+	s.options = options
 }
 
 func (s *Service) SetIFaces(ifaces Ifaces) {
@@ -76,10 +81,9 @@ func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan
 		return
 	}
 
-	// TODO: this should probably be a single scope with registered modules
-	scp := scope.New(scope.Opts{})
-	(&uiModule{uiService: s.ifaces.UI}).register(scp)
-	(&sessionModule{sessionService: s.ifaces.Session}).register(scp)
+	scp := scope.New(scope.Opts{Parent: s.parentScope()})
+
+	ctx = ctxWithOptions(ctx, s.options)
 
 	if _, err = exec.Execute(ctx, exec.Opts{
 		Input: string(code),
@@ -110,13 +114,11 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 		scriptService: s,
 	}
 
-	// TODO: this should probably be a single scope with registered modules
-	scp := scope.New(scope.Opts{})
-	(&uiModule{uiService: s.ifaces.UI}).register(scp)
-	(&sessionModule{sessionService: s.ifaces.Session}).register(scp)
-	// END TODO
+	scp := scope.New(scope.Opts{Parent: s.parentScope()})
 
 	(&extModule{scriptPlugin: newPlugin}).register(scp)
+
+	ctx = ctxWithOptions(ctx, s.options)
 
 	if _, err = exec.Execute(ctx, exec.Opts{
 		Input: string(code),
@@ -139,4 +141,12 @@ func (s *Service) LookupCommand(name string) *Command {
 		}
 	}
 	return nil
+}
+
+func (s *Service) parentScope() *scope.Scope {
+	scp := scope.New(scope.Opts{})
+	(&uiModule{uiService: s.ifaces.UI}).register(scp)
+	(&sessionModule{sessionService: s.ifaces.Session}).register(scp)
+	(&osModule{}).register(scp)
+	return scp
 }

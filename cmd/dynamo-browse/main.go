@@ -135,6 +135,7 @@ func main() {
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	jobsController.SetMessageSender(p.Send)
+	scriptController.Init()
 	scriptController.SetMessageSender(p.Send)
 
 	log.Println("launching")

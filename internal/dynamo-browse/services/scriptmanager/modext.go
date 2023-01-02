@@ -49,6 +49,8 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 			objArgs[i] = object.NewString(a)
 		}
 
+		ctx = ctxWithOptions(ctx, m.scriptPlugin.scriptService.options)
+
 		res := callFn(ctx, fnRes.Scope(), fnRes, objArgs)
 		if object.IsError(res) {
 			errObj := res.(*object.Error)

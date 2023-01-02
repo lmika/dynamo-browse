@@ -628,6 +628,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	}
 
 	msgSender := &msgSender{}
+	scriptController.Init()
 	scriptController.SetMessageSender(msgSender.send)
 
 	return &services{

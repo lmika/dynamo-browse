@@ -30,6 +30,16 @@ func NewScriptController(scriptManager *scriptmanager.Service, tableReadControll
 	return sc
 }
 
+func (sc *ScriptController) Init() {
+	// TODO: this should come from the configuration
+	sc.scriptManager.SetDefaultOptions(scriptmanager.Options{
+		OSExecShell: "/bin/bash",
+		Permissions: scriptmanager.Permissions{
+			AllowShellCommands: true,
+		},
+	})
+}
+
 func (sc *ScriptController) SetMessageSender(sendMsg func(msg tea.Msg)) {
 	sc.sendMsg = sendMsg
 }
