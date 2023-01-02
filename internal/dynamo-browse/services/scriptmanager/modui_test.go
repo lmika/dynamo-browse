@@ -27,7 +27,7 @@ func TestModUI_Prompt(t *testing.T) {
 		mockedUIService.EXPECT().Prompt(mock.Anything, "What is your name? ").Return(promptChan)
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, T. Test")
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI: mockedUIService,
 		})
@@ -55,7 +55,7 @@ func TestModUI_Prompt(t *testing.T) {
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, world")
 		mockedUIService.EXPECT().Prompt(mock.Anything, "What is your name? ").Return(promptChan)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI: mockedUIService,
 		})
@@ -84,7 +84,7 @@ func TestModUI_Prompt(t *testing.T) {
 			cancelFn()
 		}).Return(promptChan)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI: mockedUIService,
 		})

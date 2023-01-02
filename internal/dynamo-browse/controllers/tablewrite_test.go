@@ -601,7 +601,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	settingStore := settingstore.New(ws)
 	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
-	scriptService := scriptmanager.New(cfg.scriptFS)
+	scriptService := scriptmanager.New()
 
 	client := testdynamo.SetupTestTable(t, testData)
 
@@ -613,10 +613,10 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	jobsController := controllers.NewJobsController(jobs.NewService(eventBus), eventBus, true)
 	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, jobsController, eventBus, cfg.tableName)
 	writeController := controllers.NewTableWriteController(state, service, jobsController, readController, settingStore)
-	settingsController := controllers.NewSettingsController(settingStore)
+	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
-	scriptController := controllers.NewScriptController(scriptService, readController)
+	scriptController := controllers.NewScriptController(scriptService, readController, settingsController, eventBus)
 
 	commandController := commandctrl.NewCommandController()
 	commandController.AddCommandLookupExtension(scriptController)
@@ -630,6 +630,9 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	msgSender := &msgSender{}
 	scriptController.Init()
 	scriptController.SetMessageSender(msgSender.send)
+
+	// Initting will setup the default script lookup paths, so revert them to the test ones
+	scriptService.SetLookupPaths([]fs.FS{cfg.scriptFS})
 
 	return &services{
 		state:              state,

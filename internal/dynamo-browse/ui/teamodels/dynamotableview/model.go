@@ -12,6 +12,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
+	bus "github.com/lmika/events"
 	table "github.com/lmika/go-bubble-table"
 	"strings"
 )
@@ -38,6 +39,7 @@ type Model struct {
 	keyBinding      *keybindings.TableKeyBinding
 	setting         Setting
 	columnsProvider ColumnsProvider
+	bus             *bus.Bus
 
 	// model state
 	isReadOnly bool
@@ -47,7 +49,7 @@ type Model struct {
 	resultSet  *models.ResultSet
 }
 
-func New(keyBinding *keybindings.TableKeyBinding, columnsProvider ColumnsProvider, setting Setting, uiStyles styles.Styles) *Model {
+func New(keyBinding *keybindings.TableKeyBinding, columnsProvider ColumnsProvider, setting Setting, bus *bus.Bus, uiStyles styles.Styles) *Model {
 	frameTitle := frame.NewFrameTitle("No table", true, uiStyles.Frames)
 	isReadOnly := setting.IsReadOnly()
 
@@ -57,6 +59,7 @@ func New(keyBinding *keybindings.TableKeyBinding, columnsProvider ColumnsProvide
 		keyBinding:      keyBinding,
 		setting:         setting,
 		columnsProvider: columnsProvider,
+		bus:             bus,
 	}
 
 	model.table = table.New(columnModel{model}, 100, 100)
@@ -226,9 +229,11 @@ func (m *Model) selectedItem() (itemTableRow, bool) {
 func (m *Model) postSelectedItemChanged() tea.Msg {
 	item, ok := m.selectedItem()
 	if !ok {
+		m.bus.Fire("ui.new-item-selected", item.resultSet, -1)
 		return dynamoitemview.NewItemSelected{ResultSet: item.resultSet, Item: nil}
 	}
 
+	m.bus.Fire("ui.new-item-selected", item.resultSet, item.itemIndex)
 	return dynamoitemview.NewItemSelected{ResultSet: item.resultSet, Item: item.item}
 }
 

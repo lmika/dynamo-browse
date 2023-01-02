@@ -11,6 +11,49 @@ import (
 	"testing"
 )
 
+func TestResultSetProxy(t *testing.T) {
+	t.Run("should property return properties of a resultset and item", func(t *testing.T) {
+		rs := &models.ResultSet{}
+		rs.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}},
+			{"pk": &types.AttributeValueMemberS{Value: "1232"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr").Return(rs, nil)
+
+		mockedUIService := mocks.NewUIService(t)
+
+		testFS := testScriptFile(t, "test.tm", `
+			res := session.query("some expr").unwrap()
+
+			// Test properties of the result set
+			assert(res == res, "result_set.equals")
+			assert(res.length == 2, "result_set.length")
+			
+			// Test properties of items
+			assert(res[0].index == 0, "res[0].index")
+			assert(res[0].result_set == res, "res[0].result_set")
+			assert(res[0].attr('pk') == 'abc', "res[0].attr('pk')")
+			
+			assert(res[1].attr('pk') == '1232', "res[1].attr('pk')")
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			UI:      mockedUIService,
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedUIService.AssertExpectations(t)
+		mockedSessionService.AssertExpectations(t)
+	})
+}
+
 func TestResultSetProxy_SetAttr(t *testing.T) {
 	t.Run("should set the value of the item within a result set", func(t *testing.T) {
 		rs := &models.ResultSet{}
@@ -35,7 +78,7 @@ func TestResultSetProxy_SetAttr(t *testing.T) {
 			session.set_result_set(res)
 		`)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI:      mockedUIService,
 			Session: mockedSessionService,
@@ -75,7 +118,7 @@ func TestResultSetProxy_DeleteAttr(t *testing.T) {
 			session.set_result_set(res)
 		`)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI:      mockedUIService,
 			Session: mockedSessionService,
@@ -88,4 +131,5 @@ func TestResultSetProxy_DeleteAttr(t *testing.T) {
 		mockedUIService.AssertExpectations(t)
 		mockedSessionService.AssertExpectations(t)
 	})
+
 }

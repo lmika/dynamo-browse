@@ -38,7 +38,7 @@ func TestModSession_Query(t *testing.T) {
 			ui.print("res[1].attr('size(pk)') = ", res[1].attr("size(pk)"))
 		`)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI:      mockedUIService,
 			Session: mockedSessionService,
@@ -66,7 +66,7 @@ func TestModSession_Query(t *testing.T) {
 			ui.print(res)
 		`)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI:      mockedUIService,
 			Session: mockedSessionService,
@@ -77,6 +77,69 @@ func TestModSession_Query(t *testing.T) {
 		assert.NoError(t, err)
 
 		mockedUIService.AssertExpectations(t)
+		mockedSessionService.AssertExpectations(t)
+	})
+}
+
+func TestModSession_SelectedItem(t *testing.T) {
+	t.Run("should return selected item from service implementation", func(t *testing.T) {
+		rs := &models.ResultSet{}
+		rs.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}},
+			{"pk": &types.AttributeValueMemberS{Value: "1232"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().ResultSet(mock.Anything).Return(rs)
+		mockedSessionService.EXPECT().SelectedItemIndex(mock.Anything).Return(1)
+
+		testFS := testScriptFile(t, "test.tm", `
+			selItem := session.selected_item()
+
+			assert(selItem != nil, "selItem != nil")
+			assert(selItem.index == 1, "selItem.index")
+			assert(selItem.result_set == session.result_set(), "selItem.result_set")
+			assert(selItem.attr('pk') == '1232', "selItem.attr('pk')")
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedSessionService.AssertExpectations(t)
+	})
+
+	t.Run("should return nil if selected item returns -1", func(t *testing.T) {
+		rs := &models.ResultSet{}
+		rs.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}},
+			{"pk": &types.AttributeValueMemberS{Value: "1232"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().ResultSet(mock.Anything).Return(rs)
+		mockedSessionService.EXPECT().SelectedItemIndex(mock.Anything).Return(-1)
+
+		testFS := testScriptFile(t, "test.tm", `
+			selItem := session.selected_item()
+
+			assert(selItem == nil, "selItem != nil")
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
 		mockedSessionService.AssertExpectations(t)
 	})
 }
@@ -100,7 +163,7 @@ func TestModSession_SetResultSet(t *testing.T) {
 			session.set_result_set(res)
 		`)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI:      mockedUIService,
 			Session: mockedSessionService,

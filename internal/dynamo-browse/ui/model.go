@@ -19,6 +19,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
+	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
 	"log"
 	"os"
@@ -49,6 +50,7 @@ type Model struct {
 	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
+	eventBus             *bus.Bus
 
 	mainViewIndex int
 
@@ -69,12 +71,13 @@ func NewModel(
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
 	scriptController *controllers.ScriptController,
+	eventBus *bus.Bus,
 	keyBindingController *controllers.KeyBindingController,
 	defaultKeyMap *keybindings.KeyBindings,
 ) Model {
 	uiStyles := styles.DefaultStyles
 
-	dtv := dynamotableview.New(defaultKeyMap.TableView, columnsController, settingsController, uiStyles)
+	dtv := dynamotableview.New(defaultKeyMap.TableView, columnsController, settingsController, eventBus, uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 

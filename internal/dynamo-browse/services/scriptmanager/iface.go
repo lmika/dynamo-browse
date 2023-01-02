@@ -25,5 +25,6 @@ type SessionService interface {
 	Query(ctx context.Context, expr string) (*models.ResultSet, error)
 
 	ResultSet(ctx context.Context) *models.ResultSet
+	SelectedItemIndex(ctx context.Context) int
 	SetResultSet(ctx context.Context, newResultSet *models.ResultSet)
 }

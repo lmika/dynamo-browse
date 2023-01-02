@@ -21,7 +21,7 @@ func TestService_RunAdHocScript(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, world")
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI: mockedUIService,
 		})
@@ -47,7 +47,7 @@ func TestService_LoadScript(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, someone")
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI: mockedUIService,
 		})
@@ -85,7 +85,7 @@ func TestService_LoadScript(t *testing.T) {
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, someone").Once()
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Goodbye, someone").Once()
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetIFaces(scriptmanager.Ifaces{
 			UI: mockedUIService,
 		})

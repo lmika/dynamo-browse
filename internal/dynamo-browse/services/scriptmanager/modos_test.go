@@ -21,7 +21,7 @@ func TestOSModule_Exec(t *testing.T) {
 			ui.print(res.unwrap())
 		`)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetDefaultOptions(scriptmanager.Options{
 			OSExecShell: "/bin/bash",
 			Permissions: scriptmanager.Permissions{
@@ -48,7 +48,7 @@ func TestOSModule_Exec(t *testing.T) {
 			ui.print(res.is_err())
 		`)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetDefaultOptions(scriptmanager.Options{
 			OSExecShell: "/bin/bash",
 			Permissions: scriptmanager.Permissions{
@@ -79,7 +79,7 @@ func TestOSModule_Exec(t *testing.T) {
 			ui.print(os.exec('echo "Loaded the plugin"').unwrap())
 		`)
 
-		srv := scriptmanager.New(testFS)
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
 		srv.SetDefaultOptions(scriptmanager.Options{
 			OSExecShell: "/bin/bash",
 			Permissions: scriptmanager.Permissions{

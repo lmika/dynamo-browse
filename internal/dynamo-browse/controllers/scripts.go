@@ -9,29 +9,58 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
+	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
+	"log"
+	"strings"
 )
 
 type ScriptController struct {
 	scriptManager       *scriptmanager.Service
 	tableReadController *TableReadController
+	settingsController  *SettingsController
+	eventBus            *bus.Bus
 	sendMsg             func(msg tea.Msg)
 }
 
-func NewScriptController(scriptManager *scriptmanager.Service, tableReadController *TableReadController) *ScriptController {
+func NewScriptController(
+	scriptManager *scriptmanager.Service,
+	tableReadController *TableReadController,
+	settingsController *SettingsController,
+	eventBus *bus.Bus,
+) *ScriptController {
 	sc := &ScriptController{
 		scriptManager:       scriptManager,
 		tableReadController: tableReadController,
+		settingsController:  settingsController,
+		eventBus:            eventBus,
 	}
+
+	sessionImpl := &sessionImpl{sc: sc, lastSelectedItemIndex: -1}
 	scriptManager.SetIFaces(scriptmanager.Ifaces{
 		UI:      &uiImpl{sc: sc},
-		Session: &sessionImpl{sc: sc},
+		Session: sessionImpl,
 	})
+
+	sessionImpl.subscribeToEvents(eventBus)
+
+	// Setup event handling when settings have changed
+	eventBus.On(BusEventSettingsUpdated, func(name, value string) {
+		if !strings.HasPrefix(name, "script.") {
+			return
+		}
+		sc.Init()
+	})
+
 	return sc
 }
 
 func (sc *ScriptController) Init() {
-	// TODO: this should come from the configuration
+	if lookupPaths, err := sc.settingsController.settings.ScriptLookupFS(); err == nil {
+		sc.scriptManager.SetLookupPaths(lookupPaths)
+	} else {
+		log.Printf("warn: script lookup paths are invalid: %v", err)
+	}
 	sc.scriptManager.SetDefaultOptions(scriptmanager.Options{
 		OSExecShell: "/bin/bash",
 		Permissions: scriptmanager.Permissions{
@@ -114,20 +143,31 @@ func (u uiImpl) Prompt(ctx context.Context, msg string) chan string {
 }
 
 type sessionImpl struct {
-	sc *ScriptController
+	sc                    *ScriptController
+	lastSelectedItemIndex int
 }
 
-func (s sessionImpl) ResultSet(ctx context.Context) *models.ResultSet {
+func (s *sessionImpl) subscribeToEvents(bus *bus.Bus) {
+	bus.On("ui.new-item-selected", func(rs *models.ResultSet, itemIndex int) {
+		s.lastSelectedItemIndex = itemIndex
+	})
+}
+
+func (s *sessionImpl) SelectedItemIndex(ctx context.Context) int {
+	return s.lastSelectedItemIndex
+}
+
+func (s *sessionImpl) ResultSet(ctx context.Context) *models.ResultSet {
 	return s.sc.tableReadController.state.ResultSet()
 }
 
-func (s sessionImpl) SetResultSet(ctx context.Context, newResultSet *models.ResultSet) {
+func (s *sessionImpl) SetResultSet(ctx context.Context, newResultSet *models.ResultSet) {
 	state := s.sc.tableReadController.state
 	state.setResultSetAndFilter(newResultSet, state.Filter())
 	s.sc.sendMsg(state.buildNewResultSetMessage(""))
 }
 
-func (s sessionImpl) Query(ctx context.Context, query string) (*models.ResultSet, error) {
+func (s *sessionImpl) Query(ctx context.Context, query string) (*models.ResultSet, error) {
 	currentResultSet := s.sc.tableReadController.state.ResultSet()
 	if currentResultSet == nil {
 		// TODO: this should only be used if there's no current table

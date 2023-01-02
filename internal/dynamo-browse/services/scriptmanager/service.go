@@ -6,22 +6,31 @@ import (
 	"github.com/cloudcmds/tamarin/scope"
 	"github.com/pkg/errors"
 	"io/fs"
+	"os"
 	"path/filepath"
 )
 
 type Service struct {
-	fs      fs.FS
-	ifaces  Ifaces
-	options Options
-	sched   *scriptScheduler
-	plugins []*ScriptPlugin
+	lookupPaths []fs.FS
+	ifaces      Ifaces
+	options     Options
+	sched       *scriptScheduler
+	plugins     []*ScriptPlugin
 }
 
-func New(fs fs.FS) *Service {
-	return &Service{
-		fs:    fs,
-		sched: newScriptScheduler(),
+func New(opts ...ServiceOption) *Service {
+	srv := &Service{
+		lookupPaths: nil,
+		sched:       newScriptScheduler(),
 	}
+	for _, opt := range opts {
+		opt(srv)
+	}
+	return srv
+}
+
+func (s *Service) SetLookupPaths(fs []fs.FS) {
+	s.lookupPaths = fs
 }
 
 func (s *Service) SetDefaultOptions(options Options) {
@@ -75,7 +84,7 @@ func (s *Service) StartAdHocScript(ctx context.Context, filename string, errChan
 func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan chan error) {
 	defer close(errChan)
 
-	code, err := fs.ReadFile(s.fs, filename)
+	code, err := s.readScript(filename)
 	if err != nil {
 		errChan <- errors.Wrapf(err, "cannot load script file %v", filename)
 		return
@@ -103,7 +112,7 @@ type loadedScriptResult struct {
 func (s *Service) loadScript(ctx context.Context, filename string, resChan chan loadedScriptResult) {
 	defer close(resChan)
 
-	code, err := fs.ReadFile(s.fs, filename)
+	code, err := s.readScript(filename)
 	if err != nil {
 		resChan <- loadedScriptResult{err: errors.Wrapf(err, "cannot load script file %v", filename)}
 		return
@@ -130,6 +139,30 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 	}
 
 	resChan <- loadedScriptResult{scriptPlugin: newPlugin}
+}
+
+func (s *Service) readScript(filename string) ([]byte, error) {
+	for _, currFS := range s.lookupPaths {
+		stat, err := fs.Stat(currFS, filename)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			} else {
+				return nil, err
+			}
+		} else if stat.IsDir() {
+			continue
+		}
+
+		code, err := fs.ReadFile(currFS, filename)
+		if err == nil {
+			return code, nil
+		} else {
+			return nil, err
+		}
+	}
+
+	return nil, os.ErrNotExist
 }
 
 // LookupCommand looks up a command defined by a script.

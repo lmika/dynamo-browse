@@ -108,6 +108,43 @@ func (_c *SessionService_ResultSet_Call) Return(_a0 *models.ResultSet) *SessionS
 	return _c
 }
 
+// SelectedItemIndex provides a mock function with given fields: ctx
+func (_m *SessionService) SelectedItemIndex(ctx context.Context) int {
+	ret := _m.Called(ctx)
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func(context.Context) int); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+// SessionService_SelectedItemIndex_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SelectedItemIndex'
+type SessionService_SelectedItemIndex_Call struct {
+	*mock.Call
+}
+
+// SelectedItemIndex is a helper method to define mock.On call
+//  - ctx context.Context
+func (_e *SessionService_Expecter) SelectedItemIndex(ctx interface{}) *SessionService_SelectedItemIndex_Call {
+	return &SessionService_SelectedItemIndex_Call{Call: _e.mock.On("SelectedItemIndex", ctx)}
+}
+
+func (_c *SessionService_SelectedItemIndex_Call) Run(run func(ctx context.Context)) *SessionService_SelectedItemIndex_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *SessionService_SelectedItemIndex_Call) Return(_a0 int) *SessionService_SelectedItemIndex_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
 // SetResultSet provides a mock function with given fields: ctx, newResultSet
 func (_m *SessionService) SetResultSet(ctx context.Context, newResultSet *models.ResultSet) {
 	_m.Called(ctx, newResultSet)

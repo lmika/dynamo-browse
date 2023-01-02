@@ -32,8 +32,12 @@ func (r *resultSetProxy) Inspect() string {
 }
 
 func (r *resultSetProxy) Equals(other object.Object) object.Object {
-	// TODO
-	return object.False
+	otherRS, isOtherRS := other.(*resultSetProxy)
+	if !isOtherRS {
+		return object.False
+	}
+
+	return object.NewBool(r == otherRS)
 }
 
 // GetItem implements the [key] operator for a container type.
@@ -52,11 +56,7 @@ func (r *resultSetProxy) GetItem(key object.Object) (object.Object, *object.Erro
 		return nil, object.NewError(errors.Errorf("index error: index out of range: %v", idx))
 	}
 
-	return &itemProxy{
-		resultSet: r.resultSet,
-		itemIndex: realIdx,
-		item:      r.resultSet.Items()[realIdx],
-	}, nil
+	return newItemProxy(r, realIdx), nil
 }
 
 // GetSlice implements the [start:stop] operator for a container type.
@@ -95,43 +95,23 @@ func (r *resultSetProxy) GetAttr(name string) (object.Object, bool) {
 	switch name {
 	case "length":
 		return object.NewInt(int64(len(r.resultSet.Items()))), true
-	case "at":
-		return object.NewBuiltin("at", r.at), true
 	}
 
 	return nil, false
 }
 
-func (r *resultSetProxy) at(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("resultset.at", 1, args); err != nil {
-		return err
-	}
-
-	idx, err := object.AsInt(args[0])
-	if err != nil {
-		return err
-	}
-
-	realIdx := int(idx)
-	if realIdx < 0 {
-		realIdx = len(r.resultSet.Items()) + realIdx
-	}
-
-	if realIdx < 0 || realIdx >= len(r.resultSet.Items()) {
-		return object.NewError(errors.Errorf("index error: index out of range: %v", idx))
-	}
-
-	return &itemProxy{
-		resultSet: r.resultSet,
-		itemIndex: realIdx,
-		item:      r.resultSet.Items()[realIdx],
-	}
+type itemProxy struct {
+	resultSetProxy *resultSetProxy
+	itemIndex      int
+	item           models.Item
 }
 
-type itemProxy struct {
-	resultSet *models.ResultSet
-	itemIndex int
-	item      models.Item
+func newItemProxy(rs *resultSetProxy, itemIndex int) *itemProxy {
+	return &itemProxy{
+		resultSetProxy: rs,
+		itemIndex:      itemIndex,
+		item:           rs.resultSet.Items()[itemIndex],
+	}
 }
 
 func (i *itemProxy) Interface() interface{} {
@@ -158,6 +138,10 @@ func (i *itemProxy) Equals(other object.Object) object.Object {
 func (i *itemProxy) GetAttr(name string) (object.Object, bool) {
 	// TODO: this should implement the container interface
 	switch name {
+	case "result_set":
+		return i.resultSetProxy, true
+	case "index":
+		return object.NewInt(int64(i.itemIndex)), true
 	case "attr":
 		return object.NewBuiltin("attr", i.value), true
 	case "set_attr":
@@ -245,7 +229,7 @@ func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.
 		return object.Errorf("type error: unsupported value type (got %v)", newValue.Type())
 	}
 
-	i.resultSet.SetDirty(i.itemIndex, true)
+	i.resultSetProxy.resultSet.SetDirty(i.itemIndex, true)
 	return nil
 }
 
@@ -267,6 +251,6 @@ func (i *itemProxy) deleteAttr(ctx context.Context, args ...object.Object) objec
 		return object.NewError(errors.Errorf("arg error: path expression evaluate error: %v", err))
 	}
 
-	i.resultSet.SetDirty(i.itemIndex, true)
+	i.resultSetProxy.resultSet.SetDirty(i.itemIndex, true)
 	return nil
 }

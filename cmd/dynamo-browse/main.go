@@ -96,7 +96,7 @@ func main() {
 	tableService := tables.NewService(dynamoProvider, settingStore)
 	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
-	scriptManagerService := scriptmanager.New(os.DirFS("/Users/leonmika/tmp"))
+	scriptManagerService := scriptmanager.New()
 	jobsService := jobs.NewService(eventBus)
 
 	state := controllers.NewState()
@@ -105,9 +105,9 @@ func main() {
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
-	settingsController := controllers.NewSettingsController(settingStore)
+	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	keyBindings := keybindings.Default()
-	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController)
+	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController, settingsController, eventBus)
 
 	keyBindingService := keybindings_service.NewService(keyBindings)
 	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
@@ -125,6 +125,7 @@ func main() {
 		itemRendererService,
 		commandController,
 		scriptController,
+		eventBus,
 		keyBindingController,
 		keyBindings,
 	)

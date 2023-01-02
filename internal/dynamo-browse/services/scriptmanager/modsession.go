@@ -41,6 +41,21 @@ func (um *sessionModule) resultSet(ctx context.Context, args ...object.Object) o
 	return &resultSetProxy{resultSet: rs}
 }
 
+func (um *sessionModule) selectedItem(ctx context.Context, args ...object.Object) object.Object {
+	if err := arg.Require("session.result_set", 0, args); err != nil {
+		return err
+	}
+
+	rs := um.sessionService.ResultSet(ctx)
+	idx := um.sessionService.SelectedItemIndex(ctx)
+	if rs == nil || idx < 0 {
+		return object.Nil
+	}
+
+	rsProxy := &resultSetProxy{resultSet: rs}
+	return newItemProxy(rsProxy, idx)
+}
+
 func (um *sessionModule) setResultSet(ctx context.Context, args ...object.Object) object.Object {
 	if err := arg.Require("session.set_result_set", 1, args); err != nil {
 		return err
@@ -62,6 +77,7 @@ func (um *sessionModule) register(scp *scope.Scope) {
 	modScope.AddBuiltins([]*object.Builtin{
 		object.NewBuiltin("query", um.query, mod),
 		object.NewBuiltin("result_set", um.resultSet, mod),
+		object.NewBuiltin("selected_item", um.selectedItem, mod),
 		object.NewBuiltin("set_result_set", um.setResultSet, mod),
 	})
 
