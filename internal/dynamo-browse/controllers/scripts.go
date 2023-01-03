@@ -163,11 +163,11 @@ func (s *sessionImpl) ResultSet(ctx context.Context) *models.ResultSet {
 
 func (s *sessionImpl) SetResultSet(ctx context.Context, newResultSet *models.ResultSet) {
 	state := s.sc.tableReadController.state
-	state.setResultSetAndFilter(newResultSet, state.Filter())
-	s.sc.sendMsg(state.buildNewResultSetMessage(""))
+	msg := s.sc.tableReadController.setResultSetAndFilter(newResultSet, state.filter, true, resultSetUpdateScript)
+	s.sc.sendMsg(msg)
 }
 
-func (s *sessionImpl) Query(ctx context.Context, query string) (*models.ResultSet, error) {
+func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanager.QueryOptions) (*models.ResultSet, error) {
 	currentResultSet := s.sc.tableReadController.state.ResultSet()
 	if currentResultSet == nil {
 		// TODO: this should only be used if there's no current table
@@ -177,6 +177,13 @@ func (s *sessionImpl) Query(ctx context.Context, query string) (*models.ResultSe
 	expr, err := queryexpr.Parse(query)
 	if err != nil {
 		return nil, err
+	}
+
+	if opts.NamePlaceholders != nil {
+		expr = expr.WithNameParams(opts.NamePlaceholders)
+	}
+	if opts.ValuePlaceholders != nil {
+		expr = expr.WithValueParams(opts.ValuePlaceholders)
 	}
 
 	newResultSet, err := s.sc.tableReadController.tableService.ScanOrQuery(context.Background(), currentResultSet.TableInfo, expr)

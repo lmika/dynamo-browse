@@ -14,6 +14,6 @@ type ViewSnapshot struct {
 
 type ViewSnapshotDetails struct {
 	TableName string
-	Query     string
+	Query     string // TODO: this needs to be the serialised query, not the query expression
 	Filter    string
 }

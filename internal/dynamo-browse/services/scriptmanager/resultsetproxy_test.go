@@ -20,7 +20,7 @@ func TestResultSetProxy(t *testing.T) {
 		})
 
 		mockedSessionService := mocks.NewSessionService(t)
-		mockedSessionService.EXPECT().Query(mock.Anything, "some expr").Return(rs, nil)
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{}).Return(rs, nil)
 
 		mockedUIService := mocks.NewUIService(t)
 
@@ -63,7 +63,7 @@ func TestResultSetProxy_SetAttr(t *testing.T) {
 		})
 
 		mockedSessionService := mocks.NewSessionService(t)
-		mockedSessionService.EXPECT().Query(mock.Anything, "some expr").Return(rs, nil)
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{}).Return(rs, nil)
 		mockedSessionService.EXPECT().SetResultSet(mock.Anything, mock.MatchedBy(func(rs *models.ResultSet) bool {
 			assert.Equal(t, "bla-di-bla", rs.Items()[0]["pk"].(*types.AttributeValueMemberS).Value)
 			assert.True(t, rs.IsDirty(0))
@@ -102,7 +102,7 @@ func TestResultSetProxy_DeleteAttr(t *testing.T) {
 		})
 
 		mockedSessionService := mocks.NewSessionService(t)
-		mockedSessionService.EXPECT().Query(mock.Anything, "some expr").Return(rs, nil)
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{}).Return(rs, nil)
 		mockedSessionService.EXPECT().SetResultSet(mock.Anything, mock.MatchedBy(func(rs *models.ResultSet) bool {
 			assert.Equal(t, "abc", rs.Items()[0]["pk"].(*types.AttributeValueMemberS).Value)
 			assert.Nil(t, rs.Items()[0]["deleteMe"])

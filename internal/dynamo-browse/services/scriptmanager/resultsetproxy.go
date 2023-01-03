@@ -37,7 +37,7 @@ func (r *resultSetProxy) Equals(other object.Object) object.Object {
 		return object.False
 	}
 
-	return object.NewBool(r == otherRS)
+	return object.NewBool(r.resultSet == otherRS.resultSet)
 }
 
 // GetItem implements the [key] operator for a container type.

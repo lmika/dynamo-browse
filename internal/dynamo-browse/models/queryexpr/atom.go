@@ -98,6 +98,8 @@ func (a *astAtom) String() string {
 		return a.Literal.String()
 	case a.Paren != nil:
 		return "(" + a.Paren.String() + ")"
+	case a.Placeholder != nil:
+		return a.Placeholder.String()
 	}
 	return ""
 }

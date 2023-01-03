@@ -2,6 +2,8 @@ package scriptmanager
 
 import (
 	"context"
+	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/cloudcmds/tamarin/arg"
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/cloudcmds/tamarin/scope"
@@ -13,15 +15,49 @@ type sessionModule struct {
 }
 
 func (um *sessionModule) query(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("session.query", 1, args); err != nil {
-		return err
+	if len(args) == 0 || len(args) > 2 {
+		return object.Errorf("type error: session.query takes either 1 or 2 arguments (%d given)", len(args))
 	}
+
+	var options QueryOptions
 
 	expr, objErr := object.AsString(args[0])
 	if objErr != nil {
 		return objErr
 	}
-	resp, err := um.sessionService.Query(ctx, expr)
+
+	if len(args) == 2 {
+		objMap, objErr := object.AsMap(args[1])
+		if objErr != nil {
+			return objErr
+		}
+
+		// Placeholders
+		if argsVal, isArgsValMap := objMap.Get("args").(*object.Map); isArgsValMap {
+			options.NamePlaceholders = make(map[string]string)
+			options.ValuePlaceholders = make(map[string]types.AttributeValue)
+
+			for k, val := range argsVal.Value() {
+				switch v := val.(type) {
+				case *object.String:
+					options.NamePlaceholders[k] = v.Value()
+					options.ValuePlaceholders[k] = &types.AttributeValueMemberS{Value: v.Value()}
+				case *object.Int:
+					options.ValuePlaceholders[k] = &types.AttributeValueMemberN{Value: fmt.Sprint(v.Value())}
+				case *object.Float:
+					options.ValuePlaceholders[k] = &types.AttributeValueMemberN{Value: fmt.Sprint(v.Value())}
+				case *object.Bool:
+					options.ValuePlaceholders[k] = &types.AttributeValueMemberBOOL{Value: v.Value()}
+				case *object.NilType:
+					options.ValuePlaceholders[k] = &types.AttributeValueMemberNULL{Value: true}
+				default:
+					return object.Errorf("type error: arg '%v' of type '%v' is not supported", k, val.Type())
+				}
+			}
+		}
+	}
+
+	resp, err := um.sessionService.Query(ctx, expr, options)
 
 	if err != nil {
 		return object.NewErrResult(object.NewError(err))

@@ -27,6 +27,7 @@ const (
 	resultSetUpdateSnapshotRestore
 	resultSetUpdateRescan
 	resultSetUpdateTouch
+	resultSetUpdateScript
 )
 
 type MarkOp int

@@ -103,3 +103,7 @@ func (p *astPlaceholder) deleteAttribute(ctx *evalContext, item models.Item) err
 
 	return errors.New("unrecognised placeholder")
 }
+
+func (p *astPlaceholder) String() string {
+	return p.Placeholder
+}
