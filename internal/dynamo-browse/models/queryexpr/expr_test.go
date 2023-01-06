@@ -1,6 +1,7 @@
 package queryexpr_test
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -660,6 +661,61 @@ func TestQueryExpr_DeleteAttribute(t *testing.T) {
 	//	_, hasKey := item["charlie"].(*types.AttributeValueMemberM).Value["tree"]
 	//	assert.False(t, hasKey)
 	//})
+}
+
+func TestQueryExpr_SerializeTo(t *testing.T) {
+	t.Run("should be able to serialized and deseralize the parsed expression", func(t *testing.T) {
+		exprStr := `something = $value and :placeholder = "something else" and thirdThing in (1,2,3)`
+
+		bts := new(bytes.Buffer)
+
+		modExpr, err := queryexpr.Parse(exprStr)
+		assert.NoError(t, err)
+
+		modExpr = modExpr.WithNameParams(map[string]string{
+			"placeholder": "some name",
+		}).WithValueParams(map[string]types.AttributeValue{
+			"value":           &types.AttributeValueMemberS{Value: "some value"},
+			"num":             &types.AttributeValueMemberN{Value: "12345"},
+			"veryLargeNumber": &types.AttributeValueMemberN{Value: "123456789012345678901234567890"},
+			"numberSet":       &types.AttributeValueMemberNS{Value: []string{"123", "234", "345"}},
+			"bool":            &types.AttributeValueMemberBOOL{Value: true},
+			"list": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+				&types.AttributeValueMemberN{Value: "1"},
+				&types.AttributeValueMemberN{Value: "2"},
+				&types.AttributeValueMemberN{Value: "3"},
+			}},
+			"dict": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"alpha":   &types.AttributeValueMemberS{Value: "apple"},
+					"bravo":   &types.AttributeValueMemberS{Value: "banana"},
+					"charlie": &types.AttributeValueMemberS{Value: "cherry"},
+				},
+			},
+		})
+
+		assert.NoError(t, modExpr.SerializeTo(bts))
+
+		newExpr, err := queryexpr.DeserializeFrom(bts)
+		assert.NoError(t, err)
+		assert.Equal(t, modExpr.String(), newExpr.String())
+
+		name, hasName := newExpr.NameParam("placeholder")
+		assert.Equal(t, "some name", name)
+		assert.True(t, hasName)
+
+		assert.Equal(t, "some value", newExpr.ValueParamOrNil("value").(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "12345", newExpr.ValueParamOrNil("num").(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "12345678901234567890", newExpr.ValueParamOrNil("veryLargeNumber").(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, []string{"123", "234", "345"}, newExpr.ValueParamOrNil("numberSet").(*types.AttributeValueMemberNS).Value)
+		assert.Equal(t, true, newExpr.ValueParamOrNil("bool").(*types.AttributeValueMemberBOOL).Value)
+		assert.Equal(t, "1", newExpr.ValueParamOrNil("list").(*types.AttributeValueMemberL).Value[0].(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "2", newExpr.ValueParamOrNil("list").(*types.AttributeValueMemberL).Value[1].(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "3", newExpr.ValueParamOrNil("list").(*types.AttributeValueMemberL).Value[2].(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "apple", newExpr.ValueParamOrNil("dict").(*types.AttributeValueMemberM).Value["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "banana", newExpr.ValueParamOrNil("dict").(*types.AttributeValueMemberM).Value["bravo"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "cherry", newExpr.ValueParamOrNil("dict").(*types.AttributeValueMemberM).Value["charlie"].(*types.AttributeValueMemberS).Value)
+	})
 }
 
 type scanScenario struct {

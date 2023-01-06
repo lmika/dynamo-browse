@@ -1,8 +1,15 @@
 package queryexpr
 
 import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/pkg/errors"
+	"io"
+	"log"
 )
 
 type QueryExpr struct {
@@ -11,12 +18,91 @@ type QueryExpr struct {
 	values map[string]types.AttributeValue
 }
 
+type serializedExpr struct {
+	Expr  string
+	Names map[string]string
+	//Values map[string]any
+	Values string
+}
+
+func DeserializeFrom(r io.Reader) (*QueryExpr, error) {
+	var se serializedExpr
+
+	if err := gob.NewDecoder(r).Decode(&se); err != nil {
+		return nil, err
+	}
+
+	qe, err := Parse(se.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	qe.names = se.Names
+
+	if se.Values != "" {
+		var mv2 map[string]any
+
+		decoder := json.NewDecoder(bytes.NewReader([]byte(se.Values)))
+		decoder.UseNumber()
+		if err := decoder.Decode(&mv2); err != nil {
+			return nil, errors.Wrap(err, "unable to marshal to json")
+		}
+
+		log.Printf("%T", mv2["veryLargeNumber"])
+
+		mv, err := attributevalue.MarshalMap(mv2)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to marshal values map")
+		}
+		qe.values = mv
+	}
+
+	return qe, nil
+}
+
+func (md *QueryExpr) SerializeTo(w io.Writer) error {
+	se := serializedExpr{Expr: md.String(), Names: md.names}
+	if md.values != nil {
+		var unv map[string]any
+		if err := attributevalue.UnmarshalMap(md.values, &unv); err != nil {
+			return errors.Wrap(err, "unable to unmarshal values map")
+		}
+
+		jsonBytes, err := json.Marshal(unv)
+		if err != nil {
+			return errors.Wrap(err, "unable to marshal to json")
+		}
+
+		log.Printf("%v", string(jsonBytes))
+
+		se.Values = string(jsonBytes)
+	}
+
+	return gob.NewEncoder(w).Encode(se)
+}
+
 func (md *QueryExpr) WithNameParams(value map[string]string) *QueryExpr {
 	return &QueryExpr{
 		ast:    md.ast,
 		names:  value,
 		values: md.values,
 	}
+}
+
+func (md *QueryExpr) NameParam(name string) (string, bool) {
+	return md.evalContext().lookupName(name)
+}
+
+func (md *QueryExpr) ValueParam(name string) (types.AttributeValue, bool) {
+	return md.evalContext().lookupValue(name)
+}
+
+func (md *QueryExpr) ValueParamOrNil(name string) types.AttributeValue {
+	v, ok := md.ValueParam(name)
+	if !ok {
+		return nil
+	}
+	return v
 }
 
 func (md *QueryExpr) WithValueParams(value map[string]types.AttributeValue) *QueryExpr {
