@@ -39,6 +39,8 @@ func (e *Encoder) encode(val types.AttributeValue) error {
 		} else {
 			return e.writeNilLengthFrame(typeNull, 0x0)
 		}
+	case *types.AttributeValueMemberB:
+		return e.writeFrame(typeBytes, v.Value)
 	case *types.AttributeValueMemberL:
 		if err := e.writeFrameHeader(typeList, len(v.Value)); err != nil {
 			return err
@@ -64,6 +66,37 @@ func (e *Encoder) encode(val types.AttributeValue) error {
 			}
 		}
 		return nil
+	case *types.AttributeValueMemberBS:
+		if err := e.writeFrameHeader(typeByteSet, len(v.Value)); err != nil {
+			return err
+		}
+		for _, nv := range v.Value {
+			if err := e.writeFrame(typeBytes, nv); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *types.AttributeValueMemberNS:
+		if err := e.writeFrameHeader(typeNumberSet, len(v.Value)); err != nil {
+			return err
+		}
+		for _, nv := range v.Value {
+			if err := e.writeFrame(typeNumber, []byte(nv)); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *types.AttributeValueMemberSS:
+		if err := e.writeFrameHeader(typeStringSet, len(v.Value)); err != nil {
+			return err
+		}
+		for _, nv := range v.Value {
+			if err := e.writeFrame(typeString, []byte(nv)); err != nil {
+				return err
+			}
+		}
+		return nil
+
 	}
 	return errors.New("unhandled type")
 }

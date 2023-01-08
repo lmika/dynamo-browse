@@ -34,6 +34,8 @@ func (d *Decoder) decode() (types.AttributeValue, error) {
 		return &types.AttributeValueMemberBOOL{Value: fr.flags&flagsAlternative != 0}, nil
 	case typeNull:
 		return &types.AttributeValueMemberNULL{Value: fr.flags&flagsAlternative == 0}, nil
+	case typeBytes:
+		return &types.AttributeValueMemberB{Value: fr.data}, nil
 	case typeList:
 		vals := make([]types.AttributeValue, fr.length)
 		for i := range vals {
@@ -63,6 +65,45 @@ func (d *Decoder) decode() (types.AttributeValue, error) {
 			vals[string(keyFrame.data)] = v
 		}
 		return &types.AttributeValueMemberM{Value: vals}, nil
+	case typeByteSet:
+		vals := make([][]byte, fr.length)
+		for i := range vals {
+			itemFrame, err := d.readFrame()
+			if err != nil {
+				return nil, err
+			} else if itemFrame.typeID != typeBytes {
+				return nil, errors.Errorf("item %v of byte-set must be bytes, but is ID %v", i, itemFrame.typeID)
+			}
+
+			vals[i] = itemFrame.data
+		}
+		return &types.AttributeValueMemberBS{Value: vals}, nil
+	case typeNumberSet:
+		vals := make([]string, fr.length)
+		for i := range vals {
+			itemFrame, err := d.readFrame()
+			if err != nil {
+				return nil, err
+			} else if itemFrame.typeID != typeNumber {
+				return nil, errors.Errorf("item %v of number-set must be number, but is ID %v", i, itemFrame.typeID)
+			}
+
+			vals[i] = string(itemFrame.data)
+		}
+		return &types.AttributeValueMemberNS{Value: vals}, nil
+	case typeStringSet:
+		vals := make([]string, fr.length)
+		for i := range vals {
+			itemFrame, err := d.readFrame()
+			if err != nil {
+				return nil, err
+			} else if itemFrame.typeID != typeString {
+				return nil, errors.Errorf("item %v of string-set must be number, but is ID %v", i, itemFrame.typeID)
+			}
+
+			vals[i] = string(itemFrame.data)
+		}
+		return &types.AttributeValueMemberSS{Value: vals}, nil
 	}
 
 	return nil, errors.Errorf("unrecognised type ID: %x", fr.typeID)

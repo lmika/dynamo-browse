@@ -28,6 +28,8 @@ func TestCodec(t *testing.T) {
 			{name: "true null", val: &types.AttributeValueMemberNULL{Value: true}},
 			{name: "false null", val: &types.AttributeValueMemberNULL{Value: false}},
 
+			{name: "bytes", val: &types.AttributeValueMemberB{Value: []byte{1, 2, 3, 4, 5}}},
+
 			{name: "simple list", val: &types.AttributeValueMemberL{Value: []types.AttributeValue{
 				&types.AttributeValueMemberS{Value: "apple"},
 				&types.AttributeValueMemberS{Value: "banana"},
@@ -72,6 +74,22 @@ func TestCodec(t *testing.T) {
 						"long": &types.AttributeValueMemberN{Value: "33.44"},
 					}},
 				}},
+			}}},
+
+			{name: "binary set", val: &types.AttributeValueMemberBS{Value: [][]byte{
+				{1, 2, 3},
+				{4, 5, 6},
+				{7, 8, 9},
+			}}},
+			{name: "number set", val: &types.AttributeValueMemberNS{Value: []string{
+				"123",
+				"456",
+				"789",
+			}}},
+			{name: "string set", val: &types.AttributeValueMemberSS{Value: []string{
+				"more",
+				"string",
+				"stuff",
 			}}},
 		}
 
