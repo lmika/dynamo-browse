@@ -706,7 +706,7 @@ func TestQueryExpr_SerializeTo(t *testing.T) {
 
 		assert.Equal(t, "some value", newExpr.ValueParamOrNil("value").(*types.AttributeValueMemberS).Value)
 		assert.Equal(t, "12345", newExpr.ValueParamOrNil("num").(*types.AttributeValueMemberN).Value)
-		assert.Equal(t, "12345678901234567890", newExpr.ValueParamOrNil("veryLargeNumber").(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "123456789012345678901234567890", newExpr.ValueParamOrNil("veryLargeNumber").(*types.AttributeValueMemberN).Value)
 		assert.Equal(t, []string{"123", "234", "345"}, newExpr.ValueParamOrNil("numberSet").(*types.AttributeValueMemberNS).Value)
 		assert.Equal(t, true, newExpr.ValueParamOrNil("bool").(*types.AttributeValueMemberBOOL).Value)
 		assert.Equal(t, "1", newExpr.ValueParamOrNil("list").(*types.AttributeValueMemberL).Value[0].(*types.AttributeValueMemberN).Value)

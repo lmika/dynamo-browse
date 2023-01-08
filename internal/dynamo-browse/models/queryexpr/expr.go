@@ -3,13 +3,11 @@ package queryexpr
 import (
 	"bytes"
 	"encoding/gob"
-	"encoding/json"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrcodec"
 	"github.com/pkg/errors"
 	"io"
-	"log"
 )
 
 type QueryExpr struct {
@@ -19,10 +17,9 @@ type QueryExpr struct {
 }
 
 type serializedExpr struct {
-	Expr  string
-	Names map[string]string
-	//Values map[string]any
-	Values string
+	Expr   string
+	Names  map[string]string
+	Values []byte
 }
 
 func DeserializeFrom(r io.Reader) (*QueryExpr, error) {
@@ -39,22 +36,16 @@ func DeserializeFrom(r io.Reader) (*QueryExpr, error) {
 
 	qe.names = se.Names
 
-	if se.Values != "" {
-		var mv2 map[string]any
-
-		decoder := json.NewDecoder(bytes.NewReader([]byte(se.Values)))
-		decoder.UseNumber()
-		if err := decoder.Decode(&mv2); err != nil {
-			return nil, errors.Wrap(err, "unable to marshal to json")
-		}
-
-		log.Printf("%T", mv2["veryLargeNumber"])
-
-		mv, err := attributevalue.MarshalMap(mv2)
+	if len(se.Values) > 0 {
+		vals, err := attrcodec.NewDecoder(bytes.NewReader(se.Values)).Decode()
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to marshal values map")
+			return nil, errors.Wrap(err, "unable to marshal placeholder values")
 		}
-		qe.values = mv
+		mvals, ok := vals.(*types.AttributeValueMemberM)
+		if !ok {
+			return nil, errors.Errorf("expected marshaled placeholder values to be map, but was %T", vals)
+		}
+		qe.values = mvals.Value
 	}
 
 	return qe, nil
@@ -63,19 +54,11 @@ func DeserializeFrom(r io.Reader) (*QueryExpr, error) {
 func (md *QueryExpr) SerializeTo(w io.Writer) error {
 	se := serializedExpr{Expr: md.String(), Names: md.names}
 	if md.values != nil {
-		var unv map[string]any
-		if err := attributevalue.UnmarshalMap(md.values, &unv); err != nil {
-			return errors.Wrap(err, "unable to unmarshal values map")
+		var bts bytes.Buffer
+		if err := attrcodec.NewEncoder(&bts).Encode(&types.AttributeValueMemberM{Value: md.values}); err != nil {
+			return errors.Wrap(err, "unable to unmarshal placeholder values")
 		}
-
-		jsonBytes, err := json.Marshal(unv)
-		if err != nil {
-			return errors.Wrap(err, "unable to marshal to json")
-		}
-
-		log.Printf("%v", string(jsonBytes))
-
-		se.Values = string(jsonBytes)
+		se.Values = bts.Bytes()
 	}
 
 	return gob.NewEncoder(w).Encode(se)
