@@ -1,6 +1,7 @@
 package viewsnapshot_test
 
 import (
+	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
@@ -14,11 +15,14 @@ func TestViewSnapshotService_PushSnapshot(t *testing.T) {
 		ws := testworkspace.New(t)
 
 		service := viewsnapshot.NewService(workspacestore.NewResultSetSnapshotStore(ws))
+		q, _ := queryexpr.Parse("pk = \"abc\"")
+		qbs, _ := q.SerializeToBytes()
 
 		// Push some snapshots
 		err := service.PushSnapshot(serialisable.ViewSnapshotDetails{
 			TableName: "normal-table",
-			Query:     "pk = 'abc'",
+			Query:     qbs,
+			QueryHash: q.HashCode(),
 			Filter:    "",
 		})
 		assert.NoError(t, err)
@@ -27,9 +31,13 @@ func TestViewSnapshotService_PushSnapshot(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 1, cnt)
 
+		q2, _ := queryexpr.Parse("another = \"test\"")
+		qbs2, _ := q.SerializeToBytes()
+
 		err = service.PushSnapshot(serialisable.ViewSnapshotDetails{
 			TableName: "abnormal-table",
-			Query:     "pk = 'abc'",
+			Query:     qbs2,
+			QueryHash: q2.HashCode(),
 			Filter:    "fla",
 		})
 		assert.NoError(t, err)
@@ -41,7 +49,8 @@ func TestViewSnapshotService_PushSnapshot(t *testing.T) {
 		// Push a duplicate
 		err = service.PushSnapshot(serialisable.ViewSnapshotDetails{
 			TableName: "abnormal-table",
-			Query:     "pk = 'abc'",
+			Query:     qbs2,
+			QueryHash: q2.HashCode(),
 			Filter:    "fla",
 		})
 		assert.NoError(t, err)

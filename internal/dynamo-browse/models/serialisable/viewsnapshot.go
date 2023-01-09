@@ -1,6 +1,8 @@
 package serialisable
 
 import (
+	"bytes"
+	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"time"
 )
 
@@ -14,6 +16,32 @@ type ViewSnapshot struct {
 
 type ViewSnapshotDetails struct {
 	TableName string
-	Query     string // TODO: this needs to be the serialised query, not the query expression
+	Query     []byte
+	QueryHash uint64
 	Filter    string
+}
+
+func (d ViewSnapshotDetails) Equals(other ViewSnapshotDetails, compareHashesOnly bool) bool {
+	return d.TableName == other.TableName &&
+		d.Filter == other.Filter &&
+		d.compareQueries(other, compareHashesOnly)
+}
+
+func (d ViewSnapshotDetails) compareQueries(other ViewSnapshotDetails, compareHashesOnly bool) bool {
+	if d.QueryHash != other.QueryHash {
+		return false
+	}
+	if compareHashesOnly {
+		return true
+	}
+
+	expr1, err := queryexpr.DeserializeFrom(bytes.NewReader(d.Query))
+	if err != nil {
+		return false
+	}
+	expr2, err := queryexpr.DeserializeFrom(bytes.NewReader(other.Query))
+	if err != nil {
+		return false
+	}
+	return expr1.Equal(expr2)
 }

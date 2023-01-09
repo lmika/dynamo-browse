@@ -6,7 +6,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/attrcodec"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
+	"hash/fnv"
 	"io"
 )
 
@@ -62,6 +66,66 @@ func (md *QueryExpr) SerializeTo(w io.Writer) error {
 	}
 
 	return gob.NewEncoder(w).Encode(se)
+}
+
+func (md *QueryExpr) SerializeToBytes() ([]byte, error) {
+	if md == nil {
+		return nil, nil
+	}
+	var bfr bytes.Buffer
+
+	if err := md.SerializeTo(&bfr); err != nil {
+		return nil, err
+	}
+	return bfr.Bytes(), nil
+}
+
+// Equal returns true if a query expression is equal another one.  Two query expressions are equal if they
+// have the same query and placeholder values.  This is resistant to map ordering.
+func (md *QueryExpr) Equal(other *QueryExpr) bool {
+	if md == nil {
+		return other == nil
+	}
+	return md.ast.String() == other.ast.String() &&
+		maps.Equal(md.names, other.names) &&
+		maps.EqualFunc(md.values, md.values, attrutils.Equals)
+}
+
+// HashCode will return a hash-code for this query expression.  This is to assist with determine whether two
+// queries are the same.  If two queries have the same hash code, they may be equals (this will need to be
+// confirmed by calling Equal()).  Otherwise, the queries cannot be equals.
+func (md *QueryExpr) HashCode() uint64 {
+	if md == nil {
+		return 0
+	}
+
+	h := fnv.New64a()
+	h.Write([]byte(md.ast.String()))
+
+	// the names must be in sorted order to maintain consistant key ordering
+	if len(md.names) > 0 {
+		sortedKeys := make([]string, len(md.names))
+		copy(sortedKeys, maps.Keys(md.names))
+		slices.Sort(sortedKeys)
+
+		for _, k := range sortedKeys {
+			h.Write([]byte(k))
+			h.Write([]byte(md.names[k]))
+		}
+	}
+
+	if len(md.values) > 0 {
+		sortedKeys := make([]string, len(md.values))
+		copy(sortedKeys, maps.Keys(md.values))
+		slices.Sort(sortedKeys)
+
+		for _, k := range sortedKeys {
+			h.Write([]byte(k))
+			attrutils.HashTo(h, md.values[k])
+		}
+	}
+
+	return h.Sum64()
 }
 
 func (md *QueryExpr) WithNameParams(value map[string]string) *QueryExpr {

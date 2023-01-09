@@ -718,6 +718,80 @@ func TestQueryExpr_SerializeTo(t *testing.T) {
 	})
 }
 
+func TestQueryExpr_Equals(t *testing.T) {
+	t.Run("should perform equals correctly", func(t *testing.T) {
+		exprStr := `something = $value and :placeholder = "something else" and thirdThing in (1,2,3)`
+
+		modExpr, _ := queryexpr.Parse(exprStr)
+		modExpr = modExpr.WithNameParams(map[string]string{
+			"placeholder": "some name",
+			"another":     "name",
+			"more":        "names",
+		}).WithValueParams(map[string]types.AttributeValue{
+			"value":           &types.AttributeValueMemberS{Value: "some value"},
+			"num":             &types.AttributeValueMemberN{Value: "12345"},
+			"veryLargeNumber": &types.AttributeValueMemberN{Value: "123456789012345678901234567890"},
+			"numberSet":       &types.AttributeValueMemberNS{Value: []string{"123", "234", "345"}},
+			"bool":            &types.AttributeValueMemberBOOL{Value: true},
+			"list": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+				&types.AttributeValueMemberN{Value: "1"},
+				&types.AttributeValueMemberN{Value: "2"},
+				&types.AttributeValueMemberN{Value: "3"},
+			}},
+			"dict": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"alpha":   &types.AttributeValueMemberS{Value: "apple"},
+					"bravo":   &types.AttributeValueMemberS{Value: "banana"},
+					"charlie": &types.AttributeValueMemberS{Value: "cherry"},
+				},
+			},
+		})
+
+		differentExpr, _ := queryexpr.Parse(`abc = :bla`)
+		differentExpr = modExpr.WithNameParams(map[string]string{
+			"fla": "some name",
+		}).WithValueParams(map[string]types.AttributeValue{
+			"value": &types.AttributeValueMemberS{Value: "some value"},
+		})
+
+		bts1, err := modExpr.SerializeToBytes()
+		assert.NoError(t, err)
+
+		expr2, err := queryexpr.DeserializeFrom(bytes.NewReader(bts1))
+		assert.NoError(t, err)
+
+		bts2, err := expr2.SerializeToBytes()
+		assert.NoError(t, err)
+
+		expr3, err := queryexpr.DeserializeFrom(bytes.NewReader(bts2))
+		assert.NoError(t, err)
+
+		_, err = expr3.SerializeToBytes()
+		assert.NoError(t, err)
+
+		var nilQE *queryexpr.QueryExpr
+		assert.True(t, nilQE.Equal(nil))
+		assert.True(t, modExpr.Equal(expr2))
+		assert.True(t, expr2.Equal(expr3))
+		assert.True(t, expr3.Equal(modExpr))
+
+		assert.False(t, nilQE.Equal(differentExpr))
+		assert.False(t, modExpr.Equal(differentExpr))
+		assert.False(t, expr2.Equal(differentExpr))
+		assert.False(t, expr3.Equal(differentExpr))
+
+		assert.Equal(t, uint64(0), nilQE.HashCode())
+		assert.Equal(t, modExpr.HashCode(), expr2.HashCode())
+		assert.Equal(t, expr2.HashCode(), expr3.HashCode())
+		assert.Equal(t, expr3.HashCode(), modExpr.HashCode())
+
+		assert.NotEqual(t, differentExpr.HashCode(), nilQE.HashCode())
+		assert.NotEqual(t, differentExpr.HashCode(), expr2.HashCode())
+		assert.NotEqual(t, differentExpr.HashCode(), expr3.HashCode())
+		assert.NotEqual(t, differentExpr.HashCode(), modExpr.HashCode())
+	})
+}
+
 type scanScenario struct {
 	description       string
 	expression        string

@@ -27,7 +27,7 @@ func (s *ViewSnapshotService) PushSnapshot(details serialisable.ViewSnapshotDeta
 		return errors.Wrap(err, "cannot get snapshot head")
 	}
 
-	if oldHead != nil && oldHead.Details == details {
+	if oldHead != nil && oldHead.Details.Equals(details, false) {
 		// Attempting to push a duplicate
 		return nil
 	}
