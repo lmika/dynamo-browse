@@ -88,7 +88,7 @@ func (md *QueryExpr) Equal(other *QueryExpr) bool {
 	} else if other == nil {
 		return false
 	}
-	
+
 	return md.ast.String() == other.ast.String() &&
 		maps.Equal(md.names, other.names) &&
 		maps.EqualFunc(md.values, md.values, attrutils.Equals)
