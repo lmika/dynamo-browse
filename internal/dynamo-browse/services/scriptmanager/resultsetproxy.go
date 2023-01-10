@@ -202,15 +202,6 @@ func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.
 		return object.Errorf("arg error: invalid path expression: %v", err)
 	}
 
-	//modExpr, err := queryexpr.Parse(str)
-	//if err != nil {
-	//	return object.NewError(errors.Errorf("arg error: invalid path expression: %v", err))
-	//}
-	//av, err := modExpr.EvalItem(i.item)
-	//if err != nil {
-	//	return object.NewError(errors.Errorf("arg error: path expression evaluate error: %v", err))
-	//}
-
 	// TODO
 	newValue := args[1]
 	switch v := newValue.(type) {
@@ -218,13 +209,6 @@ func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.
 		if err := path.SetEvalItem(i.item, &types.AttributeValueMemberS{Value: v.Value()}); err != nil {
 			return object.NewError(err)
 		}
-	//case *types.AttributeValueMemberN:
-	//	// TODO: better
-	//	f, err := strconv.ParseFloat(v.Value, 64)
-	//	if err != nil {
-	//		return object.NewError(errors.Errorf("value error: invalid N value: %v", v.Value))
-	//	}
-	//	return object.NewFloat(f)
 	default:
 		return object.Errorf("type error: unsupported value type (got %v)", newValue.Type())
 	}
