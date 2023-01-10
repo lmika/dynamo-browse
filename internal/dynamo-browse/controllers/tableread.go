@@ -225,6 +225,7 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 			TableName: resultSet.TableInfo.Name,
 			Filter:    filter,
 		}
+
 		if q := resultSet.Query; q != nil {
 			if bs, err := q.SerializeToBytes(); err == nil {
 				details.Query = bs
@@ -234,6 +235,7 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 			}
 		}
 
+		log.Printf("pushing to backstack: table = %v, filter = %v, query_hash = %v", details.TableName, details.Filter, details.QueryHash)
 		if err := c.workspaceService.PushSnapshot(details); err != nil {
 			log.Printf("cannot push snapshot: %v", err)
 		}
@@ -318,6 +320,8 @@ func (c *TableReadController) ViewBack() tea.Msg {
 		return events.StatusMsg("Backstack is empty")
 	}
 
+	log.Printf("view back: table = %v, filter = %v, query_hash = %v",
+		viewSnapshot.Details.TableName, viewSnapshot.Details.Filter, viewSnapshot.Details.QueryHash)
 	return c.updateViewToSnapshot(viewSnapshot)
 }
 
@@ -356,12 +360,12 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 		}).Submit()
 	}
 
-	//var currentQueryExpr string
-	//if currentResultSet.Query != nil {
-	//	currentQueryExpr = currentResultSet.Query.String()
-	//}
+	queryEqualsCurrentQuery := false
+	if q, ok := currentResultSet.Query.(*queryexpr.QueryExpr); ok && q != nil {
+		queryEqualsCurrentQuery = q.Equal(query)
+	}
 
-	if viewSnapshot.Details.TableName == currentResultSet.TableInfo.Name { //  && viewSnapshot.Details.Query == currentQueryExpr
+	if viewSnapshot.Details.TableName == currentResultSet.TableInfo.Name && queryEqualsCurrentQuery {
 		return NewJob(c.jobController, "Applying filter…", func(ctx context.Context) (*models.ResultSet, error) {
 			return c.tableService.Filter(currentResultSet, viewSnapshot.Details.Filter), nil
 		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Details.Filter, false, resultSetUpdateSnapshotRestore)).Submit()

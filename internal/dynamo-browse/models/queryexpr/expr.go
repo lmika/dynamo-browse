@@ -85,7 +85,10 @@ func (md *QueryExpr) SerializeToBytes() ([]byte, error) {
 func (md *QueryExpr) Equal(other *QueryExpr) bool {
 	if md == nil {
 		return other == nil
+	} else if other == nil {
+		return false
 	}
+	
 	return md.ast.String() == other.ast.String() &&
 		maps.Equal(md.names, other.names) &&
 		maps.EqualFunc(md.values, md.values, attrutils.Equals)
