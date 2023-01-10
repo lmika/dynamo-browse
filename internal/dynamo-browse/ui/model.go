@@ -120,6 +120,9 @@ func NewModel(
 
 				return rc.Mark(markOp)
 			},
+			"next-page": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				return rc.NextPage()
+			},
 			"delete": commandctrl.NoArgCommand(wc.DeleteMarked),
 
 			// TEMP
@@ -205,6 +208,7 @@ func NewModel(
 			"unmark": cc.Alias("mark", []string{"none"}),
 			"sa":     cc.Alias("set-attr", nil),
 			"da":     cc.Alias("del-attr", nil),
+			"np":     cc.Alias("next-page", nil),
 			"w":      cc.Alias("put", nil),
 			"q":      cc.Alias("quit", nil),
 		},
@@ -258,6 +262,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.tableReadController.PromptForQuery
 			case key.Matches(msg, m.keyMap.PromptForFilter):
 				return m, m.tableReadController.Filter
+			case key.Matches(msg, m.keyMap.FetchNextPage):
+				return m, m.tableReadController.NextPage
 			case key.Matches(msg, m.keyMap.ViewBack):
 				return m, m.tableReadController.ViewBack
 			case key.Matches(msg, m.keyMap.ViewForward):

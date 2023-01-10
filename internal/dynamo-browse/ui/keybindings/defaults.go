@@ -29,6 +29,7 @@ func Default() *KeyBindings {
 			Rescan:               key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "rescan")),
 			PromptForQuery:       key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "prompt for query")),
 			PromptForFilter:      key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
+			FetchNextPage:        key.NewBinding(key.WithKeys(">"), key.WithHelp(">", "fetch next page")),
 			ViewBack:             key.NewBinding(key.WithKeys("backspace"), key.WithHelp("backspace", "go back")),
 			ViewForward:          key.NewBinding(key.WithKeys("\\"), key.WithHelp("\\", "go forward")),
 			CycleLayoutForward:   key.NewBinding(key.WithKeys("w"), key.WithHelp("w", "cycle layout forward")),
