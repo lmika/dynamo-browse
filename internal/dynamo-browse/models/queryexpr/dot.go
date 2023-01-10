@@ -4,51 +4,41 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"strings"
 )
 
-func (dt *astDot) evalToIR(info *models.TableInfo) (irAtom, error) {
-	return irNamePath{dt.Name, dt.Quals}, nil
+func (dt *astRef) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
+	return irNamePath{name: dt.Name}, nil
 }
 
-func (dt *astDot) unqualifiedName() (string, bool) {
-	if len(dt.Quals) == 0 {
-		return dt.Name, true
-	}
-	return "", false
+func (dt *astRef) unqualifiedName() (string, bool) {
+	return dt.Name, true
 }
 
-func (dt *astDot) evalItem(item models.Item) (types.AttributeValue, error) {
+func (dt *astRef) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
 	res, hasV := item[dt.Name]
 	if !hasV {
 		return nil, nil
 	}
 
-	for i, qualName := range dt.Quals {
-		mapRes, isMapRes := res.(*types.AttributeValueMemberM)
-		if !isMapRes {
-			return nil, ValueNotAMapError(append([]string{dt.Name}, dt.Quals[:i+1]...))
-		}
-
-		res, hasV = mapRes.Value[qualName]
-		if !hasV {
-			return nil, nil
-		}
-	}
-
 	return res, nil
 }
 
-func (a *astDot) String() string {
-	var sb strings.Builder
+func (dt *astRef) canModifyItem(ctx *evalContext, item models.Item) bool {
+	return true
+}
 
-	sb.WriteString(a.Name)
-	for _, q := range a.Quals {
-		sb.WriteRune('.')
-		sb.WriteString(q)
-	}
+func (dt *astRef) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+	item[dt.Name] = value
+	return nil
+}
 
-	return sb.String()
+func (dt *astRef) deleteAttribute(ctx *evalContext, item models.Item) error {
+	delete(item, dt.Name)
+	return nil
+}
+
+func (a *astRef) String() string {
+	return a.Name
 }
 
 type irNamePath struct {

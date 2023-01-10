@@ -13,6 +13,8 @@ type ResultSet struct {
 
 type Queryable interface {
 	String() string
+	SerializeToBytes() ([]byte, error)
+	HashCode() uint64
 	Plan(tableInfo *TableInfo) (*QueryExecutionPlan, error)
 }
 

@@ -1,6 +1,7 @@
 package queryexpr_test
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -95,12 +96,29 @@ func TestModExpr_Query(t *testing.T) {
 				exprNameIsString(0, 0, "pk", "prefix"),
 				exprNameIsNumber(1, 1, "sk", "100"),
 			),
+
+			scanCase("with placeholders",
+				`:partition=$valuePrefix and :sort=$valueAnother`,
+				`(#0 = :0) AND (#1 = :1)`,
+				placeholderNames(map[string]string{
+					"partition": "pk",
+					"sort":      "sk",
+				}),
+				placeholderValues(map[string]types.AttributeValue{
+					"valuePrefix":  &types.AttributeValueMemberS{Value: "prefix"},
+					"valueAnother": &types.AttributeValueMemberS{Value: "another"},
+				}),
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
 		}
 
 		for _, scenario := range scenarios {
 			t.Run(scenario.description, func(t *testing.T) {
 				modExpr, err := queryexpr.Parse(scenario.expression)
 				assert.NoError(t, err)
+
+				modExpr = modExpr.WithNameParams(scenario.placeholderNames).WithValueParams(scenario.placeholderValues)
 
 				plan, err := modExpr.Plan(tableInfo)
 				assert.NoError(t, err)
@@ -242,13 +260,45 @@ func TestModExpr_Query(t *testing.T) {
 				exprValueIsNumber(0, "131"),
 			),
 
+			// Dots
+			scanCase("with the dot", `this.value = "something"`, `#0.#1 = :0`,
+				exprName(0, "this"),
+				exprName(1, "value"),
+				exprValueIsString(0, "something"),
+			),
+			scanCase("with multiple dots", `this.that.other.value = "else"`, `#0.#1.#2.#3 = :0`,
+				exprName(0, "this"),
+				exprName(1, "that"),
+				exprName(2, "other"),
+				exprName(3, "value"),
+				exprValueIsString(0, "else"),
+			),
+
 			// TODO: the contains function
+
+			// Placeholders
+			scanCase("with placeholders",
+				`:partition=$valuePrefix or :sort=$valueAnother`,
+				`(#0 = :0) OR (#1 = :1)`,
+				placeholderNames(map[string]string{
+					"partition": "pk",
+					"sort":      "sk",
+				}),
+				placeholderValues(map[string]types.AttributeValue{
+					"valuePrefix":  &types.AttributeValueMemberS{Value: "prefix"},
+					"valueAnother": &types.AttributeValueMemberS{Value: "another"},
+				}),
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsString(1, 1, "sk", "another"),
+			),
 		}
 
 		for _, scenario := range scenarios {
 			t.Run(scenario.description, func(t *testing.T) {
 				modExpr, err := queryexpr.Parse(scenario.expression)
 				assert.NoError(t, err)
+
+				modExpr = modExpr.WithNameParams(scenario.placeholderNames).WithValueParams(scenario.placeholderValues)
 
 				plan, err := modExpr.Plan(tableInfo)
 				assert.NoError(t, err)
@@ -359,6 +409,7 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 
 			// Dot values
 			{expr: `charlie.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
+			{expr: `(charlie).door`, expected: &types.AttributeValueMemberS{Value: "red"}},
 			{expr: `charlie.tree`, expected: &types.AttributeValueMemberS{Value: "green"}},
 
 			// Conjunction
@@ -434,14 +485,321 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("name and value placeholders", func(t *testing.T) {
+		scenarios := []struct {
+			expr     string
+			expected types.AttributeValue
+		}{
+			{expr: `alpha = $a`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `:theBName = 123`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `:theCMap.door`, expected: &types.AttributeValueMemberS{Value: "red"}},
+		}
+
+		for _, scenario := range scenarios {
+			t.Run(scenario.expr, func(t *testing.T) {
+				modExpr, err := queryexpr.Parse(scenario.expr)
+				assert.NoError(t, err)
+
+				modExpr = modExpr.WithValueParams(map[string]types.AttributeValue{
+					"a": &types.AttributeValueMemberS{Value: "alpha"},
+				}).WithNameParams(map[string]string{
+					"theBName": "bravo",
+					"theCMap":  "charlie",
+				})
+
+				res, err := modExpr.EvalItem(item)
+				assert.NoError(t, err)
+
+				assert.Equal(t, scenario.expected, res)
+			})
+		}
+	})
+}
+
+func TestQueryExpr_SetEvalItem(t *testing.T) {
+	var templateItem = func() models.Item {
+		return models.Item{
+			"alpha": &types.AttributeValueMemberS{Value: "alpha"},
+			"bravo": &types.AttributeValueMemberN{Value: "123"},
+			"charlie": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"door": &types.AttributeValueMemberS{Value: "red"},
+					"tree": &types.AttributeValueMemberS{Value: "green"},
+				},
+			},
+			"prime": &types.AttributeValueMemberL{
+				Value: []types.AttributeValue{
+					&types.AttributeValueMemberN{Value: "2"},
+					&types.AttributeValueMemberN{Value: "3"},
+					&types.AttributeValueMemberN{Value: "5"},
+					&types.AttributeValueMemberN{Value: "7"},
+				},
+			},
+			"three": &types.AttributeValueMemberN{Value: "3"},
+		}
+	}
+
+	t.Run("simple values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse("alpha")
+		assert.NoError(t, err)
+		assert.True(t, modExpr.IsModifiablePath(item))
+
+		err = modExpr.SetEvalItem(item, &types.AttributeValueMemberS{Value: "not alpha"})
+		assert.NoError(t, err)
+		assert.Equal(t, "not alpha", item["alpha"].(*types.AttributeValueMemberS).Value)
+	})
+
+	t.Run("dot values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse("charlie.tree")
+		assert.NoError(t, err)
+		assert.True(t, modExpr.IsModifiablePath(item))
+
+		err = modExpr.SetEvalItem(item, &types.AttributeValueMemberS{Value: "Birch"})
+		assert.NoError(t, err)
+		assert.Equal(t, "Birch", item["charlie"].(*types.AttributeValueMemberM).Value["tree"].(*types.AttributeValueMemberS).Value)
+	})
+}
+
+func TestQueryExpr_DeleteAttribute(t *testing.T) {
+	var templateItem = func() models.Item {
+		return models.Item{
+			"alpha": &types.AttributeValueMemberS{Value: "alpha"},
+			"bravo": &types.AttributeValueMemberN{Value: "123"},
+			"charlie": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"door": &types.AttributeValueMemberS{Value: "red"},
+					"tree": &types.AttributeValueMemberS{Value: "green"},
+				},
+			},
+			"prime": &types.AttributeValueMemberL{
+				Value: []types.AttributeValue{
+					&types.AttributeValueMemberN{Value: "2"},
+					&types.AttributeValueMemberN{Value: "3"},
+					&types.AttributeValueMemberN{Value: "5"},
+					&types.AttributeValueMemberN{Value: "7"},
+				},
+			},
+			"three": &types.AttributeValueMemberN{Value: "3"},
+		}
+	}
+
+	t.Run("simple values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse("alpha")
+		assert.NoError(t, err)
+
+		err = modExpr.DeleteAttribute(item)
+		assert.NoError(t, err)
+
+		_, hasKey := item["alpha"]
+		assert.False(t, hasKey)
+	})
+
+	t.Run("placeholder values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse(":a")
+		assert.NoError(t, err)
+
+		modExpr = modExpr.WithNameParams(map[string]string{"a": "alpha"})
+
+		err = modExpr.DeleteAttribute(item)
+		assert.NoError(t, err)
+
+		_, hasKey := item["alpha"]
+		assert.False(t, hasKey)
+	})
+
+	t.Run("dot values", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse("charlie.tree")
+		assert.NoError(t, err)
+
+		err = modExpr.DeleteAttribute(item)
+		assert.NoError(t, err)
+
+		_, hasKey := item["charlie"].(*types.AttributeValueMemberM).Value["tree"]
+		assert.False(t, hasKey)
+	})
+
+	t.Run("dot values with placeholders", func(t *testing.T) {
+		item := templateItem()
+
+		modExpr, err := queryexpr.Parse(":c.tree")
+		assert.NoError(t, err)
+
+		modExpr = modExpr.WithNameParams(map[string]string{"c": "charlie"})
+
+		err = modExpr.DeleteAttribute(item)
+		assert.NoError(t, err)
+
+		_, hasKey := item["charlie"].(*types.AttributeValueMemberM).Value["tree"]
+		assert.False(t, hasKey)
+	})
+
+	//t.Run("dot values with multiple placeholders", func(t *testing.T) {
+	//	item := templateItem()
+	//
+	//	modExpr, err := queryexpr.Parse(":c.:t")
+	//	assert.NoError(t, err)
+	//
+	//	modExpr = modExpr.WithNameParams(map[string]string{
+	//		"c": "charlie",
+	//		"t": "tree",
+	//	})
+	//
+	//	err = modExpr.DeleteAttribute(item)
+	//	assert.NoError(t, err)
+	//
+	//	_, hasKey := item["charlie"].(*types.AttributeValueMemberM).Value["tree"]
+	//	assert.False(t, hasKey)
+	//})
+}
+
+func TestQueryExpr_SerializeTo(t *testing.T) {
+	t.Run("should be able to serialized and deseralize the parsed expression", func(t *testing.T) {
+		exprStr := `something = $value and :placeholder = "something else" and thirdThing in (1,2,3)`
+
+		bts := new(bytes.Buffer)
+
+		modExpr, err := queryexpr.Parse(exprStr)
+		assert.NoError(t, err)
+
+		modExpr = modExpr.WithNameParams(map[string]string{
+			"placeholder": "some name",
+		}).WithValueParams(map[string]types.AttributeValue{
+			"value":           &types.AttributeValueMemberS{Value: "some value"},
+			"num":             &types.AttributeValueMemberN{Value: "12345"},
+			"veryLargeNumber": &types.AttributeValueMemberN{Value: "123456789012345678901234567890"},
+			"numberSet":       &types.AttributeValueMemberNS{Value: []string{"123", "234", "345"}},
+			"bool":            &types.AttributeValueMemberBOOL{Value: true},
+			"list": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+				&types.AttributeValueMemberN{Value: "1"},
+				&types.AttributeValueMemberN{Value: "2"},
+				&types.AttributeValueMemberN{Value: "3"},
+			}},
+			"dict": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"alpha":   &types.AttributeValueMemberS{Value: "apple"},
+					"bravo":   &types.AttributeValueMemberS{Value: "banana"},
+					"charlie": &types.AttributeValueMemberS{Value: "cherry"},
+				},
+			},
+		})
+
+		assert.NoError(t, modExpr.SerializeTo(bts))
+
+		newExpr, err := queryexpr.DeserializeFrom(bts)
+		assert.NoError(t, err)
+		assert.Equal(t, modExpr.String(), newExpr.String())
+
+		name, hasName := newExpr.NameParam("placeholder")
+		assert.Equal(t, "some name", name)
+		assert.True(t, hasName)
+
+		assert.Equal(t, "some value", newExpr.ValueParamOrNil("value").(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "12345", newExpr.ValueParamOrNil("num").(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "123456789012345678901234567890", newExpr.ValueParamOrNil("veryLargeNumber").(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, []string{"123", "234", "345"}, newExpr.ValueParamOrNil("numberSet").(*types.AttributeValueMemberNS).Value)
+		assert.Equal(t, true, newExpr.ValueParamOrNil("bool").(*types.AttributeValueMemberBOOL).Value)
+		assert.Equal(t, "1", newExpr.ValueParamOrNil("list").(*types.AttributeValueMemberL).Value[0].(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "2", newExpr.ValueParamOrNil("list").(*types.AttributeValueMemberL).Value[1].(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "3", newExpr.ValueParamOrNil("list").(*types.AttributeValueMemberL).Value[2].(*types.AttributeValueMemberN).Value)
+		assert.Equal(t, "apple", newExpr.ValueParamOrNil("dict").(*types.AttributeValueMemberM).Value["alpha"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "banana", newExpr.ValueParamOrNil("dict").(*types.AttributeValueMemberM).Value["bravo"].(*types.AttributeValueMemberS).Value)
+		assert.Equal(t, "cherry", newExpr.ValueParamOrNil("dict").(*types.AttributeValueMemberM).Value["charlie"].(*types.AttributeValueMemberS).Value)
+	})
+}
+
+func TestQueryExpr_Equals(t *testing.T) {
+	t.Run("should perform equals correctly", func(t *testing.T) {
+		exprStr := `something = $value and :placeholder = "something else" and thirdThing in (1,2,3)`
+
+		modExpr, _ := queryexpr.Parse(exprStr)
+		modExpr = modExpr.WithNameParams(map[string]string{
+			"placeholder": "some name",
+			"another":     "name",
+			"more":        "names",
+		}).WithValueParams(map[string]types.AttributeValue{
+			"value":           &types.AttributeValueMemberS{Value: "some value"},
+			"num":             &types.AttributeValueMemberN{Value: "12345"},
+			"veryLargeNumber": &types.AttributeValueMemberN{Value: "123456789012345678901234567890"},
+			"numberSet":       &types.AttributeValueMemberNS{Value: []string{"123", "234", "345"}},
+			"bool":            &types.AttributeValueMemberBOOL{Value: true},
+			"list": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+				&types.AttributeValueMemberN{Value: "1"},
+				&types.AttributeValueMemberN{Value: "2"},
+				&types.AttributeValueMemberN{Value: "3"},
+			}},
+			"dict": &types.AttributeValueMemberM{
+				Value: map[string]types.AttributeValue{
+					"alpha":   &types.AttributeValueMemberS{Value: "apple"},
+					"bravo":   &types.AttributeValueMemberS{Value: "banana"},
+					"charlie": &types.AttributeValueMemberS{Value: "cherry"},
+				},
+			},
+		})
+
+		differentExpr, _ := queryexpr.Parse(`abc = :bla`)
+		differentExpr = modExpr.WithNameParams(map[string]string{
+			"fla": "some name",
+		}).WithValueParams(map[string]types.AttributeValue{
+			"value": &types.AttributeValueMemberS{Value: "some value"},
+		})
+
+		bts1, err := modExpr.SerializeToBytes()
+		assert.NoError(t, err)
+
+		expr2, err := queryexpr.DeserializeFrom(bytes.NewReader(bts1))
+		assert.NoError(t, err)
+
+		bts2, err := expr2.SerializeToBytes()
+		assert.NoError(t, err)
+
+		expr3, err := queryexpr.DeserializeFrom(bytes.NewReader(bts2))
+		assert.NoError(t, err)
+
+		_, err = expr3.SerializeToBytes()
+		assert.NoError(t, err)
+
+		var nilQE *queryexpr.QueryExpr
+		assert.True(t, nilQE.Equal(nil))
+		assert.True(t, modExpr.Equal(expr2))
+		assert.True(t, expr2.Equal(expr3))
+		assert.True(t, expr3.Equal(modExpr))
+
+		assert.False(t, nilQE.Equal(differentExpr))
+		assert.False(t, modExpr.Equal(differentExpr))
+		assert.False(t, expr2.Equal(differentExpr))
+		assert.False(t, expr3.Equal(differentExpr))
+
+		assert.Equal(t, uint64(0), nilQE.HashCode())
+		assert.Equal(t, modExpr.HashCode(), expr2.HashCode())
+		assert.Equal(t, expr2.HashCode(), expr3.HashCode())
+		assert.Equal(t, expr3.HashCode(), modExpr.HashCode())
+
+		assert.NotEqual(t, differentExpr.HashCode(), nilQE.HashCode())
+		assert.NotEqual(t, differentExpr.HashCode(), expr2.HashCode())
+		assert.NotEqual(t, differentExpr.HashCode(), expr3.HashCode())
+		assert.NotEqual(t, differentExpr.HashCode(), modExpr.HashCode())
+	})
 }
 
 type scanScenario struct {
-	description    string
-	expression     string
-	expectedFilter string
-	expectedNames  map[string]string
-	expectedValues map[string]types.AttributeValue
+	description       string
+	expression        string
+	expectedFilter    string
+	expectedNames     map[string]string
+	expectedValues    map[string]types.AttributeValue
+	placeholderNames  map[string]string
+	placeholderValues map[string]types.AttributeValue
 }
 
 func scanCase(description, expression, expectedFilter string, options ...func(ss *scanScenario)) scanScenario {
@@ -456,6 +814,18 @@ func scanCase(description, expression, expectedFilter string, options ...func(ss
 		opt(&ss)
 	}
 	return ss
+}
+
+func placeholderNames(placeholderNames map[string]string) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.placeholderNames = placeholderNames
+	}
+}
+
+func placeholderValues(placeholderValues map[string]types.AttributeValue) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.placeholderValues = placeholderValues
+	}
 }
 
 func exprName(idx int, name string) func(ss *scanScenario) {

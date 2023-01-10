@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
-	leftIR, err := a.Ref.evalToIR(info)
+func (a *astEqualityOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
+	leftIR, err := a.Ref.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, OperandNotAnOperandError{}
 	}
 
-	rightIR, err := a.Value.evalToIR(info)
+	rightIR, err := a.Value.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +59,8 @@ func (a *astEqualityOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
-func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error) {
-	left, err := a.Ref.evalItem(item)
+func (a *astEqualityOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+	left, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 		return left, nil
 	}
 
-	right, err := a.Value.evalItem(item)
+	right, err := a.Value.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +101,27 @@ func (a *astEqualityOp) evalItem(item models.Item) (types.AttributeValue, error)
 	}
 
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
+}
+
+func (a *astEqualityOp) canModifyItem(ctx *evalContext, item models.Item) bool {
+	if a.Op != "" {
+		return false
+	}
+	return a.Ref.canModifyItem(ctx, item)
+}
+
+func (a *astEqualityOp) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+	if a.Op != "" {
+		return PathNotSettableError{}
+	}
+	return a.Ref.setEvalItem(ctx, item, value)
+}
+
+func (a *astEqualityOp) deleteAttribute(ctx *evalContext, item models.Item) error {
+	if a.Op != "" {
+		return PathNotSettableError{}
+	}
+	return a.Ref.deleteAttribute(ctx, item)
 }
 
 func (a *astEqualityOp) String() string {

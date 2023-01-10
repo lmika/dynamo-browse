@@ -59,8 +59,8 @@ var validIsTypeNames = map[string]isTypeInfo{
 	},
 }
 
-func (a *astIsOp) evalToIR(info *models.TableInfo) (irAtom, error) {
-	leftIR, err := a.Ref.evalToIR(info)
+func (a *astIsOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
+	leftIR, err := a.Ref.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (a *astIsOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, OperandNotANameError(a.Ref.String())
 	}
 
-	rightIR, err := a.Value.evalToIR(info)
+	rightIR, err := a.Value.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func (a *astIsOp) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return ir, nil
 }
 
-func (a *astIsOp) evalItem(item models.Item) (types.AttributeValue, error) {
-	ref, err := a.Ref.evalItem(item)
+func (a *astIsOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+	ref, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (a *astIsOp) evalItem(item models.Item) (types.AttributeValue, error) {
 		return ref, nil
 	}
 
-	expTypeVal, err := a.Value.evalItem(item)
+	expTypeVal, err := a.Value.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +138,27 @@ func (a *astIsOp) evalItem(item models.Item) (types.AttributeValue, error) {
 		resultOfIs = !resultOfIs
 	}
 	return &types.AttributeValueMemberBOOL{Value: resultOfIs}, nil
+}
+
+func (a *astIsOp) canModifyItem(ctx *evalContext, item models.Item) bool {
+	if a.Value != nil {
+		return false
+	}
+	return a.Ref.canModifyItem(ctx, item)
+}
+
+func (a *astIsOp) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+	if a.Value != nil {
+		return PathNotSettableError{}
+	}
+	return a.Ref.setEvalItem(ctx, item, value)
+}
+
+func (a *astIsOp) deleteAttribute(ctx *evalContext, item models.Item) error {
+	if a.Value != nil {
+		return PathNotSettableError{}
+	}
+	return a.Ref.deleteAttribute(ctx, item)
 }
 
 func (a *astIsOp) String() string {

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,6 +28,7 @@ const (
 	resultSetUpdateSnapshotRestore
 	resultSetUpdateRescan
 	resultSetUpdateTouch
+	resultSetUpdateScript
 )
 
 type MarkOp int
@@ -138,13 +140,22 @@ func (c *TableReadController) PromptForQuery() tea.Msg {
 				return events.StatusMsg("Result-set is nil")
 			}
 
-			return c.runQuery(resultSet.TableInfo, value, "", true)
+			var q *queryexpr.QueryExpr
+			if value != "" {
+				var err error
+				q, err = queryexpr.Parse(value)
+				if err != nil {
+					return events.Error(err)
+				}
+			}
+
+			return c.runQuery(resultSet.TableInfo, q, "", true)
 		},
 	}
 }
 
-func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query, newFilter string, pushSnapshot bool) tea.Msg {
-	if query == "" {
+func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query *queryexpr.QueryExpr, newFilter string, pushSnapshot bool) tea.Msg {
+	if query == nil {
 		return NewJob(c.jobController, "Scanning…", func(ctx context.Context) (*models.ResultSet, error) {
 			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, nil)
 
@@ -156,14 +167,9 @@ func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query, newFi
 		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, resultSetUpdateQuery)).Submit()
 	}
 
-	expr, err := queryexpr.Parse(query)
-	if err != nil {
-		return events.Error(err)
-	}
-
 	return c.doIfNoneDirty(func() tea.Msg {
 		return NewJob(c.jobController, "Running query…", func(ctx context.Context) (*models.ResultSet, error) {
-			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, expr)
+			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, query)
 
 			if newFilter != "" && newResultSet != nil {
 				newResultSet = c.tableService.Filter(newResultSet, newFilter)
@@ -219,10 +225,17 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 			TableName: resultSet.TableInfo.Name,
 			Filter:    filter,
 		}
+
 		if q := resultSet.Query; q != nil {
-			details.Query = q.String()
+			if bs, err := q.SerializeToBytes(); err == nil {
+				details.Query = bs
+				details.QueryHash = q.HashCode()
+			} else {
+				log.Printf("cannot serialize query to bytes: %v", err)
+			}
 		}
 
+		log.Printf("pushing to backstack: table = %v, filter = %v, query_hash = %v", details.TableName, details.Filter, details.QueryHash)
 		if err := c.workspaceService.PushSnapshot(details); err != nil {
 			log.Printf("cannot push snapshot: %v", err)
 		}
@@ -307,6 +320,8 @@ func (c *TableReadController) ViewBack() tea.Msg {
 		return events.StatusMsg("Backstack is empty")
 	}
 
+	log.Printf("view back: table = %v, filter = %v, query_hash = %v",
+		viewSnapshot.Details.TableName, viewSnapshot.Details.Filter, viewSnapshot.Details.QueryHash)
 	return c.updateViewToSnapshot(viewSnapshot)
 }
 
@@ -325,6 +340,14 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 	var err error
 	currentResultSet := c.state.ResultSet()
 
+	var query *queryexpr.QueryExpr
+	if len(viewSnapshot.Details.Query) > 0 {
+		query, err = queryexpr.DeserializeFrom(bytes.NewReader(viewSnapshot.Details.Query))
+		if err != nil {
+			return err
+		}
+	}
+
 	if currentResultSet == nil {
 		return NewJob(c.jobController, "Fetching table info…", func(ctx context.Context) (*models.TableInfo, error) {
 			tableInfo, err := c.tableService.Describe(context.Background(), viewSnapshot.Details.TableName)
@@ -333,16 +356,16 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 			}
 			return tableInfo, nil
 		}).OnDone(func(tableInfo *models.TableInfo) tea.Msg {
-			return c.runQuery(tableInfo, viewSnapshot.Details.Query, viewSnapshot.Details.Filter, false)
+			return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false)
 		}).Submit()
 	}
 
-	var currentQueryExpr string
-	if currentResultSet.Query != nil {
-		currentQueryExpr = currentResultSet.Query.String()
+	queryEqualsCurrentQuery := false
+	if q, ok := currentResultSet.Query.(*queryexpr.QueryExpr); ok && q != nil {
+		queryEqualsCurrentQuery = q.Equal(query)
 	}
 
-	if viewSnapshot.Details.TableName == currentResultSet.TableInfo.Name && viewSnapshot.Details.Query == currentQueryExpr {
+	if viewSnapshot.Details.TableName == currentResultSet.TableInfo.Name && queryEqualsCurrentQuery {
 		return NewJob(c.jobController, "Applying filter…", func(ctx context.Context) (*models.ResultSet, error) {
 			return c.tableService.Filter(currentResultSet, viewSnapshot.Details.Filter), nil
 		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Details.Filter, false, resultSetUpdateSnapshotRestore)).Submit()
@@ -357,7 +380,7 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 			}
 		}
 
-		return c.runQuery(tableInfo, viewSnapshot.Details.Query, viewSnapshot.Details.Filter, false), nil
+		return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false), nil
 	}).OnDone(func(m tea.Msg) tea.Msg {
 		return m
 	}).Submit()

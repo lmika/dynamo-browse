@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-func (a *astFunctionCall) evalToIR(info *models.TableInfo) (irAtom, error) {
-	callerIr, err := a.Caller.evalToIR(info)
+func (a *astFunctionCall) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
+	callerIr, err := a.Caller.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func (a *astFunctionCall) evalToIR(info *models.TableInfo) (irAtom, error) {
 		return nil, OperandNotANameError("")
 	}
 
-	irNodes, err := sliceutils.MapWithError(a.Args, func(x *astExpr) (irAtom, error) { return x.evalToIR(info) })
+	irNodes, err := sliceutils.MapWithError(a.Args, func(x *astExpr) (irAtom, error) { return x.evalToIR(ctx, info) })
 	if err != nil {
 		return nil, err
 	}
@@ -53,9 +53,9 @@ func (a *astFunctionCall) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return nil, UnrecognisedFunctionError{Name: nameIr.keyName()}
 }
 
-func (a *astFunctionCall) evalItem(item models.Item) (types.AttributeValue, error) {
+func (a *astFunctionCall) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
 	if !a.IsCall {
-		return a.Caller.evalItem(item)
+		return a.Caller.evalItem(ctx, item)
 	}
 
 	name, isName := a.Caller.unqualifiedName()
@@ -68,13 +68,37 @@ func (a *astFunctionCall) evalItem(item models.Item) (types.AttributeValue, erro
 	}
 
 	args, err := sliceutils.MapWithError(a.Args, func(a *astExpr) (types.AttributeValue, error) {
-		return a.evalItem(item)
+		return a.evalItem(ctx, item)
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return fn(context.Background(), args)
+}
+
+func (a *astFunctionCall) canModifyItem(ctx *evalContext, item models.Item) bool {
+	// TODO: Should a function vall return an item?
+	if a.IsCall {
+		return false
+	}
+	return a.Caller.canModifyItem(ctx, item)
+}
+
+func (a *astFunctionCall) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+	// TODO: Should a function vall return an item?
+	if a.IsCall {
+		return PathNotSettableError{}
+	}
+	return a.Caller.setEvalItem(ctx, item, value)
+}
+
+func (a *astFunctionCall) deleteAttribute(ctx *evalContext, item models.Item) error {
+	// TODO: Should a function vall return an item?
+	if a.IsCall {
+		return PathNotSettableError{}
+	}
+	return a.Caller.deleteAttribute(ctx, item)
 }
 
 func (a *astFunctionCall) String() string {

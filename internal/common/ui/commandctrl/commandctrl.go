@@ -15,18 +15,24 @@ import (
 )
 
 type CommandController struct {
-	commandList *CommandList
+	commandList      *CommandList
+	lookupExtensions []CommandLookupExtension
 }
 
 func NewCommandController() *CommandController {
 	return &CommandController{
-		commandList: nil,
+		commandList:      nil,
+		lookupExtensions: nil,
 	}
 }
 
 func (c *CommandController) AddCommands(ctx *CommandList) {
 	ctx.parent = c.commandList
 	c.commandList = ctx
+}
+
+func (c *CommandController) AddCommandLookupExtension(ext CommandLookupExtension) {
+	c.lookupExtensions = append(c.lookupExtensions, ext)
 }
 
 func (c *CommandController) Prompt() tea.Msg {
@@ -77,6 +83,12 @@ func (c *CommandController) Alias(commandName string, aliasArgs []string) Comman
 func (c *CommandController) lookupCommand(name string) Command {
 	for ctx := c.commandList; ctx != nil; ctx = ctx.parent {
 		if cmd, ok := ctx.Commands[name]; ok {
+			return cmd
+		}
+	}
+
+	for _, exts := range c.lookupExtensions {
+		if cmd := exts.LookupCommand(name); cmd != nil {
 			return cmd
 		}
 	}

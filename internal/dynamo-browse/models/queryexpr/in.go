@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
-	leftIR, err := a.Ref.evalToIR(info)
+func (a *astIn) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
+	leftIR, err := a.Ref.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 
 		oprValues := make([]oprIRAtom, len(a.Operand))
 		for i, o := range a.Operand {
-			v, err := o.evalToIR(info)
+			v, err := o.evalToIR(ctx, info)
 			if err != nil {
 				return nil, err
 			}
@@ -59,7 +59,7 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 
 		ir = irIn{name: nameIR, values: oprValues}
 	case a.SingleOperand != nil:
-		oprs, err := a.SingleOperand.evalToIR(info)
+		oprs, err := a.SingleOperand.evalToIR(ctx, info)
 		if err != nil {
 			return nil, err
 		}
@@ -96,8 +96,8 @@ func (a *astIn) evalToIR(info *models.TableInfo) (irAtom, error) {
 	return ir, nil
 }
 
-func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
-	val, err := a.Ref.evalItem(item)
+func (a *astIn) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+	val, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
 	switch {
 	case len(a.Operand) > 0:
 		for _, opr := range a.Operand {
-			evalOp, err := opr.evalItem(item)
+			evalOp, err := opr.evalItem(ctx, item)
 			if err != nil {
 				return nil, err
 			}
@@ -121,7 +121,7 @@ func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
 		}
 		return &types.AttributeValueMemberBOOL{Value: false}, nil
 	case a.SingleOperand != nil:
-		evalOp, err := a.SingleOperand.evalItem(item)
+		evalOp, err := a.SingleOperand.evalItem(ctx, item)
 		if err != nil {
 			return nil, err
 		}
@@ -192,6 +192,28 @@ func (a *astIn) evalItem(item models.Item) (types.AttributeValue, error) {
 		return nil, ValuesNotInnableError{Val: evalOp}
 	}
 	return nil, errors.New("internal error: unhandled 'in' case")
+}
+
+func (a *astIn) canModifyItem(ctx *evalContext, item models.Item) bool {
+	if len(a.Operand) != 0 || a.SingleOperand != nil {
+		return false
+	}
+	return a.Ref.canModifyItem(ctx, item)
+}
+
+func (a *astIn) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+	if len(a.Operand) != 0 || a.SingleOperand != nil {
+		return PathNotSettableError{}
+	}
+	return a.Ref.setEvalItem(ctx, item, value)
+}
+
+func (a *astIn) deleteAttribute(ctx *evalContext, item models.Item) error {
+	if len(a.Operand) != 0 || a.SingleOperand != nil {
+		return PathNotSettableError{}
+	}
+	return a.Ref.deleteAttribute(ctx, item)
+
 }
 
 func (a *astIn) String() string {

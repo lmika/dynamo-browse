@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-func (a *astBooleanNot) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
-	irNode, err := a.Operand.evalToIR(tableInfo)
+func (a *astBooleanNot) evalToIR(ctx *evalContext, tableInfo *models.TableInfo) (irAtom, error) {
+	irNode, err := a.Operand.evalToIR(ctx, tableInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -20,8 +20,8 @@ func (a *astBooleanNot) evalToIR(tableInfo *models.TableInfo) (irAtom, error) {
 	return &irBoolNot{atom: irNode}, nil
 }
 
-func (a *astBooleanNot) evalItem(item models.Item) (types.AttributeValue, error) {
-	val, err := a.Operand.evalItem(item)
+func (a *astBooleanNot) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+	val, err := a.Operand.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
 	}
@@ -31,6 +31,27 @@ func (a *astBooleanNot) evalItem(item models.Item) (types.AttributeValue, error)
 	}
 
 	return &types.AttributeValueMemberBOOL{Value: !isAttributeTrue(val)}, nil
+}
+
+func (a *astBooleanNot) canModifyItem(ctx *evalContext, item models.Item) bool {
+	if a.HasNot {
+		return false
+	}
+	return a.Operand.canModifyItem(ctx, item)
+}
+
+func (a *astBooleanNot) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+	if a.HasNot {
+		return PathNotSettableError{}
+	}
+	return a.Operand.setEvalItem(ctx, item, value)
+}
+
+func (a *astBooleanNot) deleteAttribute(ctx *evalContext, item models.Item) error {
+	if a.HasNot {
+		return PathNotSettableError{}
+	}
+	return a.Operand.deleteAttribute(ctx, item)
 }
 
 func (d *astBooleanNot) String() string {

@@ -19,6 +19,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
+	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
 	"log"
 	"os"
@@ -43,11 +44,13 @@ type Model struct {
 	settingsController   *controllers.SettingsController
 	exportController     *controllers.ExportController
 	commandController    *commandctrl.CommandController
+	scriptController     *controllers.ScriptController
 	jobController        *controllers.JobsController
 	colSelector          *colselector.Model
 	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
+	eventBus             *bus.Bus
 
 	mainViewIndex int
 
@@ -67,12 +70,14 @@ func NewModel(
 	jobController *controllers.JobsController,
 	itemRendererService *itemrenderer.Service,
 	cc *commandctrl.CommandController,
+	scriptController *controllers.ScriptController,
+	eventBus *bus.Bus,
 	keyBindingController *controllers.KeyBindingController,
 	defaultKeyMap *keybindings.KeyBindings,
 ) Model {
 	uiStyles := styles.DefaultStyles
 
-	dtv := dynamotableview.New(defaultKeyMap.TableView, columnsController, settingsController, uiStyles)
+	dtv := dynamotableview.New(defaultKeyMap.TableView, columnsController, settingsController, eventBus, uiStyles)
 	div := dynamoitemview.New(itemRendererService, uiStyles)
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
@@ -183,6 +188,19 @@ func NewModel(
 				return keyBindingController.Rebind(args[0], args[1], ctx.FromFile)
 			},
 
+			"run-script": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				if len(args) != 1 {
+					return events.Error(errors.New("expected: script name"))
+				}
+				return scriptController.RunScript(args[0])
+			},
+			"load-script": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				if len(args) != 1 {
+					return events.Error(errors.New("expected: script name"))
+				}
+				return scriptController.LoadScript(args[0])
+			},
+
 			// Aliases
 			"unmark": cc.Alias("mark", []string{"none"}),
 			"sa":     cc.Alias("set-attr", nil),
@@ -198,6 +216,7 @@ func NewModel(
 		tableReadController:  rc,
 		tableWriteController: wc,
 		commandController:    cc,
+		scriptController:     scriptController,
 		jobController:        jobController,
 		itemEdit:             itemEdit,
 		colSelector:          colSelector,

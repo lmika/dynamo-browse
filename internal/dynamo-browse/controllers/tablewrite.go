@@ -8,8 +8,10 @@ import (
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	"github.com/pkg/errors"
+	"log"
 	"strconv"
 )
 
@@ -81,48 +83,57 @@ func (twc *TableWriteController) NewItem() tea.Msg {
 }
 
 func (twc *TableWriteController) SetAttributeValue(idx int, itemType models.ItemType, key string) tea.Msg {
-	apPath := newAttrPath(key)
+	path, err := queryexpr.Parse(key)
+	if err != nil {
+		return events.Error(err)
+	}
 
 	var attrValue types.AttributeValue
 	if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) (err error) {
-		attrValue, err = apPath.follow(set.Items()[idx])
+		if !path.IsModifiablePath(set.Items()[idx]) {
+			return errors.Errorf("path cannot be used to set attribute value")
+		}
+
+		attrValue, err = path.EvalItem(set.Items()[idx])
 		return err
 	}); err != nil {
 		return events.Error(err)
 	}
 
+	log.Printf("sa attribute value = %v", attrValue)
+
 	switch itemType {
 	case models.UnsetItemType:
 		switch attrValue.(type) {
 		case *types.AttributeValueMemberS:
-			return twc.setStringValue(idx, apPath)
+			return twc.setStringValue(idx, path)
 		case *types.AttributeValueMemberN:
-			return twc.setNumberValue(idx, apPath)
+			return twc.setNumberValue(idx, path)
 		case *types.AttributeValueMemberBOOL:
-			return twc.setBoolValue(idx, apPath)
+			return twc.setBoolValue(idx, path)
 		default:
 			return events.Error(errors.New("attribute type for key must be set"))
 		}
 	case models.StringItemType:
-		return twc.setStringValue(idx, apPath)
+		return twc.setStringValue(idx, path)
 	case models.NumberItemType:
-		return twc.setNumberValue(idx, apPath)
+		return twc.setNumberValue(idx, path)
 	case models.BoolItemType:
-		return twc.setBoolValue(idx, apPath)
+		return twc.setBoolValue(idx, path)
 	case models.NullItemType:
-		return twc.setNullValue(idx, apPath)
+		return twc.setNullValue(idx, path)
 	default:
 		return events.Error(errors.New("unsupported attribute type"))
 	}
 }
 
-func (twc *TableWriteController) setStringValue(idx int, attr attrPath) tea.Msg {
+func (twc *TableWriteController) setStringValue(idx int, attr *queryexpr.QueryExpr) tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt: "string value: ",
 		OnDone: func(value string) tea.Msg {
 			if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
 				if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
-					if err := attr.setAt(item, &types.AttributeValueMemberS{Value: value}); err != nil {
+					if err := attr.SetEvalItem(item, &types.AttributeValueMemberS{Value: value}); err != nil {
 						return err
 					}
 					set.SetDirty(idx, true)
@@ -140,13 +151,13 @@ func (twc *TableWriteController) setStringValue(idx int, attr attrPath) tea.Msg 
 	}
 }
 
-func (twc *TableWriteController) setNumberValue(idx int, attr attrPath) tea.Msg {
+func (twc *TableWriteController) setNumberValue(idx int, attr *queryexpr.QueryExpr) tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt: "number value: ",
 		OnDone: func(value string) tea.Msg {
 			if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
 				if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
-					if err := attr.setAt(item, &types.AttributeValueMemberN{Value: value}); err != nil {
+					if err := attr.SetEvalItem(item, &types.AttributeValueMemberN{Value: value}); err != nil {
 						return err
 					}
 					set.SetDirty(idx, true)
@@ -164,7 +175,7 @@ func (twc *TableWriteController) setNumberValue(idx int, attr attrPath) tea.Msg 
 	}
 }
 
-func (twc *TableWriteController) setBoolValue(idx int, attr attrPath) tea.Msg {
+func (twc *TableWriteController) setBoolValue(idx int, attr *queryexpr.QueryExpr) tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt: "bool value: ",
 		OnDone: func(value string) tea.Msg {
@@ -175,7 +186,7 @@ func (twc *TableWriteController) setBoolValue(idx int, attr attrPath) tea.Msg {
 
 			if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
 				if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
-					if err := attr.setAt(item, &types.AttributeValueMemberBOOL{Value: b}); err != nil {
+					if err := attr.SetEvalItem(item, &types.AttributeValueMemberBOOL{Value: b}); err != nil {
 						return err
 					}
 					set.SetDirty(idx, true)
@@ -193,10 +204,10 @@ func (twc *TableWriteController) setBoolValue(idx int, attr attrPath) tea.Msg {
 	}
 }
 
-func (twc *TableWriteController) setNullValue(idx int, attr attrPath) tea.Msg {
+func (twc *TableWriteController) setNullValue(idx int, attr *queryexpr.QueryExpr) tea.Msg {
 	if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
 		if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
-			if err := attr.setAt(item, &types.AttributeValueMemberNULL{Value: true}); err != nil {
+			if err := attr.SetEvalItem(item, &types.AttributeValueMemberNULL{Value: true}); err != nil {
 				return err
 			}
 			set.SetDirty(idx, true)
@@ -213,18 +224,22 @@ func (twc *TableWriteController) setNullValue(idx int, attr attrPath) tea.Msg {
 }
 
 func (twc *TableWriteController) DeleteAttribute(idx int, key string) tea.Msg {
-	// Verify that the expression is valid
-	apPath := newAttrPath(key)
+	path, err := queryexpr.Parse(key)
+	if err != nil {
+		return events.Error(err)
+	}
 
 	if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-		_, err := apPath.follow(set.Items()[idx])
-		return err
+		if !path.IsModifiablePath(set.Items()[idx]) {
+			return errors.Errorf("path cannot be used to set attribute value")
+		}
+		return nil
 	}); err != nil {
 		return events.Error(err)
 	}
 
 	if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-		err := apPath.deleteAt(set.Items()[idx])
+		err := path.DeleteAttribute(set.Items()[idx])
 		if err != nil {
 			return err
 		}

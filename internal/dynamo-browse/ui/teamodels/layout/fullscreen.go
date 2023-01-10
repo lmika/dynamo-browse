@@ -21,7 +21,11 @@ func (f fullScreenModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		f.ready = true
+		f.w, f.h = msg.Width, msg.Height
 		f.submodel = f.submodel.Resize(msg.Width, msg.Height)
+		return f, nil
+	case RequestLayout:
+		f.submodel = f.submodel.Resize(f.w, f.h)
 		return f, nil
 	}
 

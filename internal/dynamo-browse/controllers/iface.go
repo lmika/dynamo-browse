@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"io/fs"
 )
 
 type TableReadService interface {
@@ -18,4 +19,6 @@ type SettingsProvider interface {
 	SetReadOnly(ro bool) error
 	DefaultLimit() (limit int)
 	SetDefaultLimit(limit int) error
+	ScriptLookupFS() ([]fs.FS, error)
+	SetScriptLookupPaths(value string) error
 }

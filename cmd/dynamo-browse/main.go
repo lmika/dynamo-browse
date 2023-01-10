@@ -18,6 +18,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
+	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
 	"github.com/lmika/audax/internal/dynamo-browse/ui"
@@ -95,6 +96,7 @@ func main() {
 	tableService := tables.NewService(dynamoProvider, settingStore)
 	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
+	scriptManagerService := scriptmanager.New()
 	jobsService := jobs.NewService(eventBus)
 
 	state := controllers.NewState()
@@ -103,13 +105,15 @@ func main() {
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
-	settingsController := controllers.NewSettingsController(settingStore)
+	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	keyBindings := keybindings.Default()
+	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController, settingsController, eventBus)
 
 	keyBindingService := keybindings_service.NewService(keyBindings)
 	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
 
 	commandController := commandctrl.NewCommandController()
+	commandController.AddCommandLookupExtension(scriptController)
 
 	model := ui.NewModel(
 		tableReadController,
@@ -120,6 +124,8 @@ func main() {
 		jobsController,
 		itemRendererService,
 		commandController,
+		scriptController,
+		eventBus,
 		keyBindingController,
 		keyBindings,
 	)
@@ -130,6 +136,8 @@ func main() {
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	jobsController.SetMessageSender(p.Send)
+	scriptController.Init()
+	scriptController.SetMessageSender(p.Send)
 
 	log.Println("launching")
 	if err := p.Start(); err != nil {

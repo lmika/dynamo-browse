@@ -3,6 +3,8 @@ package controllers_test
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/audax/internal/common/ui/commandctrl"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
@@ -10,13 +12,18 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
+	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
 	"github.com/lmika/audax/internal/dynamo-browse/services/tables"
 	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
 	"github.com/lmika/audax/test/testdynamo"
 	"github.com/lmika/audax/test/testworkspace"
 	bus "github.com/lmika/events"
 	"github.com/stretchr/testify/assert"
+	"io/fs"
+	"sync"
 	"testing"
+	"testing/fstest"
+	"time"
 )
 
 func TestTableWriteController_NewItem(t *testing.T) {
@@ -569,6 +576,7 @@ func TestTableWriteController_DeleteMarked(t *testing.T) {
 }
 
 type services struct {
+	msgSender          *msgSender
 	state              *controllers.State
 	settingProvider    controllers.SettingsProvider
 	readController     *controllers.TableReadController
@@ -576,11 +584,14 @@ type services struct {
 	settingsController *controllers.SettingsController
 	columnsController  *controllers.ColumnsController
 	exportController   *controllers.ExportController
+	scriptController   *controllers.ScriptController
+	commandController  *commandctrl.CommandController
 }
 
 type serviceConfig struct {
 	tableName  string
 	isReadOnly bool
+	scriptFS   fs.FS
 }
 
 func newService(t *testing.T, cfg serviceConfig) *services {
@@ -590,6 +601,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	settingStore := settingstore.New(ws)
 	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
+	scriptService := scriptmanager.New()
 
 	client := testdynamo.SetupTestTable(t, testData)
 
@@ -601,15 +613,26 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	jobsController := controllers.NewJobsController(jobs.NewService(eventBus), eventBus, true)
 	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, jobsController, eventBus, cfg.tableName)
 	writeController := controllers.NewTableWriteController(state, service, jobsController, readController, settingStore)
-	settingsController := controllers.NewSettingsController(settingStore)
+	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
+	scriptController := controllers.NewScriptController(scriptService, readController, settingsController, eventBus)
+
+	commandController := commandctrl.NewCommandController()
+	commandController.AddCommandLookupExtension(scriptController)
 
 	if cfg.isReadOnly {
 		if err := settingStore.SetReadOnly(cfg.isReadOnly); err != nil {
 			t.Errorf("cannot set ro: %v", err)
 		}
 	}
+
+	msgSender := &msgSender{}
+	scriptController.Init()
+	scriptController.SetMessageSender(msgSender.send)
+
+	// Initting will setup the default script lookup paths, so revert them to the test ones
+	scriptService.SetLookupPaths([]fs.FS{cfg.scriptFS})
 
 	return &services{
 		state:              state,
@@ -619,5 +642,69 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 		settingsController: settingsController,
 		columnsController:  columnsController,
 		exportController:   exportController,
+		scriptController:   scriptController,
+		commandController:  commandController,
+		msgSender:          msgSender,
 	}
+}
+
+func testScriptFile(t *testing.T, filename, code string) fs.FS {
+	t.Helper()
+
+	testFs := fstest.MapFS{
+		filename: &fstest.MapFile{
+			Data: []byte(code),
+		},
+	}
+	return testFs
+}
+
+type msgSender struct {
+	mutex    sync.Mutex
+	msgs     []tea.Msg
+	waitChan chan struct{}
+}
+
+func (s *msgSender) send(msg tea.Msg) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.msgs = append(s.msgs, msg)
+	if s.waitChan != nil {
+		close(s.waitChan)
+		s.waitChan = nil
+	}
+}
+
+func (s *msgSender) waitForAtLeastOneMessages(t *testing.T, d time.Duration) {
+	t.Helper()
+
+	s.mutex.Lock()
+	msgLen := len(s.msgs)
+	s.mutex.Unlock()
+
+	if msgLen > 0 {
+		return
+	}
+
+	// Wait for a message
+	waitChan := s.afterNextMessage()
+
+	select {
+	case <-waitChan:
+	case <-time.After(d):
+		t.Fatalf("timeout waiting for next message")
+	}
+}
+
+func (s *msgSender) afterNextMessage() chan struct{} {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.waitChan != nil {
+		panic("More than one wait chan")
+	}
+	newWaitChan := make(chan struct{})
+	s.waitChan = newWaitChan
+	return newWaitChan
 }
