@@ -28,6 +28,7 @@ const (
 	resultSetUpdateSnapshotRestore
 	resultSetUpdateRescan
 	resultSetUpdateTouch
+	resultSetUpdateNextPage
 	resultSetUpdateScript
 )
 
@@ -128,7 +129,7 @@ func (c *TableReadController) ScanTable(name string) tea.Msg {
 		}
 
 		return resultSet, err
-	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), true, resultSetUpdateInit)).Submit()
+	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), true, false, resultSetUpdateInit)).Submit()
 }
 
 func (c *TableReadController) PromptForQuery() tea.Msg {
@@ -164,7 +165,7 @@ func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query *query
 			}
 
 			return newResultSet, err
-		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, resultSetUpdateQuery)).Submit()
+		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, false, resultSetUpdateQuery)).Submit()
 	}
 
 	return c.doIfNoneDirty(func() tea.Msg {
@@ -175,7 +176,7 @@ func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query *query
 				newResultSet = c.tableService.Filter(newResultSet, newFilter)
 			}
 			return newResultSet, err
-		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, resultSetUpdateQuery)).Submit()
+		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, false, resultSetUpdateQuery)).Submit()
 	})
 }
 
@@ -216,7 +217,7 @@ func (c *TableReadController) doScan(resultSet *models.ResultSet, query models.Q
 		}
 
 		return newResultSet, err
-	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), pushBackstack, op)).Submit()
+	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), pushBackstack, false, op)).Submit()
 }
 
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
@@ -280,14 +281,18 @@ func (c *TableReadController) Filter() tea.Msg {
 			return NewJob(c.jobController, "Applying Filter…", func(ctx context.Context) (*models.ResultSet, error) {
 				newResultSet := c.tableService.Filter(resultSet, value)
 				return newResultSet, nil
-			}).OnEither(c.handleResultSetFromJobResult(value, true, resultSetUpdateFilter)).Submit()
+			}).OnEither(c.handleResultSetFromJobResult(value, true, false, resultSetUpdateFilter)).Submit()
 		},
 	}
 }
 
-func (c *TableReadController) handleResultSetFromJobResult(filter string, pushbackStack bool, op resultSetUpdateOp) func(newResultSet *models.ResultSet, err error) tea.Msg {
+func (c *TableReadController) handleResultSetFromJobResult(filter string, pushbackStack, errIfEmpty bool, op resultSetUpdateOp) func(newResultSet *models.ResultSet, err error) tea.Msg {
 	return func(newResultSet *models.ResultSet, err error) tea.Msg {
 		if err == nil {
+			if errIfEmpty && newResultSet.NoResults() {
+				return events.StatusMsg("No more results")
+			}
+
 			return c.setResultSetAndFilter(newResultSet, filter, pushbackStack, op)
 		}
 
@@ -336,6 +341,20 @@ func (c *TableReadController) ViewForward() tea.Msg {
 	return c.updateViewToSnapshot(viewSnapshot)
 }
 
+func (c *TableReadController) NextPage() tea.Msg {
+	resultSet := c.state.ResultSet()
+	if resultSet == nil {
+		return events.StatusMsg("Result-set is nil")
+	} else if resultSet.LastEvaluatedKey == nil {
+		return events.StatusMsg("No more results")
+	}
+	currentFilter := c.state.filter
+
+	return NewJob(c.jobController, "Fetching next page…", func(ctx context.Context) (*models.ResultSet, error) {
+		return c.tableService.NextPage(ctx, resultSet)
+	}).OnEither(c.handleResultSetFromJobResult(currentFilter, true, true, resultSetUpdateNextPage)).Submit()
+}
+
 func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.ViewSnapshot) tea.Msg {
 	var err error
 	currentResultSet := c.state.ResultSet()
@@ -368,7 +387,7 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 	if viewSnapshot.Details.TableName == currentResultSet.TableInfo.Name && queryEqualsCurrentQuery {
 		return NewJob(c.jobController, "Applying filter…", func(ctx context.Context) (*models.ResultSet, error) {
 			return c.tableService.Filter(currentResultSet, viewSnapshot.Details.Filter), nil
-		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Details.Filter, false, resultSetUpdateSnapshotRestore)).Submit()
+		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Details.Filter, false, false, resultSetUpdateSnapshotRestore)).Submit()
 	}
 
 	return NewJob(c.jobController, "Running query…", func(ctx context.Context) (tea.Msg, error) {

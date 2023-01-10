@@ -1,10 +1,15 @@
 package models
 
-import "sort"
+import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"sort"
+)
 
 type ResultSet struct {
-	TableInfo  *TableInfo
-	Query      Queryable
+	TableInfo        *TableInfo
+	Query            Queryable
+	LastEvaluatedKey map[string]types.AttributeValue
+
 	items      []Item
 	attributes []ItemAttribute
 
@@ -23,6 +28,10 @@ type ItemAttribute struct {
 	Hidden bool
 	Dirty  bool
 	New    bool
+}
+
+func (rs *ResultSet) NoResults() bool {
+	return len(rs.items) == 0 && rs.LastEvaluatedKey == nil
 }
 
 func (rs *ResultSet) Items() []Item {

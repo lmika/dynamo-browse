@@ -589,9 +589,10 @@ type services struct {
 }
 
 type serviceConfig struct {
-	tableName  string
-	isReadOnly bool
-	scriptFS   fs.FS
+	tableName    string
+	isReadOnly   bool
+	defaultLimit int
+	scriptFS     fs.FS
 }
 
 func newService(t *testing.T, cfg serviceConfig) *services {
@@ -626,9 +627,15 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 			t.Errorf("cannot set ro: %v", err)
 		}
 	}
+	if cfg.defaultLimit != 0 {
+		if err := settingStore.SetDefaultLimit(cfg.defaultLimit); err != nil {
+			t.Errorf("cannot set default limit: %v", err)
+		}
+	}
 
 	msgSender := &msgSender{}
 	scriptController.Init()
+	jobsController.SetMessageSender(msgSender.send)
 	scriptController.SetMessageSender(msgSender.send)
 
 	// Initting will setup the default script lookup paths, so revert them to the test ones
@@ -674,6 +681,15 @@ func (s *msgSender) send(msg tea.Msg) {
 		close(s.waitChan)
 		s.waitChan = nil
 	}
+}
+
+func (s *msgSender) drain() []tea.Msg {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	msgs := s.msgs
+	s.msgs = nil
+	return msgs
 }
 
 func (s *msgSender) waitForAtLeastOneMessages(t *testing.T, d time.Duration) {

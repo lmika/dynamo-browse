@@ -21,8 +21,9 @@ func TestProvider_ScanItems(t *testing.T) {
 	t.Run("should return scanned items from the table", func(t *testing.T) {
 		ctx := context.Background()
 
-		items, err := provider.ScanItems(ctx, tableName, nil, 100)
+		items, lev, err := provider.ScanItems(ctx, tableName, nil, nil, 100)
 		assert.NoError(t, err)
+		assert.Nil(t, lev)
 		assert.Len(t, items, 3)
 
 		assert.Contains(t, items, testdynamo.TestRecordAsItem(t, testData[0].Data[0]))
@@ -33,8 +34,9 @@ func TestProvider_ScanItems(t *testing.T) {
 	t.Run("should return error if table name does not exist", func(t *testing.T) {
 		ctx := context.Background()
 
-		items, err := provider.ScanItems(ctx, "does-not-exist", nil, 100)
+		items, lev, err := provider.ScanItems(ctx, "does-not-exist", nil, nil, 100)
 		assert.Error(t, err)
+		assert.Nil(t, lev)
 		assert.Nil(t, items)
 	})
 }
@@ -79,8 +81,9 @@ func TestProvider_PutItems(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify the data
-			readItems, err := provider.ScanItems(ctx, tableName, nil, scenario.maxItems+5)
+			readItems, lev, err := provider.ScanItems(ctx, tableName, nil, nil, scenario.maxItems+5)
 			assert.NoError(t, err)
+			assert.Nil(t, lev)
 			assert.Len(t, readItems, scenario.maxItems)
 
 			for i := 0; i < scenario.maxItems; i++ {
@@ -104,8 +107,9 @@ func TestProvider_DeleteItem(t *testing.T) {
 			"sk": &types.AttributeValueMemberS{Value: "222"},
 		})
 
-		items, err := provider.ScanItems(ctx, tableName, nil, 100)
+		items, lev, err := provider.ScanItems(ctx, tableName, nil, nil, 100)
 		assert.NoError(t, err)
+		assert.Nil(t, lev)
 		assert.Len(t, items, 2)
 
 		assert.Contains(t, items, testdynamo.TestRecordAsItem(t, testData[0].Data[0]))
@@ -125,8 +129,9 @@ func TestProvider_DeleteItem(t *testing.T) {
 			"sk": &types.AttributeValueMemberS{Value: "999"},
 		})
 
-		items, err := provider.ScanItems(ctx, tableName, nil, 100)
+		items, lev, err := provider.ScanItems(ctx, tableName, nil, nil, 100)
 		assert.NoError(t, err)
+		assert.Nil(t, lev)
 		assert.Len(t, items, 3)
 
 		assert.Contains(t, items, testdynamo.TestRecordAsItem(t, testData[0].Data[0]))
@@ -140,8 +145,9 @@ func TestProvider_DeleteItem(t *testing.T) {
 
 		ctx := context.Background()
 
-		items, err := provider.ScanItems(ctx, "does-not-exist", nil, 100)
+		items, lev, err := provider.ScanItems(ctx, "does-not-exist", nil, nil, 100)
 		assert.Error(t, err)
+		assert.Nil(t, lev)
 		assert.Nil(t, items)
 	})
 }

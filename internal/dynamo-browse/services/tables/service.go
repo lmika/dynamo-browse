@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	"log"
@@ -35,10 +36,16 @@ func (s *Service) Describe(ctx context.Context, table string) (*models.TableInfo
 }
 
 func (s *Service) Scan(ctx context.Context, tableInfo *models.TableInfo) (*models.ResultSet, error) {
-	return s.doScan(ctx, tableInfo, nil, s.configProvider.DefaultLimit())
+	return s.doScan(ctx, tableInfo, nil, nil, s.configProvider.DefaultLimit())
 }
 
-func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable, limit int) (*models.ResultSet, error) {
+func (s *Service) doScan(
+	ctx context.Context,
+	tableInfo *models.TableInfo,
+	expr models.Queryable,
+	exclusiveStartKey map[string]types.AttributeValue,
+	limit int,
+) (*models.ResultSet, error) {
 	var (
 		filterExpr *expression.Expression
 		runAsQuery bool
@@ -55,26 +62,29 @@ func (s *Service) doScan(ctx context.Context, tableInfo *models.TableInfo, expr 
 	}
 
 	var results []models.Item
+	var lastEvalKey map[string]types.AttributeValue
 	if runAsQuery {
 		log.Printf("executing query")
-		results, err = s.provider.QueryItems(ctx, tableInfo.Name, filterExpr, limit)
+		results, lastEvalKey, err = s.provider.QueryItems(ctx, tableInfo.Name, filterExpr, exclusiveStartKey, limit)
 	} else {
 		log.Printf("executing scan")
-		results, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, limit)
+		results, lastEvalKey, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, exclusiveStartKey, limit)
 	}
 
 	if err != nil && len(results) == 0 {
 		return &models.ResultSet{
-			TableInfo: tableInfo,
-			Query:     expr,
+			TableInfo:        tableInfo,
+			Query:            expr,
+			LastEvaluatedKey: lastEvalKey,
 		}, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
 
 	models.Sort(results, tableInfo)
 
 	resultSet := &models.ResultSet{
-		TableInfo: tableInfo,
-		Query:     expr,
+		TableInfo:        tableInfo,
+		Query:            expr,
+		LastEvaluatedKey: lastEvalKey,
 	}
 	resultSet.SetItems(results)
 	resultSet.RefreshColumns()
@@ -148,7 +158,11 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 }
 
 func (s *Service) ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable) (*models.ResultSet, error) {
-	return s.doScan(ctx, tableInfo, expr, s.configProvider.DefaultLimit())
+	return s.doScan(ctx, tableInfo, expr, nil, s.configProvider.DefaultLimit())
+}
+
+func (s *Service) NextPage(ctx context.Context, resultSet *models.ResultSet) (*models.ResultSet, error) {
+	return s.doScan(ctx, resultSet.TableInfo, resultSet.Query, resultSet.LastEvaluatedKey, s.configProvider.DefaultLimit())
 }
 
 func (s *Service) assertReadWrite() error {
