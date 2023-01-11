@@ -31,6 +31,7 @@ type SessionService interface {
 }
 
 type QueryOptions struct {
+	TableName         string
 	NamePlaceholders  map[string]string
 	ValuePlaceholders map[string]types.AttributeValue
 }

@@ -32,6 +32,11 @@ func (um *sessionModule) query(ctx context.Context, args ...object.Object) objec
 			return objErr
 		}
 
+		// Table name
+		if val, isVal := objMap.Get("table").(*object.String); isVal && val.Value() != "" {
+			options.TableName = val.Value()
+		}
+
 		// Placeholders
 		if argsVal, isArgsValMap := objMap.Get("args").(*object.Map); isArgsValMap {
 			options.NamePlaceholders = make(map[string]string)
