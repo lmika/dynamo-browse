@@ -29,6 +29,9 @@ func (opts Options) configuredShell() string {
 type Permissions struct {
 	// AllowShellCommands determines whether or not a script can execute shell commands.
 	AllowShellCommands bool
+
+	// AllowEnv determines whether or not a script can access environment variables
+	AllowEnv bool
 }
 
 type optionCtxKeyType struct{}

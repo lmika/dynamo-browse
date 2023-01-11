@@ -65,6 +65,7 @@ func (sc *ScriptController) Init() {
 		OSExecShell: "/bin/bash",
 		Permissions: scriptmanager.Permissions{
 			AllowShellCommands: true,
+			AllowEnv:           true,
 		},
 	})
 }
