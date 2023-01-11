@@ -9,6 +9,62 @@ import (
 	"testing"
 )
 
+func TestOSModule_Env(t *testing.T) {
+	t.Run("should return value of environment variables", func(t *testing.T) {
+		t.Setenv("FULL_VALUE", "this is a value")
+		t.Setenv("EMPTY_VALUE", "")
+
+		testFS := testScriptFile(t, "test.tm", `
+			assert(os.env("FULL_VALUE") == "this is a value")
+			assert(os.env("EMPTY_VALUE") == "")
+			assert(os.env("MISSING_VALUE") == nil)
+
+			assert(bool(os.env("FULL_VALUE")) == true)
+			assert(bool(os.env("EMPTY_VALUE")) == false)
+			assert(bool(os.env("MISSING_VALUE")) == false)
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetDefaultOptions(scriptmanager.Options{
+			OSExecShell: "/bin/bash",
+			Permissions: scriptmanager.Permissions{
+				AllowEnv: true,
+			},
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+	})
+
+	t.Run("should return nil when no access to environment variables", func(t *testing.T) {
+		t.Setenv("FULL_VALUE", "this is a value")
+		t.Setenv("EMPTY_VALUE", "")
+
+		testFS := testScriptFile(t, "test.tm", `
+			assert(os.env("FULL_VALUE") == nil)
+			assert(os.env("EMPTY_VALUE") == nil)
+			assert(os.env("MISSING_VALUE") == nil)
+
+			assert(bool(os.env("FULL_VALUE")) == false)
+			assert(bool(os.env("EMPTY_VALUE")) == false)
+			assert(bool(os.env("MISSING_VALUE")) == false)
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetDefaultOptions(scriptmanager.Options{
+			OSExecShell: "/bin/bash",
+			Permissions: scriptmanager.Permissions{
+				AllowEnv: false,
+			},
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+	})
+}
+
 func TestOSModule_Exec(t *testing.T) {
 	t.Run("should run command and return stdout", func(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
