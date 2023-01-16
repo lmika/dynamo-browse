@@ -73,18 +73,20 @@ func (s *Service) doScan(
 
 	if err != nil && len(results) == 0 {
 		return &models.ResultSet{
-			TableInfo:        tableInfo,
-			Query:            expr,
-			LastEvaluatedKey: lastEvalKey,
+			TableInfo:         tableInfo,
+			Query:             expr,
+			ExclusiveStartKey: exclusiveStartKey,
+			LastEvaluatedKey:  lastEvalKey,
 		}, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
 
 	models.Sort(results, tableInfo)
 
 	resultSet := &models.ResultSet{
-		TableInfo:        tableInfo,
-		Query:            expr,
-		LastEvaluatedKey: lastEvalKey,
+		TableInfo:         tableInfo,
+		Query:             expr,
+		ExclusiveStartKey: exclusiveStartKey,
+		LastEvaluatedKey:  lastEvalKey,
 	}
 	resultSet.SetItems(results)
 	resultSet.RefreshColumns()
@@ -157,8 +159,8 @@ func (s *Service) Delete(ctx context.Context, tableInfo *models.TableInfo, items
 	return nil
 }
 
-func (s *Service) ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable) (*models.ResultSet, error) {
-	return s.doScan(ctx, tableInfo, expr, nil, s.configProvider.DefaultLimit())
+func (s *Service) ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, expr models.Queryable, exclusiveStartKey map[string]types.AttributeValue) (*models.ResultSet, error) {
+	return s.doScan(ctx, tableInfo, expr, exclusiveStartKey, s.configProvider.DefaultLimit())
 }
 
 func (s *Service) NextPage(ctx context.Context, resultSet *models.ResultSet) (*models.ResultSet, error) {

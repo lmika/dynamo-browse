@@ -207,7 +207,7 @@ func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanage
 		tableInfo = currentResultSet.TableInfo
 	}
 
-	newResultSet, err := s.sc.tableReadController.tableService.ScanOrQuery(ctx, tableInfo, expr)
+	newResultSet, err := s.sc.tableReadController.tableService.ScanOrQuery(ctx, tableInfo, expr, nil)
 	if err != nil {
 		return nil, err
 	}

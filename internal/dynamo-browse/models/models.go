@@ -6,12 +6,15 @@ import (
 )
 
 type ResultSet struct {
-	TableInfo        *TableInfo
-	Query            Queryable
-	LastEvaluatedKey map[string]types.AttributeValue
+	// Query information
+	TableInfo         *TableInfo
+	Query             Queryable
+	ExclusiveStartKey map[string]types.AttributeValue
 
-	items      []Item
-	attributes []ItemAttribute
+	// Result information
+	LastEvaluatedKey map[string]types.AttributeValue
+	items            []Item
+	attributes       []ItemAttribute
 
 	columns []string
 }

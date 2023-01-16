@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrcodec"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
@@ -150,15 +152,21 @@ func (c *TableReadController) PromptForQuery() tea.Msg {
 				}
 			}
 
-			return c.runQuery(resultSet.TableInfo, q, "", true)
+			return c.runQuery(resultSet.TableInfo, q, "", true, nil)
 		},
 	}
 }
 
-func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query *queryexpr.QueryExpr, newFilter string, pushSnapshot bool) tea.Msg {
+func (c *TableReadController) runQuery(
+	tableInfo *models.TableInfo,
+	query *queryexpr.QueryExpr,
+	newFilter string,
+	pushSnapshot bool,
+	exclusiveStartKey map[string]types.AttributeValue,
+) tea.Msg {
 	if query == nil {
 		return NewJob(c.jobController, "Scanning…", func(ctx context.Context) (*models.ResultSet, error) {
-			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, nil)
+			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, nil, exclusiveStartKey)
 
 			if newResultSet != nil && newFilter != "" {
 				newResultSet = c.tableService.Filter(newResultSet, newFilter)
@@ -170,7 +178,7 @@ func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query *query
 
 	return c.doIfNoneDirty(func() tea.Msg {
 		return NewJob(c.jobController, "Running query…", func(ctx context.Context) (*models.ResultSet, error) {
-			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, query)
+			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, query, exclusiveStartKey)
 
 			if newFilter != "" && newResultSet != nil {
 				newResultSet = c.tableService.Filter(newResultSet, newFilter)
@@ -211,7 +219,7 @@ func (c *TableReadController) Rescan() tea.Msg {
 
 func (c *TableReadController) doScan(resultSet *models.ResultSet, query models.Queryable, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
 	return NewJob(c.jobController, "Rescan…", func(ctx context.Context) (*models.ResultSet, error) {
-		newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
+		newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query, resultSet.LastEvaluatedKey)
 		if newResultSet != nil {
 			newResultSet = c.tableService.Filter(newResultSet, c.state.Filter())
 		}
@@ -236,7 +244,16 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 			}
 		}
 
-		log.Printf("pushing to backstack: table = %v, filter = %v, query_hash = %v", details.TableName, details.Filter, details.QueryHash)
+		if len(resultSet.ExclusiveStartKey) > 0 {
+			var err error
+			details.ExclusiveStartKey, err = attrcodec.SerializeMapToBytes(resultSet.ExclusiveStartKey)
+			if err != nil {
+				log.Printf("cannot serialize last evaluated key to byte: %v", err)
+			}
+		}
+
+		log.Printf("pushing to backstack: table = %v, filter = %v, query_hash = %v",
+			details.TableName, details.Filter, details.QueryHash)
 		if err := c.workspaceService.PushSnapshot(details); err != nil {
 			log.Printf("cannot push snapshot: %v", err)
 		}
@@ -286,7 +303,11 @@ func (c *TableReadController) Filter() tea.Msg {
 	}
 }
 
-func (c *TableReadController) handleResultSetFromJobResult(filter string, pushbackStack, errIfEmpty bool, op resultSetUpdateOp) func(newResultSet *models.ResultSet, err error) tea.Msg {
+func (c *TableReadController) handleResultSetFromJobResult(
+	filter string,
+	pushbackStack, errIfEmpty bool,
+	op resultSetUpdateOp,
+) func(newResultSet *models.ResultSet, err error) tea.Msg {
 	return func(newResultSet *models.ResultSet, err error) tea.Msg {
 		if err == nil {
 			if errIfEmpty && newResultSet.NoResults() {
@@ -367,6 +388,14 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 		}
 	}
 
+	var exclusiveStartKey map[string]types.AttributeValue
+	if len(viewSnapshot.Details.ExclusiveStartKey) > 0 {
+		exclusiveStartKey, err = attrcodec.DeseralizedMapFromBytes(viewSnapshot.Details.ExclusiveStartKey)
+		if err != nil {
+			return err
+		}
+	}
+
 	if currentResultSet == nil {
 		return NewJob(c.jobController, "Fetching table info…", func(ctx context.Context) (*models.TableInfo, error) {
 			tableInfo, err := c.tableService.Describe(context.Background(), viewSnapshot.Details.TableName)
@@ -375,7 +404,7 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 			}
 			return tableInfo, nil
 		}).OnDone(func(tableInfo *models.TableInfo) tea.Msg {
-			return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false)
+			return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false, exclusiveStartKey)
 		}).Submit()
 	}
 
@@ -399,7 +428,7 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 			}
 		}
 
-		return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false), nil
+		return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false, exclusiveStartKey), nil
 	}).OnDone(func(m tea.Msg) tea.Msg {
 		return m
 	}).Submit()
