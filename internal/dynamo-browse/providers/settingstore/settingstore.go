@@ -36,6 +36,14 @@ func (c *SettingStore) SetScriptLookupPaths(value string) error {
 	return c.ws.Set(settingBucket, keyTableReadOnly, value)
 }
 
+func (c *SettingStore) ScriptLookupPaths() string {
+	paths, err := c.getStringValue(keyScriptLookupPath, defaultScriptLookupPaths)
+	if err != nil {
+		return ""
+	}
+	return paths
+}
+
 func (c *SettingStore) ScriptLookupFS() ([]fs.FS, error) {
 	paths, err := c.getStringValue(keyScriptLookupPath, defaultScriptLookupPaths)
 	if err != nil {

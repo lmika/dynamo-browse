@@ -16,6 +16,9 @@ func TestSettingsController_SetSetting(t *testing.T) {
 		assert.True(t, srv.settingsController.IsReadOnly())
 		assert.IsType(t, events.WrappedStatusMsg{}, msg)
 		assert.IsType(t, controllers.SettingsUpdated{}, msg.(events.WrappedStatusMsg).Next)
+
+		msg = invokeCommand(t, srv.settingsController.SetSetting("read-only", ""))
+		assert.Equal(t, "read-only = true", string(msg.(events.StatusMsg)))
 	})
 
 	t.Run("read-write setting", func(t *testing.T) {
@@ -26,6 +29,9 @@ func TestSettingsController_SetSetting(t *testing.T) {
 		assert.False(t, srv.settingsController.IsReadOnly())
 		assert.IsType(t, events.WrappedStatusMsg{}, msg)
 		assert.IsType(t, controllers.SettingsUpdated{}, msg.(events.WrappedStatusMsg).Next)
+
+		msg = invokeCommand(t, srv.settingsController.SetSetting("read-only", ""))
+		assert.Equal(t, "read-only = false", string(msg.(events.StatusMsg)))
 	})
 
 	t.Run("set default limit", func(t *testing.T) {
@@ -35,5 +41,8 @@ func TestSettingsController_SetSetting(t *testing.T) {
 		invokeCommand(t, srv.settingsController.SetSetting("default-limit", "20"))
 
 		assert.Equal(t, 20, srv.settingProvider.DefaultLimit())
+
+		msg := invokeCommand(t, srv.settingsController.SetSetting("default-limit", ""))
+		assert.Equal(t, "default-limit = 20", string(msg.(events.StatusMsg)))
 	})
 }

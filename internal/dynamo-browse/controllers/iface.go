@@ -23,4 +23,5 @@ type SettingsProvider interface {
 	SetDefaultLimit(limit int) error
 	ScriptLookupFS() ([]fs.FS, error)
 	SetScriptLookupPaths(value string) error
+	ScriptLookupPaths() string
 }
