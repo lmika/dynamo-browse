@@ -104,10 +104,20 @@ func (p *Provider) batchPutItems(ctx context.Context, name string, items []model
 	return nil
 }
 
-func (p *Provider) ScanItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error) {
+func (p *Provider) ScanItems(
+	ctx context.Context,
+	tableName string,
+	filterExpr *expression.Expression,
+	exclusiveStartKey map[string]types.AttributeValue,
+	maxItems int,
+) ([]models.Item, map[string]types.AttributeValue, error) {
+	const maxItemsPerPage = 100
+
 	input := &dynamodb.ScanInput{
 		TableName: aws.String(tableName),
-		Limit:     aws.Int32(int32(maxItems)),
+		//Limit:             aws.Int32(int32(maxItems)),
+		//Limit:             aws.Int32(100),
+		//ExclusiveStartKey: exclusiveStartKey,
 	}
 	if filterExpr != nil {
 		input.FilterExpression = filterExpr.Filter()
@@ -115,44 +125,59 @@ func (p *Provider) ScanItems(ctx context.Context, tableName string, filterExpr *
 		input.ExpressionAttributeValues = filterExpr.Values()
 	}
 
-	paginator := dynamodb.NewScanPaginator(p.client, input, func(opt *dynamodb.ScanPaginatorOptions) {
-		opt.Limit = 100
-	})
+	var (
+		items       = make([]models.Item, 0)
+		nextUpdate  = time.Now().Add(1 * time.Second)
+		lastEvalKey = exclusiveStartKey
+	)
 
-	items := make([]models.Item, 0)
+	for len(items) < maxItems {
+		remainingItemsToFetch := maxItems - len(items)
+		if remainingItemsToFetch > maxItemsPerPage {
+			input.Limit = aws.Int32(maxItemsPerPage)
+		} else {
+			input.Limit = aws.Int32(int32(remainingItemsToFetch))
+		}
+		input.ExclusiveStartKey = lastEvalKey
 
-	nextUpdate := time.Now().Add(1 * time.Second)
-
-outer:
-	for paginator.HasMorePages() {
-		res, err := paginator.NextPage(ctx)
+		out, err := p.client.Scan(ctx, input)
 		if err != nil {
 			if ctx.Err() != nil {
-				return items, models.NewPartialResultsError(ctx.Err())
+				return items, nil, models.NewPartialResultsError(ctx.Err())
 			}
-			return nil, errors.Wrapf(err, "cannot execute scan on table %v", tableName)
+			return nil, nil, errors.Wrapf(err, "cannot execute scan on table %v", tableName)
 		}
 
-		for _, itm := range res.Items {
+		for _, itm := range out.Items {
 			items = append(items, itm)
-			if len(items) >= maxItems {
-				break outer
-			}
 		}
 
 		if time.Now().After(nextUpdate) {
 			jobs.PostUpdate(ctx, fmt.Sprintf("found %d items", len(items)))
 			nextUpdate = time.Now().Add(1 * time.Second)
 		}
+
+		lastEvalKey = out.LastEvaluatedKey
+		if lastEvalKey == nil {
+			// We've reached the last page
+			break
+		}
 	}
 
-	return items, nil
+	return items, lastEvalKey, nil
 }
 
-func (p *Provider) QueryItems(ctx context.Context, tableName string, filterExpr *expression.Expression, maxItems int) ([]models.Item, error) {
+func (p *Provider) QueryItems(
+	ctx context.Context,
+	tableName string,
+	filterExpr *expression.Expression,
+	exclusiveStartKey map[string]types.AttributeValue,
+	maxItems int,
+) ([]models.Item, map[string]types.AttributeValue, error) {
+	const maxItemsPerPage = 100
+
 	input := &dynamodb.QueryInput{
 		TableName: aws.String(tableName),
-		Limit:     aws.Int32(int32(maxItems)),
 	}
 	if filterExpr != nil {
 		input.KeyConditionExpression = filterExpr.KeyCondition()
@@ -161,38 +186,46 @@ func (p *Provider) QueryItems(ctx context.Context, tableName string, filterExpr 
 		input.ExpressionAttributeValues = filterExpr.Values()
 	}
 
-	paginator := dynamodb.NewQueryPaginator(p.client, input, func(opt *dynamodb.QueryPaginatorOptions) {
-		opt.Limit = 100
-	})
+	var (
+		items       = make([]models.Item, 0)
+		nextUpdate  = time.Now().Add(1 * time.Second)
+		lastEvalKey = exclusiveStartKey
+	)
 
-	items := make([]models.Item, 0)
+	for len(items) < maxItems {
+		remainingItemsToFetch := maxItems - len(items)
+		if remainingItemsToFetch > maxItemsPerPage {
+			input.Limit = aws.Int32(maxItemsPerPage)
+		} else {
+			input.Limit = aws.Int32(int32(remainingItemsToFetch))
+		}
+		input.ExclusiveStartKey = lastEvalKey
 
-	nextUpdate := time.Now().Add(1 * time.Second)
-
-outer:
-	for paginator.HasMorePages() {
-		res, err := paginator.NextPage(ctx)
+		out, err := p.client.Query(ctx, input)
 		if err != nil {
 			if ctx.Err() != nil {
-				return items, models.NewPartialResultsError(ctx.Err())
+				return items, nil, models.NewPartialResultsError(ctx.Err())
 			}
-			return nil, errors.Wrapf(err, "cannot execute query on table %v", tableName)
+			return nil, nil, errors.Wrapf(err, "cannot execute scan on table %v", tableName)
 		}
 
-		for _, itm := range res.Items {
+		for _, itm := range out.Items {
 			items = append(items, itm)
-			if len(items) >= maxItems {
-				break outer
-			}
 		}
 
 		if time.Now().After(nextUpdate) {
 			jobs.PostUpdate(ctx, fmt.Sprintf("found %d items", len(items)))
 			nextUpdate = time.Now().Add(1 * time.Second)
 		}
+
+		lastEvalKey = out.LastEvaluatedKey
+		if lastEvalKey == nil {
+			// We've reached the last page
+			break
+		}
 	}
 
-	return items, nil
+	return items, lastEvalKey, nil
 }
 
 func (p *Provider) DeleteItem(ctx context.Context, tableName string, key map[string]types.AttributeValue) error {

@@ -169,12 +169,8 @@ func (s *sessionImpl) SetResultSet(ctx context.Context, newResultSet *models.Res
 }
 
 func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanager.QueryOptions) (*models.ResultSet, error) {
-	currentResultSet := s.sc.tableReadController.state.ResultSet()
-	if currentResultSet == nil {
-		// TODO: this should only be used if there's no current table
-		return nil, errors.New("no table selected")
-	}
 
+	// Parse the query
 	expr, err := queryexpr.Parse(query)
 	if err != nil {
 		return nil, err
@@ -187,7 +183,32 @@ func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanage
 		expr = expr.WithValueParams(opts.ValuePlaceholders)
 	}
 
-	newResultSet, err := s.sc.tableReadController.tableService.ScanOrQuery(context.Background(), currentResultSet.TableInfo, expr)
+	// Get the table info
+	var tableInfo *models.TableInfo
+
+	tableName := opts.TableName
+	currentResultSet := s.sc.tableReadController.state.ResultSet()
+
+	if tableName != "" {
+		// Table specified.  If it's the same as the current table, then use the existing table info
+		if currentResultSet != nil && currentResultSet.TableInfo.Name == tableName {
+			tableInfo = currentResultSet.TableInfo
+		}
+
+		// Otherwise, describe the table
+		tableInfo, err = s.sc.tableReadController.tableService.Describe(ctx, tableName)
+		if err != nil {
+			return nil, errors.Wrapf(err, "cannot describe table '%v'", tableName)
+		}
+	} else {
+		// Table not specified.  Use the existing table, if any
+		if currentResultSet == nil {
+			return nil, errors.New("no table currently selected")
+		}
+		tableInfo = currentResultSet.TableInfo
+	}
+
+	newResultSet, err := s.sc.tableReadController.tableService.ScanOrQuery(ctx, tableInfo, expr, nil)
 	if err != nil {
 		return nil, err
 	}

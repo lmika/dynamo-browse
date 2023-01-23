@@ -15,15 +15,17 @@ type ViewSnapshot struct {
 }
 
 type ViewSnapshotDetails struct {
-	TableName string
-	Query     []byte
-	QueryHash uint64
-	Filter    string
+	TableName         string
+	Query             []byte
+	QueryHash         uint64
+	Filter            string
+	ExclusiveStartKey []byte
 }
 
 func (d ViewSnapshotDetails) Equals(other ViewSnapshotDetails, compareHashesOnly bool) bool {
 	return d.TableName == other.TableName &&
 		d.Filter == other.Filter &&
+		bytes.Equal(d.ExclusiveStartKey, d.ExclusiveStartKey) &&
 		d.compareQueries(other, compareHashesOnly)
 }
 

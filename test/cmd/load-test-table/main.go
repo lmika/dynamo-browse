@@ -35,20 +35,24 @@ func main() {
 		dynamodb.WithEndpointResolver(dynamodb.EndpointResolverFromURL("http://localhost:4566")))
 
 	// Other tables
-	if err := createTable(ctx, dynamoClient, "user-accounts"); err != nil {
+	if err := createTable(ctx, dynamoClient, "user-accounts", false); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := createTable(ctx, dynamoClient, "inventory"); err != nil {
+	if err := createTable(ctx, dynamoClient, "inventory", true); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := createTable(ctx, dynamoClient, tableName); err != nil {
+	if err := createTable(ctx, dynamoClient, tableName, false); err != nil {
 		log.Fatal(err)
 	}
 
 	tableInfo := &models.TableInfo{
 		Name: tableName,
+		Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"},
+	}
+	inventoryTableInfo := &models.TableInfo{
+		Name: "inventory",
 		Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"},
 	}
 
@@ -87,14 +91,30 @@ func main() {
 		}
 	}
 
+	key := gofakeit.UUID()
+	for i := 0; i < totalItems; i++ {
+		if err := tableService.Put(ctx, inventoryTableInfo, models.Item{
+			"pk":   &types.AttributeValueMemberS{Value: key},
+			"sk":   &types.AttributeValueMemberN{Value: fmt.Sprint(i)},
+			"uuid": &types.AttributeValueMemberS{Value: gofakeit.UUID()},
+		}); err != nil {
+			log.Fatalln(err)
+		}
+	}
+
 	log.Printf("table '%v' created with %v items", tableName, totalItems)
 }
 
-func createTable(ctx context.Context, dynamoClient *dynamodb.Client, tableName string) error {
+func createTable(ctx context.Context, dynamoClient *dynamodb.Client, tableName string, skNumber bool) error {
 	if _, err := dynamoClient.DeleteTable(ctx, &dynamodb.DeleteTableInput{
 		TableName: aws.String(tableName),
 	}); err != nil {
 		log.Printf("warn: cannot delete table: %v: %v", tableName, err)
+	}
+
+	var skType = types.ScalarAttributeTypeS
+	if skNumber {
+		skType = types.ScalarAttributeTypeN
 	}
 
 	if _, err := dynamoClient.CreateTable(ctx, &dynamodb.CreateTableInput{
@@ -105,7 +125,7 @@ func createTable(ctx context.Context, dynamoClient *dynamodb.Client, tableName s
 		},
 		AttributeDefinitions: []types.AttributeDefinition{
 			{AttributeName: aws.String("pk"), AttributeType: types.ScalarAttributeTypeS},
-			{AttributeName: aws.String("sk"), AttributeType: types.ScalarAttributeTypeS},
+			{AttributeName: aws.String("sk"), AttributeType: skType},
 		},
 		ProvisionedThroughput: &types.ProvisionedThroughput{
 			ReadCapacityUnits:  aws.Int64(100),

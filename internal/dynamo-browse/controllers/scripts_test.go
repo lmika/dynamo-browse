@@ -67,6 +67,25 @@ func TestScriptController_RunScript(t *testing.T) {
 			assert.Len(t, srv.msgSender.msgs, 1)
 			assert.Equal(t, events.StatusMsg("2"), srv.msgSender.msgs[0])
 		})
+
+		t.Run("should run query against another table", func(t *testing.T) {
+			srv := newService(t, serviceConfig{
+				tableName: "alpha-table",
+				scriptFS: testScriptFile(t, "test.tm", `
+					rs := session.query('pk!="abc"', { table: "count-to-30" }).unwrap()
+					ui.print(rs.length)
+				`),
+			})
+
+			invokeCommand(t, srv.readController.Init())
+			msg := srv.scriptController.RunScript("test.tm")
+			assert.Nil(t, msg)
+
+			srv.msgSender.waitForAtLeastOneMessages(t, 5*time.Second)
+
+			assert.Len(t, srv.msgSender.msgs, 1)
+			assert.Equal(t, events.StatusMsg("30"), srv.msgSender.msgs[0])
+		})
 	})
 
 	t.Run("session.set_result_set", func(t *testing.T) {

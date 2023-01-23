@@ -2,6 +2,7 @@ package controllers_test
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
@@ -36,7 +37,7 @@ func TestTableReadController_ListTables(t *testing.T) {
 
 		event := srv.readController.ListTables(false).(controllers.PromptForTableMsg)
 
-		assert.Equal(t, []string{"alpha-table", "bravo-table"}, event.Tables)
+		assert.Equal(t, []string{"alpha-table", "bravo-table", "count-to-30"}, event.Tables)
 
 		selectedEvent := event.OnSelected("alpha-table")
 
@@ -106,6 +107,54 @@ func TestTableReadController_Query(t *testing.T) {
 
 		invokeCommandExpectingError(t, srv.readController.Init())
 		invokeCommandExpectingError(t, srv.exportController.ExportCSV(tempFile))
+	})
+}
+
+func TestTableReadController_NextPage(t *testing.T) {
+	t.Run("should return successive pages of results", func(t *testing.T) {
+		scenarios := []struct {
+			pageLimit         int
+			expectedPageSizes []int
+		}{
+			{pageLimit: 10, expectedPageSizes: []int{10, 10, 10}},
+			{pageLimit: 5, expectedPageSizes: []int{5, 5, 5, 5, 5, 5}},
+			{pageLimit: 13, expectedPageSizes: []int{13, 13, 4}},
+			{pageLimit: 7, expectedPageSizes: []int{7, 7, 7, 7, 2}},
+			{pageLimit: 3, expectedPageSizes: []int{3, 3, 3, 3, 3, 3, 3, 3, 3, 3}},
+			{pageLimit: 50, expectedPageSizes: []int{30}},
+			{pageLimit: 100, expectedPageSizes: []int{30}},
+		}
+
+		for _, scenario := range scenarios {
+			t.Run(fmt.Sprintf("page size = %v", scenario.pageLimit), func(t *testing.T) {
+				srv := newService(t, serviceConfig{tableName: "count-to-30", defaultLimit: scenario.pageLimit})
+
+				invokeCommand(t, srv.readController.Init())
+
+				var currentCount = 1
+
+				// Go through each page and confirm that the items are correct
+				for i, pageSize := range scenario.expectedPageSizes {
+					if i > 0 {
+						invokeCommand(t, srv.readController.NextPage())
+					}
+
+					rs := srv.state.ResultSet()
+					assert.Len(t, rs.Items(), pageSize)
+					for _, item := range rs.Items() {
+						assert.Equal(t, fmt.Sprintf("NUM#%02d", currentCount), item["sk"].(*types.AttributeValueMemberS).Value)
+						currentCount += 1
+					}
+				}
+
+				// Attempt to get the last page of results, but no more results.  This should not
+				// clear the current page of results
+				invokeCommand(t, srv.readController.NextPage())
+
+				rs := srv.state.ResultSet()
+				assert.Len(t, rs.Items(), scenario.expectedPageSizes[len(scenario.expectedPageSizes)-1])
+			})
+		}
 	})
 }
 
@@ -221,4 +270,22 @@ var testData = []testdynamo.TestData{
 			},
 		},
 	},
+	{
+		TableName: "count-to-30",
+		Data: sequenceToN(1, 30, func(n int) map[string]any {
+			return map[string]any{
+				"pk":  "NUM",
+				"sk":  fmt.Sprintf("NUM#%02d", n),
+				"num": n,
+			}
+		}),
+	},
+}
+
+func sequenceToN[T any](from int, to int, fn func(n int) T) []T {
+	ns := make([]T, 0, to-from+1)
+	for i := from; i <= to; i++ {
+		ns = append(ns, fn(i))
+	}
+	return ns
 }

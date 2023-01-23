@@ -79,6 +79,37 @@ func TestModSession_Query(t *testing.T) {
 		mockedSessionService.AssertExpectations(t)
 	})
 
+	t.Run("should successfully specify table name", func(t *testing.T) {
+		rs := &models.ResultSet{}
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{
+			TableName: "some-table",
+		}).Return(rs, nil)
+
+		mockedUIService := mocks.NewUIService(t)
+
+		testFS := testScriptFile(t, "test.tm", `
+			res := session.query("some expr", {
+				table: "some-table",
+			})
+			assert(!res.is_err())
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			UI:      mockedUIService,
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedUIService.AssertExpectations(t)
+		mockedSessionService.AssertExpectations(t)
+	})
+
 	t.Run("should set placeholder values", func(t *testing.T) {
 		rs := &models.ResultSet{}
 

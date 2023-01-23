@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"io/fs"
 )
@@ -11,7 +12,8 @@ type TableReadService interface {
 	Describe(ctx context.Context, table string) (*models.TableInfo, error)
 	Scan(ctx context.Context, tableInfo *models.TableInfo) (*models.ResultSet, error)
 	Filter(resultSet *models.ResultSet, filter string) *models.ResultSet
-	ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, query models.Queryable) (*models.ResultSet, error)
+	ScanOrQuery(ctx context.Context, tableInfo *models.TableInfo, query models.Queryable, exclusiveStartKey map[string]types.AttributeValue) (*models.ResultSet, error)
+	NextPage(ctx context.Context, resultSet *models.ResultSet) (*models.ResultSet, error)
 }
 
 type SettingsProvider interface {

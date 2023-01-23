@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/audax/internal/dynamo-browse/models/attrcodec"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
@@ -28,6 +30,7 @@ const (
 	resultSetUpdateSnapshotRestore
 	resultSetUpdateRescan
 	resultSetUpdateTouch
+	resultSetUpdateNextPage
 	resultSetUpdateScript
 )
 
@@ -128,7 +131,7 @@ func (c *TableReadController) ScanTable(name string) tea.Msg {
 		}
 
 		return resultSet, err
-	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), true, resultSetUpdateInit)).Submit()
+	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), true, false, resultSetUpdateInit)).Submit()
 }
 
 func (c *TableReadController) PromptForQuery() tea.Msg {
@@ -149,33 +152,39 @@ func (c *TableReadController) PromptForQuery() tea.Msg {
 				}
 			}
 
-			return c.runQuery(resultSet.TableInfo, q, "", true)
+			return c.runQuery(resultSet.TableInfo, q, "", true, nil)
 		},
 	}
 }
 
-func (c *TableReadController) runQuery(tableInfo *models.TableInfo, query *queryexpr.QueryExpr, newFilter string, pushSnapshot bool) tea.Msg {
+func (c *TableReadController) runQuery(
+	tableInfo *models.TableInfo,
+	query *queryexpr.QueryExpr,
+	newFilter string,
+	pushSnapshot bool,
+	exclusiveStartKey map[string]types.AttributeValue,
+) tea.Msg {
 	if query == nil {
 		return NewJob(c.jobController, "Scanning…", func(ctx context.Context) (*models.ResultSet, error) {
-			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, nil)
+			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, nil, exclusiveStartKey)
 
 			if newResultSet != nil && newFilter != "" {
 				newResultSet = c.tableService.Filter(newResultSet, newFilter)
 			}
 
 			return newResultSet, err
-		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, resultSetUpdateQuery)).Submit()
+		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, false, resultSetUpdateQuery)).Submit()
 	}
 
 	return c.doIfNoneDirty(func() tea.Msg {
 		return NewJob(c.jobController, "Running query…", func(ctx context.Context) (*models.ResultSet, error) {
-			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, query)
+			newResultSet, err := c.tableService.ScanOrQuery(context.Background(), tableInfo, query, exclusiveStartKey)
 
 			if newFilter != "" && newResultSet != nil {
 				newResultSet = c.tableService.Filter(newResultSet, newFilter)
 			}
 			return newResultSet, err
-		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, resultSetUpdateQuery)).Submit()
+		}).OnEither(c.handleResultSetFromJobResult(newFilter, pushSnapshot, false, resultSetUpdateQuery)).Submit()
 	})
 }
 
@@ -210,13 +219,13 @@ func (c *TableReadController) Rescan() tea.Msg {
 
 func (c *TableReadController) doScan(resultSet *models.ResultSet, query models.Queryable, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
 	return NewJob(c.jobController, "Rescan…", func(ctx context.Context) (*models.ResultSet, error) {
-		newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query)
+		newResultSet, err := c.tableService.ScanOrQuery(ctx, resultSet.TableInfo, query, resultSet.LastEvaluatedKey)
 		if newResultSet != nil {
 			newResultSet = c.tableService.Filter(newResultSet, c.state.Filter())
 		}
 
 		return newResultSet, err
-	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), pushBackstack, op)).Submit()
+	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), pushBackstack, false, op)).Submit()
 }
 
 func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet, filter string, pushBackstack bool, op resultSetUpdateOp) tea.Msg {
@@ -235,7 +244,16 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 			}
 		}
 
-		log.Printf("pushing to backstack: table = %v, filter = %v, query_hash = %v", details.TableName, details.Filter, details.QueryHash)
+		if len(resultSet.ExclusiveStartKey) > 0 {
+			var err error
+			details.ExclusiveStartKey, err = attrcodec.SerializeMapToBytes(resultSet.ExclusiveStartKey)
+			if err != nil {
+				log.Printf("cannot serialize last evaluated key to byte: %v", err)
+			}
+		}
+
+		log.Printf("pushing to backstack: table = %v, filter = %v, query_hash = %v",
+			details.TableName, details.Filter, details.QueryHash)
 		if err := c.workspaceService.PushSnapshot(details); err != nil {
 			log.Printf("cannot push snapshot: %v", err)
 		}
@@ -280,14 +298,22 @@ func (c *TableReadController) Filter() tea.Msg {
 			return NewJob(c.jobController, "Applying Filter…", func(ctx context.Context) (*models.ResultSet, error) {
 				newResultSet := c.tableService.Filter(resultSet, value)
 				return newResultSet, nil
-			}).OnEither(c.handleResultSetFromJobResult(value, true, resultSetUpdateFilter)).Submit()
+			}).OnEither(c.handleResultSetFromJobResult(value, true, false, resultSetUpdateFilter)).Submit()
 		},
 	}
 }
 
-func (c *TableReadController) handleResultSetFromJobResult(filter string, pushbackStack bool, op resultSetUpdateOp) func(newResultSet *models.ResultSet, err error) tea.Msg {
+func (c *TableReadController) handleResultSetFromJobResult(
+	filter string,
+	pushbackStack, errIfEmpty bool,
+	op resultSetUpdateOp,
+) func(newResultSet *models.ResultSet, err error) tea.Msg {
 	return func(newResultSet *models.ResultSet, err error) tea.Msg {
 		if err == nil {
+			if errIfEmpty && newResultSet.NoResults() {
+				return events.StatusMsg("No more results")
+			}
+
 			return c.setResultSetAndFilter(newResultSet, filter, pushbackStack, op)
 		}
 
@@ -336,6 +362,20 @@ func (c *TableReadController) ViewForward() tea.Msg {
 	return c.updateViewToSnapshot(viewSnapshot)
 }
 
+func (c *TableReadController) NextPage() tea.Msg {
+	resultSet := c.state.ResultSet()
+	if resultSet == nil {
+		return events.StatusMsg("Result-set is nil")
+	} else if resultSet.LastEvaluatedKey == nil {
+		return events.StatusMsg("No more results")
+	}
+	currentFilter := c.state.filter
+
+	return NewJob(c.jobController, "Fetching next page…", func(ctx context.Context) (*models.ResultSet, error) {
+		return c.tableService.NextPage(ctx, resultSet)
+	}).OnEither(c.handleResultSetFromJobResult(currentFilter, true, true, resultSetUpdateNextPage)).Submit()
+}
+
 func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.ViewSnapshot) tea.Msg {
 	var err error
 	currentResultSet := c.state.ResultSet()
@@ -343,6 +383,14 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 	var query *queryexpr.QueryExpr
 	if len(viewSnapshot.Details.Query) > 0 {
 		query, err = queryexpr.DeserializeFrom(bytes.NewReader(viewSnapshot.Details.Query))
+		if err != nil {
+			return err
+		}
+	}
+
+	var exclusiveStartKey map[string]types.AttributeValue
+	if len(viewSnapshot.Details.ExclusiveStartKey) > 0 {
+		exclusiveStartKey, err = attrcodec.DeseralizedMapFromBytes(viewSnapshot.Details.ExclusiveStartKey)
 		if err != nil {
 			return err
 		}
@@ -356,7 +404,7 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 			}
 			return tableInfo, nil
 		}).OnDone(func(tableInfo *models.TableInfo) tea.Msg {
-			return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false)
+			return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false, exclusiveStartKey)
 		}).Submit()
 	}
 
@@ -368,7 +416,7 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 	if viewSnapshot.Details.TableName == currentResultSet.TableInfo.Name && queryEqualsCurrentQuery {
 		return NewJob(c.jobController, "Applying filter…", func(ctx context.Context) (*models.ResultSet, error) {
 			return c.tableService.Filter(currentResultSet, viewSnapshot.Details.Filter), nil
-		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Details.Filter, false, resultSetUpdateSnapshotRestore)).Submit()
+		}).OnEither(c.handleResultSetFromJobResult(viewSnapshot.Details.Filter, false, false, resultSetUpdateSnapshotRestore)).Submit()
 	}
 
 	return NewJob(c.jobController, "Running query…", func(ctx context.Context) (tea.Msg, error) {
@@ -380,7 +428,7 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 			}
 		}
 
-		return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false), nil
+		return c.runQuery(tableInfo, query, viewSnapshot.Details.Filter, false, exclusiveStartKey), nil
 	}).OnDone(func(m tea.Msg) tea.Msg {
 		return m
 	}).Submit()

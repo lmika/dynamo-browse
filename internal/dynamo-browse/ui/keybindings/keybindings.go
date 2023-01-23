@@ -36,6 +36,7 @@ type ViewKeyBindings struct {
 	PromptForQuery       key.Binding `keymap:"prompt-for-query"`
 	PromptForFilter      key.Binding `keymap:"prompt-for-filter"`
 	PromptForTable       key.Binding `keymap:"prompt-for-table"`
+	FetchNextPage        key.Binding `keymap:"fetch-next-page"`
 	ViewBack             key.Binding `keymap:"view-back"`
 	ViewForward          key.Binding `keymap:"view-forward"`
 	CycleLayoutForward   key.Binding `keymap:"cycle-layout-forward"`
