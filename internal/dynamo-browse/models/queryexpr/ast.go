@@ -81,11 +81,15 @@ type astPlaceholder struct {
 }
 
 type astLiteralValue struct {
-	StringVal *string `parser:"@String"`
-	IntVal    *int64  `parser:"| @Int"`
+	StringVal      *string `parser:"@String"`
+	IntVal         *int64  `parser:"| @Int"`
+	TrueBoolValue  bool    `parser:"| @KwdTrue"`
+	FalseBoolValue bool    `parser:"| @KwdFalse"`
 }
 
 var scanner = lexer.MustSimple([]lexer.SimpleRule{
+	{Name: "KwdTrue", Pattern: `true`},
+	{Name: "KwdFalse", Pattern: `false`},
 	{Name: "Eq", Pattern: `=|[\\^]=|[!]=`},
 	{Name: "Cmp", Pattern: `<[=]?|>[=]?`},
 	{Name: "String", Pattern: `"(\\"|[^"])*"`},

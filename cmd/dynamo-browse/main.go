@@ -13,8 +13,10 @@ import (
 	"github.com/lmika/audax/internal/common/workspaces"
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/providers/inputhistorystore"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/settingstore"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
+	"github.com/lmika/audax/internal/dynamo-browse/services/inputhistory"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	keybindings_service "github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
@@ -81,6 +83,7 @@ func main() {
 	dynamoProvider := dynamo.NewProvider(dynamoClient)
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
 	settingStore := settingstore.New(ws)
+	inputHistoryStore := inputhistorystore.NewInputHistoryStore(ws)
 
 	if *flagRO {
 		if err := settingStore.SetReadOnly(*flagRO); err != nil {
@@ -98,10 +101,11 @@ func main() {
 	itemRendererService := itemrenderer.NewService(uiStyles.ItemView.FieldType, uiStyles.ItemView.MetaInfo)
 	scriptManagerService := scriptmanager.New()
 	jobsService := jobs.NewService(eventBus)
+	inputHistoryService := inputhistory.New(inputHistoryStore)
 
 	state := controllers.NewState()
 	jobsController := controllers.NewJobsController(jobsService, eventBus, false)
-	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, jobsController, eventBus, *flagTable)
+	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, jobsController, inputHistoryService, eventBus, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
@@ -112,7 +116,7 @@ func main() {
 	keyBindingService := keybindings_service.NewService(keyBindings)
 	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
 
-	commandController := commandctrl.NewCommandController()
+	commandController := commandctrl.NewCommandController(inputHistoryService)
 	commandController.AddCommandLookupExtension(scriptController)
 
 	model := ui.NewModel(

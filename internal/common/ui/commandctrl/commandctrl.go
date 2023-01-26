@@ -3,6 +3,7 @@ package commandctrl
 import (
 	"bufio"
 	"bytes"
+	"context"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pkg/errors"
 	"log"
@@ -14,13 +15,17 @@ import (
 	"github.com/lmika/shellwords"
 )
 
+const commandsCategory = "commands"
+
 type CommandController struct {
+	historyProvider  IterProvider
 	commandList      *CommandList
 	lookupExtensions []CommandLookupExtension
 }
 
-func NewCommandController() *CommandController {
+func NewCommandController(historyProvider IterProvider) *CommandController {
 	return &CommandController{
+		historyProvider:  historyProvider,
 		commandList:      nil,
 		lookupExtensions: nil,
 	}
@@ -37,7 +42,8 @@ func (c *CommandController) AddCommandLookupExtension(ext CommandLookupExtension
 
 func (c *CommandController) Prompt() tea.Msg {
 	return events.PromptForInputMsg{
-		Prompt: ":",
+		Prompt:  ":",
+		History: c.historyProvider.Iter(context.Background(), commandsCategory),
 		OnDone: func(value string) tea.Msg {
 			return c.Execute(value)
 		},

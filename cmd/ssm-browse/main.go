@@ -47,7 +47,7 @@ func main() {
 
 	ctrl := controllers.New(service)
 
-	cmdController := commandctrl.NewCommandController()
+	cmdController := commandctrl.NewCommandController(nil)
 	cmdController.AddCommands(&commandctrl.CommandList{
 		Commands: map[string]commandctrl.Command{
 			"cd": func(ec commandctrl.ExecContext, args []string) tea.Msg {

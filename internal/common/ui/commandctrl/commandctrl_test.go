@@ -1,7 +1,9 @@
 package commandctrl_test
 
 import (
+	"context"
 	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/dynamo-browse/services"
 	"testing"
 
 	"github.com/lmika/audax/internal/common/ui/commandctrl"
@@ -10,7 +12,7 @@ import (
 
 func TestCommandController_Prompt(t *testing.T) {
 	t.Run("prompt user for a command", func(t *testing.T) {
-		cmd := commandctrl.NewCommandController()
+		cmd := commandctrl.NewCommandController(mockIterProvider{})
 
 		res := cmd.Prompt()
 
@@ -18,4 +20,11 @@ func TestCommandController_Prompt(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, ":", promptForInputMsg.Prompt)
 	})
+}
+
+type mockIterProvider struct {
+}
+
+func (m mockIterProvider) Iter(ctx context.Context, category string) services.HistoryProvider {
+	return nil
 }

@@ -143,6 +143,9 @@ func TestModExpr_Query(t *testing.T) {
 			scanCase("when request sk equals something", `sk="something"`, `#0 = :0`,
 				exprNameIsString(0, 0, "sk", "something"),
 			),
+			scanCase("when request sk starts with something", `sk^="something"`, `begins_with (#0, :0)`,
+				exprNameIsString(0, 0, "sk", "something"),
+			),
 			scanCase("with not equal", `sk != "something"`, `#0 <> :0`,
 				exprNameIsString(0, 0, "sk", "something"),
 			),
@@ -157,6 +160,14 @@ func TestModExpr_Query(t *testing.T) {
 			),
 			scanCase("greater or equal to value", `num >= 100`, `#0 >= :0`,
 				exprNameIsNumber(0, 0, "num", "100"),
+			),
+			scanCase("is true", `bool = true`, `#0 = :0`,
+				exprName(0, "bool"),
+				exprValueIsBool(0, true),
+			),
+			scanCase("is false", `bool = false`, `#0 = :0`,
+				exprName(0, "bool"),
+				exprValueIsBool(0, false),
 			),
 			scanCase("with disjunctions",
 				`pk="prefix" or sk="another"`,
@@ -843,6 +854,12 @@ func exprValueIsString(valIdx int, expected string) func(ss *scanScenario) {
 func exprValueIsNumber(valIdx int, expected string) func(ss *scanScenario) {
 	return func(ss *scanScenario) {
 		ss.expectedValues[fmt.Sprintf(":%d", valIdx)] = &types.AttributeValueMemberN{Value: expected}
+	}
+}
+
+func exprValueIsBool(valIdx int, expected bool) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.expectedValues[fmt.Sprintf(":%d", valIdx)] = &types.AttributeValueMemberBOOL{Value: expected}
 	}
 }
 

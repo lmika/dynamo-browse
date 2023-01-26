@@ -51,6 +51,10 @@ func (a *astLiteralValue) goValue() (any, error) {
 		return s, nil
 	case a.IntVal != nil:
 		return *a.IntVal, nil
+	case a.TrueBoolValue:
+		return true, nil
+	case a.FalseBoolValue:
+		return false, nil
 	}
 	return nil, errors.New("unrecognised type")
 }
@@ -65,6 +69,10 @@ func (a *astLiteralValue) String() string {
 		return *a.StringVal
 	case a.IntVal != nil:
 		return strconv.FormatInt(*a.IntVal, 10)
+	case a.TrueBoolValue:
+		return "true"
+	case a.FalseBoolValue:
+		return "false"
 	}
 	return ""
 }

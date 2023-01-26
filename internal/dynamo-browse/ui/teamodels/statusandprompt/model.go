@@ -20,7 +20,7 @@ type StatusAndPrompt struct {
 	statusMessage      string
 	spinner            spinner.Model
 	spinnerVisible     bool
-	pendingInput       *events.PromptForInputMsg
+	pendingInput       *pendingInputState
 	textInput          textinput.Model
 	width, height      int
 	lastModeLineHeight int
@@ -83,15 +83,15 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.textInput.Prompt = msg.Prompt
 		s.textInput.Focus()
 		s.textInput.SetValue("")
-		s.pendingInput = &msg
+		s.pendingInput = newPendingInputState(msg)
 	case tea.KeyMsg:
 		if s.pendingInput != nil {
 			switch msg.Type {
 			case tea.KeyCtrlC, tea.KeyEsc:
-				if s.pendingInput.OnCancel != nil {
+				if s.pendingInput.originalMsg.OnCancel != nil {
 					pendingInput := s.pendingInput
 					cc.Add(func() tea.Msg {
-						m := pendingInput.OnCancel()
+						m := pendingInput.originalMsg.OnCancel()
 						return m
 					})
 				}
@@ -100,18 +100,48 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				pendingInput := s.pendingInput
 				s.pendingInput = nil
 
-				return s, func() tea.Msg {
-					m := pendingInput.OnDone(s.textInput.Value())
-					return m
+				m := pendingInput.originalMsg.OnDone(s.textInput.Value())
+
+				return s, tea.Batch(
+					events.SetTeaMessage(m),
+					func() tea.Msg {
+						if historyProvider := pendingInput.originalMsg.History; historyProvider != nil {
+							if _, isErrMsg := m.(events.ErrorMsg); !isErrMsg {
+								historyProvider.PutItem(s.textInput.Value())
+							}
+						}
+						return nil
+					},
+				)
+			case tea.KeyUp:
+				if historyProvider := s.pendingInput.originalMsg.History; historyProvider != nil && historyProvider.Len() > 0 {
+					if s.pendingInput.historyIdx < 0 {
+						s.pendingInput.historyIdx = historyProvider.Len() - 1
+					} else if s.pendingInput.historyIdx > 0 {
+						s.pendingInput.historyIdx -= 1
+					} else {
+						s.pendingInput.historyIdx = 0
+					}
+					s.textInput.SetValue(historyProvider.Item(s.pendingInput.historyIdx))
+					s.textInput.SetCursor(len(s.textInput.Value()))
+				}
+			case tea.KeyDown:
+				if historyProvider := s.pendingInput.originalMsg.History; historyProvider != nil && historyProvider.Len() > 0 {
+					if s.pendingInput.historyIdx >= 0 && s.pendingInput.historyIdx < historyProvider.Len()-1 {
+						s.pendingInput.historyIdx += 1
+					}
+					s.textInput.SetValue(historyProvider.Item(s.pendingInput.historyIdx))
+					s.textInput.SetCursor(len(s.textInput.Value()))
 				}
 			default:
 				if msg.Type == tea.KeyRunes {
 					msg.Runes = sliceutils.Filter(msg.Runes, func(r rune) bool { return r != '\x0d' && r != '\x0a' })
 				}
-				newTextInput, cmd := s.textInput.Update(msg)
-				s.textInput = newTextInput
-				return s, cmd
 			}
+
+			newTextInput, cmd := s.textInput.Update(msg)
+			s.textInput = newTextInput
+			return s, cmd
 		} else {
 			s.statusMessage = ""
 		}

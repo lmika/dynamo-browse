@@ -59,15 +59,18 @@ func (s *Service) doScan(
 
 		runAsQuery = plan.CanQuery
 		filterExpr = &plan.Expression
+
+		log.Printf("Running query over '%v'", tableInfo.Name)
+		plan.Describe(log.Default())
+	} else {
+		log.Printf("Performing scan over '%v'", tableInfo.Name)
 	}
 
 	var results []models.Item
 	var lastEvalKey map[string]types.AttributeValue
 	if runAsQuery {
-		log.Printf("executing query")
 		results, lastEvalKey, err = s.provider.QueryItems(ctx, tableInfo.Name, filterExpr, exclusiveStartKey, limit)
 	} else {
-		log.Printf("executing scan")
 		results, lastEvalKey, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, exclusiveStartKey, limit)
 	}
 
