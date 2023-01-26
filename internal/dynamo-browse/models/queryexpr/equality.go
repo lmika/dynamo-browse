@@ -194,7 +194,7 @@ func (a irFieldBeginsWith) canBeExecutedAsQuery(info *models.TableInfo, qci *que
 		return false
 	}
 
-	if keyName == info.Keys.SortKey {
+	if keyName == info.Keys.SortKey && qci.hasSeenPrimaryKey(info) {
 		return qci.addKey(info, a.name.keyName())
 	}
 

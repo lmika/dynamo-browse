@@ -3,6 +3,7 @@ package commandctrl
 import (
 	"bufio"
 	"bytes"
+	"context"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pkg/errors"
 	"log"
@@ -14,13 +15,17 @@ import (
 	"github.com/lmika/shellwords"
 )
 
+const commandsCategory = "commands"
+
 type CommandController struct {
+	historyProvider  IterProvider
 	commandList      *CommandList
 	lookupExtensions []CommandLookupExtension
 }
 
-func NewCommandController() *CommandController {
+func NewCommandController(historyProvider IterProvider) *CommandController {
 	return &CommandController{
+		historyProvider:  historyProvider,
 		commandList:      nil,
 		lookupExtensions: nil,
 	}
@@ -38,35 +43,12 @@ func (c *CommandController) AddCommandLookupExtension(ext CommandLookupExtension
 func (c *CommandController) Prompt() tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt:  ":",
-		History: tempCommandHistory,
+		History: c.historyProvider.Iter(context.Background(), commandsCategory),
 		OnDone: func(value string) tea.Msg {
 			return c.Execute(value)
 		},
 	}
 }
-
-// TEMP
-var tempCommandHistory = new(commandHistory)
-
-type commandHistory struct {
-	history []string
-}
-
-func (ch *commandHistory) Item(idx int) string {
-	return ch.history[idx]
-}
-
-func (ch *commandHistory) PutItem(onDoneMsg tea.Msg, item string) {
-	if _, isErrMsg := onDoneMsg.(events.ErrorMsg); !isErrMsg {
-		ch.history = append(ch.history, item)
-	}
-}
-
-func (ch *commandHistory) Len() int {
-	return len(ch.history)
-}
-
-// END TEMP
 
 func (c *CommandController) Execute(commandInput string) tea.Msg {
 	return c.execute(ExecContext{FromFile: false}, commandInput)

@@ -100,15 +100,19 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				pendingInput := s.pendingInput
 				s.pendingInput = nil
 
-				return s, func() tea.Msg {
-					m := pendingInput.originalMsg.OnDone(s.textInput.Value())
+				m := pendingInput.originalMsg.OnDone(s.textInput.Value())
 
-					if historyProvider := pendingInput.originalMsg.History; historyProvider != nil {
-						historyProvider.PutItem(m, s.textInput.Value())
-					}
-
-					return m
-				}
+				return s, tea.Batch(
+					events.SetTeaMessage(m),
+					func() tea.Msg {
+						if historyProvider := pendingInput.originalMsg.History; historyProvider != nil {
+							if _, isErrMsg := m.(events.ErrorMsg); !isErrMsg {
+								historyProvider.PutItem(s.textInput.Value())
+							}
+						}
+						return nil
+					},
+				)
 			case tea.KeyUp:
 				if historyProvider := s.pendingInput.originalMsg.History; historyProvider != nil && historyProvider.Len() > 0 {
 					if s.pendingInput.historyIdx < 0 {

@@ -69,6 +69,10 @@ func (a *astLiteralValue) String() string {
 		return *a.StringVal
 	case a.IntVal != nil:
 		return strconv.FormatInt(*a.IntVal, 10)
+	case a.TrueBoolValue:
+		return "true"
+	case a.FalseBoolValue:
+		return "false"
 	}
 	return ""
 }

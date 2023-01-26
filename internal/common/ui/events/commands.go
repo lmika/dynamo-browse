@@ -2,6 +2,7 @@ package events
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/audax/internal/dynamo-browse/services"
 	"log"
 )
 
@@ -22,7 +23,7 @@ func SetTeaMessage(event tea.Msg) tea.Cmd {
 	}
 }
 
-func PromptForInput(prompt string, history HistoryProvider, onDone func(value string) tea.Msg) tea.Msg {
+func PromptForInput(prompt string, history services.HistoryProvider, onDone func(value string) tea.Msg) tea.Msg {
 	return PromptForInputMsg{
 		Prompt:  prompt,
 		History: history,

@@ -11,6 +11,7 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models/attrcodec"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
+	"github.com/lmika/audax/internal/dynamo-browse/services/inputhistory"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
 	bus "github.com/lmika/events"
@@ -42,11 +43,17 @@ const (
 	MarkOpToggle
 )
 
+const (
+	queryInputHistoryCategory  = "queries"
+	filterInputHistoryCategory = "filters"
+)
+
 type TableReadController struct {
 	tableService        TableReadService
 	workspaceService    *viewsnapshot.ViewSnapshotService
 	itemRendererService *itemrenderer.Service
 	jobController       *JobsController
+	inputHistoryService *inputhistory.Service
 	eventBus            *bus.Bus
 	tableName           string
 	loadFromLastView    bool
@@ -63,6 +70,7 @@ func NewTableReadController(
 	workspaceService *viewsnapshot.ViewSnapshotService,
 	itemRendererService *itemrenderer.Service,
 	jobController *JobsController,
+	inputHistoryService *inputhistory.Service,
 	eventBus *bus.Bus,
 	tableName string,
 ) *TableReadController {
@@ -72,6 +80,7 @@ func NewTableReadController(
 		workspaceService:    workspaceService,
 		itemRendererService: itemRendererService,
 		jobController:       jobController,
+		inputHistoryService: inputHistoryService,
 		eventBus:            eventBus,
 		tableName:           tableName,
 		mutex:               new(sync.Mutex),
@@ -136,7 +145,8 @@ func (c *TableReadController) ScanTable(name string) tea.Msg {
 
 func (c *TableReadController) PromptForQuery() tea.Msg {
 	return events.PromptForInputMsg{
-		Prompt: "query: ",
+		Prompt:  "query: ",
+		History: c.inputHistoryService.Iter(context.Background(), queryInputHistoryCategory),
 		OnDone: func(value string) tea.Msg {
 			resultSet := c.state.ResultSet()
 			if resultSet == nil {
@@ -288,7 +298,8 @@ func (c *TableReadController) Mark(op MarkOp) tea.Msg {
 
 func (c *TableReadController) Filter() tea.Msg {
 	return events.PromptForInputMsg{
-		Prompt: "filter: ",
+		Prompt:  "filter: ",
+		History: c.inputHistoryService.Iter(context.Background(), filterInputHistoryCategory),
 		OnDone: func(value string) tea.Msg {
 			resultSet := c.state.ResultSet()
 			if resultSet == nil {

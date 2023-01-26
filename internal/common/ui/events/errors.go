@@ -2,6 +2,7 @@ package events
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/audax/internal/dynamo-browse/services"
 )
 
 // Error indicates that an error occurred
@@ -21,19 +22,7 @@ type ModeMessage string
 // PromptForInput indicates that the context is requesting a line of input
 type PromptForInputMsg struct {
 	Prompt   string
-	History  HistoryProvider
+	History  services.HistoryProvider
 	OnDone   func(value string) tea.Msg
 	OnCancel func() tea.Msg
-}
-
-type HistoryProvider interface {
-	// Len returns the number of historical items
-	Len() int
-
-	// Item returns the historical item at index 'idx', where items are chronologically ordered such that the
-	// item at 0 is the oldest item.
-	Item(idx int) string
-
-	// PutItem adds an item to the history
-	PutItem(onDoneMsg tea.Msg, item string)
 }

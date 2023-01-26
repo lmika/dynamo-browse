@@ -56,7 +56,7 @@ func (c *SSMController) ChangePrefix(newPrefix string) tea.Msg {
 }
 
 func (c *SSMController) Clone(param models.SSMParameter) tea.Msg {
-	return events.PromptForInput("New key: ", func(value string) tea.Msg {
+	return events.PromptForInput("New key: ", nil, func(value string) tea.Msg {
 		return func() tea.Msg {
 			ctx := context.Background()
 			if err := c.service.Clone(ctx, param, value); err != nil {
