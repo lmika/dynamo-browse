@@ -32,7 +32,7 @@ func main() {
 
 	ctrl := controllers.NewLogFileController(service, flag.Arg(0))
 
-	cmdController := commandctrl.NewCommandController()
+	cmdController := commandctrl.NewCommandController(nil)
 	//cmdController.AddCommands(&commandctrl.CommandList{
 	//	Commands: map[string]commandctrl.Command{
 	//		"cd": func(args []string) tea.Cmd {

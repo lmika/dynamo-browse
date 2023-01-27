@@ -2,6 +2,7 @@ package events
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/audax/internal/dynamo-browse/services"
 )
 
 // Error indicates that an error occurred
@@ -21,6 +22,7 @@ type ModeMessage string
 // PromptForInput indicates that the context is requesting a line of input
 type PromptForInputMsg struct {
 	Prompt   string
+	History  services.HistoryProvider
 	OnDone   func(value string) tea.Msg
 	OnCancel func() tea.Msg
 }

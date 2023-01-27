@@ -67,7 +67,7 @@ func (cc *ColumnsController) onNewResultSet(rs *models.ResultSet, op resultSetUp
 }
 
 func (cc *ColumnsController) AddColumn(afterIndex int) tea.Msg {
-	return events.PromptForInput("column expr: ", func(value string) tea.Msg {
+	return events.PromptForInput("column expr: ", nil, func(value string) tea.Msg {
 		colExpr, err := queryexpr.Parse(value)
 		if err != nil {
 			return events.Error(err)

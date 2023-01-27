@@ -8,8 +8,10 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/controllers"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/audax/internal/dynamo-browse/providers/inputhistorystore"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/settingstore"
 	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
+	"github.com/lmika/audax/internal/dynamo-browse/services/inputhistory"
 	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
@@ -600,9 +602,12 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
 	settingStore := settingstore.New(ws)
+	inputHistoryStore := inputhistorystore.NewInputHistoryStore(ws)
+
 	workspaceService := viewsnapshot.NewService(resultSetSnapshotStore)
 	itemRendererService := itemrenderer.NewService(itemrenderer.PlainTextRenderer(), itemrenderer.PlainTextRenderer())
 	scriptService := scriptmanager.New()
+	inputHistoryService := inputhistory.New(inputHistoryStore)
 
 	client := testdynamo.SetupTestTable(t, testData)
 
@@ -612,14 +617,14 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 
 	state := controllers.NewState()
 	jobsController := controllers.NewJobsController(jobs.NewService(eventBus), eventBus, true)
-	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, jobsController, eventBus, cfg.tableName)
+	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, jobsController, inputHistoryService, eventBus, cfg.tableName)
 	writeController := controllers.NewTableWriteController(state, service, jobsController, readController, settingStore)
 	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, columnsController)
 	scriptController := controllers.NewScriptController(scriptService, readController, settingsController, eventBus)
 
-	commandController := commandctrl.NewCommandController()
+	commandController := commandctrl.NewCommandController(inputHistoryService)
 	commandController.AddCommandLookupExtension(scriptController)
 
 	if cfg.isReadOnly {
