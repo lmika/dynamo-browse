@@ -1,5 +1,14 @@
 package sliceutils
 
+func All[T any](ts []T, predicate func(t T) bool) bool {
+	for _, t := range ts {
+		if !predicate(t) {
+			return false
+		}
+	}
+	return true
+}
+
 func Map[T, U any](ts []T, fn func(t T) U) []U {
 	us := make([]U, len(ts))
 	for i, t := range ts {

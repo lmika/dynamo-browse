@@ -2,13 +2,11 @@ package scriptmanager
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/cloudcmds/tamarin/arg"
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"github.com/pkg/errors"
-	"strconv"
 )
 
 type resultSetProxy struct {
@@ -172,19 +170,32 @@ func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Obj
 		return object.NewError(errors.Errorf("arg error: path expression evaluate error: %v", err))
 	}
 
-	// TODO
-	switch v := av.(type) {
-	case *types.AttributeValueMemberS:
-		return object.NewString(v.Value)
-	case *types.AttributeValueMemberN:
-		// TODO: better
-		f, err := strconv.ParseFloat(v.Value, 64)
-		if err != nil {
-			return object.NewError(errors.Errorf("value error: invalid N value: %v", v.Value))
-		}
-		return object.NewFloat(f)
+	tVal, err := attributeValueToTamarin(av)
+	if err != nil {
+		return object.NewError(err)
 	}
-	return object.NewError(errors.New("TODO"))
+	return tVal
+
+	// TODO
+	//switch v := av.(type) {
+	//case *types.AttributeValueMemberS:
+	//	return object.NewString(v.Value)
+	//case *types.AttributeValueMemberN:
+	//	// TODO: better
+	//	f, err := strconv.ParseFloat(v.Value, 64)
+	//	if err != nil {
+	//		return object.NewError(errors.Errorf("value error: invalid N value: %v", v.Value))
+	//	}
+	//	return object.NewFloat(f)
+	//case *types.AttributeValueMemberBOOL:
+	//	if v.Value {
+	//		return object.True
+	//	}
+	//	return object.False
+	//case *types.AttributeValueMemberNULL:
+	//	return object.Nil
+	//}
+	//return object.NewError(errors.New("TODO"))
 }
 
 func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.Object {
@@ -202,15 +213,12 @@ func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.
 		return object.Errorf("arg error: invalid path expression: %v", err)
 	}
 
-	// TODO
-	newValue := args[1]
-	switch v := newValue.(type) {
-	case *object.String:
-		if err := path.SetEvalItem(i.item, &types.AttributeValueMemberS{Value: v.Value()}); err != nil {
-			return object.NewError(err)
-		}
-	default:
-		return object.Errorf("type error: unsupported value type (got %v)", newValue.Type())
+	newValue, err := tamarinValueToAttributeValue(args[1])
+	if err != nil {
+		return object.NewError(err)
+	}
+	if err := path.SetEvalItem(i.item, newValue); err != nil {
+		return object.NewError(err)
 	}
 
 	i.resultSetProxy.resultSet.SetDirty(i.itemIndex, true)
