@@ -55,8 +55,14 @@ type astIsOp struct {
 }
 
 type astSubRef struct {
-	Ref   *astFunctionCall `parser:"@@"`
-	Quals []string         `parser:"('.' @Ident)*"`
+	Ref     *astFunctionCall `parser:"@@"`
+	SubRefs []*astSubRefType `parser:"@@*"`
+	//Quals []string `parser:"('.' @Ident)*"`
+}
+
+type astSubRefType struct {
+	DotQual  string   `parser:"'.' @Ident"`
+	SubIndex *astExpr `parser:"| '[' @@ ']'"`
 }
 
 type astFunctionCall struct {

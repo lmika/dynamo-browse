@@ -271,7 +271,12 @@ func TestModExpr_Query(t *testing.T) {
 				exprValueIsNumber(0, "131"),
 			),
 
-			// Dots
+			// Sub refs
+			//scanCase("with index", `this[2] = "something"`, `#0.#1 = :0`,
+			//	exprName(0, "this"),
+			//	exprName(1, "2"),
+			//	exprValueIsString(0, "something"),
+			//),
 			scanCase("with the dot", `this.value = "something"`, `#0.#1 = :0`,
 				exprName(0, "this"),
 				exprName(1, "value"),
