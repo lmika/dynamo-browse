@@ -199,7 +199,8 @@ func (a *astExpr) String() string {
 }
 
 type queryCalcInfo struct {
-	seenKeys map[string]struct{}
+	keysUnderTest models.KeyAttribute
+	seenKeys      map[string]struct{}
 }
 
 func (qc *queryCalcInfo) clone() *queryCalcInfo {
@@ -210,13 +211,13 @@ func (qc *queryCalcInfo) clone() *queryCalcInfo {
 	return &queryCalcInfo{seenKeys: newKeys}
 }
 
-func (qc *queryCalcInfo) hasSeenPrimaryKey(tableInfo *models.TableInfo) bool {
-	_, hasKey := qc.seenKeys[tableInfo.Keys.PartitionKey]
+func (qc *queryCalcInfo) hasSeenPrimaryKey() bool {
+	_, hasKey := qc.seenKeys[qc.keysUnderTest.PartitionKey]
 	return hasKey
 }
 
-func (qc *queryCalcInfo) addKey(tableInfo *models.TableInfo, key string) bool {
-	if tableInfo.Keys.PartitionKey != key && tableInfo.Keys.SortKey != key {
+func (qc *queryCalcInfo) addKey(key string) bool {
+	if qc.keysUnderTest.PartitionKey != key && qc.keysUnderTest.SortKey != key {
 		return false
 	}
 

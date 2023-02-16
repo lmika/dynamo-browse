@@ -5,6 +5,7 @@ import (
 	"github.com/alecthomas/participle/v2/lexer"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
@@ -121,30 +122,43 @@ func Parse(expr string) (*QueryExpr, error) {
 }
 
 func (a *astExpr) calcQuery(ctx *evalContext, info *models.TableInfo) (*models.QueryExecutionPlan, error) {
+	type queryTestAttempt struct {
+		index         string
+		keysUnderTest models.KeyAttribute
+	}
+	queryTestAttempts := append(
+		[]queryTestAttempt{{keysUnderTest: info.Keys}},
+		sliceutils.Map(info.GSIs, func(gsi models.TableGSI) queryTestAttempt {
+			return queryTestAttempt{index: gsi.Name, keysUnderTest: gsi.Keys}
+		})...)
+
 	ir, err := a.evalToIR(ctx, info)
 	if err != nil {
 		return nil, err
 	}
 
-	var qci queryCalcInfo
-	if canExecuteAsQuery(ir, info, &qci) {
-		ke, err := ir.(queryableIRAtom).calcQueryForQuery(info)
-		if err != nil {
-			return nil, err
+	for _, attempt := range queryTestAttempts {
+		var qci = queryCalcInfo{keysUnderTest: attempt.keysUnderTest}
+		if canExecuteAsQuery(ir, &qci) {
+			ke, err := ir.(queryableIRAtom).calcQueryForQuery()
+			if err != nil {
+				return nil, err
+			}
+
+			builder := expression.NewBuilder()
+			builder = builder.WithKeyCondition(ke)
+
+			expr, err := builder.Build()
+			if err != nil {
+				return nil, err
+			}
+
+			return &models.QueryExecutionPlan{
+				CanQuery:   true,
+				IndexName:  attempt.index,
+				Expression: expr,
+			}, nil
 		}
-
-		builder := expression.NewBuilder()
-		builder = builder.WithKeyCondition(ke)
-
-		expr, err := builder.Build()
-		if err != nil {
-			return nil, err
-		}
-
-		return &models.QueryExecutionPlan{
-			CanQuery:   true,
-			Expression: expr,
-		}, nil
 	}
 
 	cb, err := ir.calcQueryForScan(info)

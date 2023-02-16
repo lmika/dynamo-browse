@@ -128,14 +128,14 @@ type irKeyFieldCmp struct {
 	cmpType int
 }
 
-func (a irKeyFieldCmp) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+func (a irKeyFieldCmp) canBeExecutedAsQuery(qci *queryCalcInfo) bool {
 	keyName := a.name.keyName()
 	if keyName == "" {
 		return false
 	}
 
-	if keyName == info.Keys.SortKey {
-		return qci.addKey(info, keyName)
+	if keyName == qci.keysUnderTest.SortKey {
+		return qci.addKey(keyName)
 	}
 
 	return false
@@ -158,7 +158,7 @@ func (a irKeyFieldCmp) calcQueryForScan(info *models.TableInfo) (expression.Cond
 	return expression.ConditionBuilder{}, errors.New("unsupported cmp type")
 }
 
-func (a irKeyFieldCmp) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+func (a irKeyFieldCmp) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
 	keyName := a.name.keyName()
 	vb := a.value.goValue()
 

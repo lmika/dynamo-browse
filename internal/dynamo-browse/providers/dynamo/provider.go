@@ -170,6 +170,7 @@ func (p *Provider) ScanItems(
 func (p *Provider) QueryItems(
 	ctx context.Context,
 	tableName string,
+	indexName string,
 	filterExpr *expression.Expression,
 	exclusiveStartKey map[string]types.AttributeValue,
 	maxItems int,
@@ -178,6 +179,9 @@ func (p *Provider) QueryItems(
 
 	input := &dynamodb.QueryInput{
 		TableName: aws.String(tableName),
+	}
+	if indexName != "" {
+		input.IndexName = aws.String(indexName)
 	}
 	if filterExpr != nil {
 		input.KeyConditionExpression = filterExpr.KeyCondition()

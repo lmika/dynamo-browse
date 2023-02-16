@@ -100,31 +100,31 @@ type irDualConjunction struct {
 	leftIsPK bool
 }
 
-func (i *irDualConjunction) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+func (i *irDualConjunction) canBeExecutedAsQuery(qci *queryCalcInfo) bool {
 	qciCopy := qci.clone()
 
-	leftCanExecuteAsQuery := canExecuteAsQuery(i.left, info, qci)
+	leftCanExecuteAsQuery := canExecuteAsQuery(i.left, qci)
 	if leftCanExecuteAsQuery {
-		i.leftIsPK = qci.hasSeenPrimaryKey(info)
-		return canExecuteAsQuery(i.right, info, qci)
+		i.leftIsPK = qci.hasSeenPrimaryKey()
+		return canExecuteAsQuery(i.right, qci)
 	}
 
 	// Might be that the right is the partition key, so test again with them swapped
-	rightCanExecuteAsQuery := canExecuteAsQuery(i.right, info, qciCopy)
+	rightCanExecuteAsQuery := canExecuteAsQuery(i.right, qciCopy)
 	if rightCanExecuteAsQuery {
-		return canExecuteAsQuery(i.left, info, qciCopy)
+		return canExecuteAsQuery(i.left, qciCopy)
 	}
 
 	return false
 }
 
-func (i *irDualConjunction) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
-	left, err := i.left.(queryableIRAtom).calcQueryForQuery(info)
+func (i *irDualConjunction) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
+	left, err := i.left.(queryableIRAtom).calcQueryForQuery()
 	if err != nil {
 		return expression.KeyConditionBuilder{}, err
 	}
 
-	right, err := i.right.(queryableIRAtom).calcQueryForQuery(info)
+	right, err := i.right.(queryableIRAtom).calcQueryForQuery()
 	if err != nil {
 		return expression.KeyConditionBuilder{}, err
 	}

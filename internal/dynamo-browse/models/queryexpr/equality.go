@@ -136,15 +136,15 @@ type irKeyFieldEq struct {
 	value valueIRAtom
 }
 
-func (a irKeyFieldEq) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+func (a irKeyFieldEq) canBeExecutedAsQuery(qci *queryCalcInfo) bool {
 	keyName := a.name.keyName()
 	if keyName == "" {
 		return false
 	}
 
-	if keyName == info.Keys.PartitionKey ||
-		(keyName == info.Keys.SortKey && qci.hasSeenPrimaryKey(info)) {
-		return qci.addKey(info, keyName)
+	if keyName == qci.keysUnderTest.PartitionKey ||
+		(keyName == qci.keysUnderTest.SortKey && qci.hasSeenPrimaryKey()) {
+		return qci.addKey(keyName)
 	}
 
 	return false
@@ -156,7 +156,7 @@ func (a irKeyFieldEq) calcQueryForScan(info *models.TableInfo) (expression.Condi
 	return nb.Equal(vb), nil
 }
 
-func (a irKeyFieldEq) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+func (a irKeyFieldEq) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
 	vb := a.value.goValue()
 	return expression.Key(a.name.keyName()).Equal(expression.Value(vb)), nil
 }
@@ -188,14 +188,14 @@ type irFieldBeginsWith struct {
 	value irValue
 }
 
-func (a irFieldBeginsWith) canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool {
+func (a irFieldBeginsWith) canBeExecutedAsQuery(qci *queryCalcInfo) bool {
 	keyName := a.name.keyName()
 	if keyName == "" {
 		return false
 	}
 
-	if keyName == info.Keys.SortKey && qci.hasSeenPrimaryKey(info) {
-		return qci.addKey(info, a.name.keyName())
+	if keyName == qci.keysUnderTest.SortKey && qci.hasSeenPrimaryKey() {
+		return qci.addKey(a.name.keyName())
 	}
 
 	return false
@@ -212,7 +212,7 @@ func (a irFieldBeginsWith) calcQueryForScan(info *models.TableInfo) (expression.
 	return nb.BeginsWith(strValue), nil
 }
 
-func (a irFieldBeginsWith) calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error) {
+func (a irFieldBeginsWith) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
 	vb := a.value.goValue()
 	strValue, isStrValue := vb.(string)
 	if !isStrValue {

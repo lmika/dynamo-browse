@@ -17,6 +17,7 @@ type TableProvider interface {
 	QueryItems(
 		ctx context.Context,
 		tableName string,
+		indexName string,
 		filterExpr *expression.Expression,
 		exclusiveStartKey map[string]types.AttributeValue,
 		maxItems int,
