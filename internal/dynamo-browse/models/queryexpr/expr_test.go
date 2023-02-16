@@ -111,6 +111,13 @@ func TestModExpr_Query(t *testing.T) {
 				exprNameIsString(0, 0, "pk", "prefix"),
 				exprNameIsString(1, 1, "sk", "another"),
 			),
+
+			// Querying the index
+			scanCase("when request pk is fixed",
+				`pk="prefix"`,
+				`#0 = :0`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+			),
 		}
 
 		for _, scenario := range scenarios {
@@ -271,17 +278,27 @@ func TestModExpr_Query(t *testing.T) {
 				exprValueIsNumber(0, "131"),
 			),
 
-			// Dots
-			scanCase("with the dot", `this.value = "something"`, `#0.#1 = :0`,
+			// Sub refs
+			scanCase("with index", `this[2] = "something"`, `#0[2] = :0`,
 				exprName(0, "this"),
-				exprName(1, "value"),
 				exprValueIsString(0, "something"),
 			),
-			scanCase("with multiple dots", `this.that.other.value = "else"`, `#0.#1.#2.#3 = :0`,
-				exprName(0, "this"),
-				exprName(1, "that"),
-				exprName(2, "other"),
-				exprName(3, "value"),
+			scanCase("with the dot", `this.value = "something"`, `#0 = :0`,
+				exprName(0, "this.value"),
+				exprValueIsString(0, "something"),
+			),
+			/*
+				scanCase("with multiple indices", `this[2][3] = "something"`, `#0[2][3] = :0`,
+					exprName(0, "this"),
+					exprValueIsString(0, "something"),
+				),
+				scanCase("with multiple indices with paren", `((this[2])[3])[4] = "something"`, `#0[2][3][4] = :0`,
+					exprName(0, "this"),
+					exprValueIsString(0, "something"),
+				),
+			*/
+			scanCase("with multiple dots", `this.that.other.value = "else"`, `#0 = :0`,
+				exprName(0, "this.that.other.value"),
 				exprValueIsString(0, "else"),
 			),
 

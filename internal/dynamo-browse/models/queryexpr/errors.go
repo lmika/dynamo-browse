@@ -34,6 +34,13 @@ func (n ValueNotAMapError) Error() string {
 	return fmt.Sprintf("%v: name is not a map", strings.Join(n, "."))
 }
 
+// ValueNotAListError is return if the given name is not a map
+type ValueNotAListError []string
+
+func (n ValueNotAListError) Error() string {
+	return fmt.Sprintf("%v: name is not a list", strings.Join(n, "."))
+}
+
 // ValuesNotComparable indicates that two values are not comparable
 type ValuesNotComparable struct {
 	Left, Right types.AttributeValue
@@ -122,4 +129,11 @@ type MissingPlaceholderError struct {
 
 func (e MissingPlaceholderError) Error() string {
 	return "undefined placeholder '" + e.Placeholder + "'"
+}
+
+type ValueNotUsableAsASubref struct {
+}
+
+func (e ValueNotUsableAsASubref) Error() string {
+	return "value cannot be used as a subref"
 }
