@@ -16,10 +16,10 @@ type queryableIRAtom interface {
 	irAtom
 
 	// canBeExecutedAsQuery returns true if the atom is capable of being executed as a query
-	canBeExecutedAsQuery(info *models.TableInfo, qci *queryCalcInfo) bool
+	canBeExecutedAsQuery(qci *queryCalcInfo) bool
 
 	// calcQueryForQuery returns a key condition builder for this atom to include in a query
-	calcQueryForQuery(info *models.TableInfo) (expression.KeyConditionBuilder, error)
+	calcQueryForQuery() (expression.KeyConditionBuilder, error)
 }
 
 type oprIRAtom interface {
@@ -43,10 +43,10 @@ type multiValueIRAtom interface {
 	calcGoValues(info *models.TableInfo) ([]any, error)
 }
 
-func canExecuteAsQuery(ir irAtom, info *models.TableInfo, qci *queryCalcInfo) bool {
+func canExecuteAsQuery(ir irAtom, qci *queryCalcInfo) bool {
 	queryable, isQuearyable := ir.(queryableIRAtom)
 	if !isQuearyable {
 		return false
 	}
-	return queryable.canBeExecutedAsQuery(info, qci)
+	return queryable.canBeExecutedAsQuery(qci)
 }

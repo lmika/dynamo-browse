@@ -19,6 +19,22 @@ func TestModExpr_Query(t *testing.T) {
 			PartitionKey: "pk",
 			SortKey:      "sk",
 		},
+		GSIs: []models.TableGSI{
+			{
+				Name: "with-color",
+				Keys: models.KeyAttribute{
+					PartitionKey: "color",
+					SortKey:      "shade",
+				},
+			},
+			{
+				Name: "with-apples",
+				Keys: models.KeyAttribute{
+					PartitionKey: "apples",
+					SortKey:      "sk",
+				},
+			},
+		},
 	}
 
 	t.Run("as queries", func(t *testing.T) {
@@ -113,10 +129,25 @@ func TestModExpr_Query(t *testing.T) {
 			),
 
 			// Querying the index
-			scanCase("when request pk is fixed",
-				`pk="prefix"`,
+			scanCase("querying the index with the index pk",
+				`color="blue"`,
 				`#0 = :0`,
-				exprNameIsString(0, 0, "pk", "prefix"),
+				indexName("with-color"),
+				exprNameIsString(0, 0, "color", "blue"),
+			),
+			scanCase("querying the index with the index pk and index sk",
+				`color="red" and shade="gray"`,
+				`(#0 = :0) AND (#1 = :1)`,
+				indexName("with-color"),
+				exprNameIsString(0, 0, "color", "red"),
+				exprNameIsString(1, 1, "shade", "gray"),
+			),
+			scanCase("querying the index with the index pk and begins with index sk",
+				`color="yellow" and shade ^= "dark"`,
+				`(#0 = :0) AND (begins_with (#1, :1))`,
+				indexName("with-color"),
+				exprNameIsString(0, 0, "color", "yellow"),
+				exprNameIsString(1, 1, "shade", "dark"),
 			),
 		}
 
@@ -131,6 +162,7 @@ func TestModExpr_Query(t *testing.T) {
 				assert.NoError(t, err)
 
 				assert.True(t, plan.CanQuery)
+				assert.Equal(t, scenario.indexName, plan.IndexName)
 				assert.Equal(t, scenario.expectedFilter, aws.ToString(plan.Expression.KeyCondition()))
 				for k, v := range scenario.expectedNames {
 					assert.Equal(t, v, plan.Expression.Names()[k])
@@ -824,6 +856,7 @@ type scanScenario struct {
 	description       string
 	expression        string
 	expectedFilter    string
+	indexName         string
 	expectedNames     map[string]string
 	expectedValues    map[string]types.AttributeValue
 	placeholderNames  map[string]string
@@ -842,6 +875,12 @@ func scanCase(description, expression, expectedFilter string, options ...func(ss
 		opt(&ss)
 	}
 	return ss
+}
+
+func indexName(indexName string) func(ss *scanScenario) {
+	return func(ss *scanScenario) {
+		ss.indexName = indexName
+	}
 }
 
 func placeholderNames(placeholderNames map[string]string) func(ss *scanScenario) {

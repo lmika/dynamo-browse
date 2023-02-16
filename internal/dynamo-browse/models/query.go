@@ -8,6 +8,7 @@ import (
 
 type QueryExecutionPlan struct {
 	CanQuery   bool
+	IndexName  string
 	Expression expression.Expression
 }
 
@@ -18,6 +19,9 @@ func (qep QueryExecutionPlan) Describe(dp DescribingPrinter) {
 		dp.Println("  execute as: scan")
 	}
 
+	if qep.IndexName != "" {
+		dp.Printf("  index: %v", qep.IndexName)
+	}
 	if keyCond := aws.ToString(qep.Expression.KeyCondition()); keyCond != "" {
 		dp.Printf("  key condition: %v", keyCond)
 	}

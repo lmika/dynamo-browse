@@ -49,6 +49,7 @@ func (s *Service) doScan(
 	var (
 		filterExpr *expression.Expression
 		runAsQuery bool
+		index      string
 		err        error
 	)
 	if expr != nil {
@@ -58,6 +59,7 @@ func (s *Service) doScan(
 		}
 
 		runAsQuery = plan.CanQuery
+		index = plan.IndexName
 		filterExpr = &plan.Expression
 
 		log.Printf("Running query over '%v'", tableInfo.Name)
@@ -69,7 +71,7 @@ func (s *Service) doScan(
 	var results []models.Item
 	var lastEvalKey map[string]types.AttributeValue
 	if runAsQuery {
-		results, lastEvalKey, err = s.provider.QueryItems(ctx, tableInfo.Name, filterExpr, exclusiveStartKey, limit)
+		results, lastEvalKey, err = s.provider.QueryItems(ctx, tableInfo.Name, index, filterExpr, exclusiveStartKey, limit)
 	} else {
 		results, lastEvalKey, err = s.provider.ScanItems(ctx, tableInfo.Name, filterExpr, exclusiveStartKey, limit)
 	}
