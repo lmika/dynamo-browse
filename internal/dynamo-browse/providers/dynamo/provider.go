@@ -41,12 +41,13 @@ func (p *Provider) DescribeTable(ctx context.Context, tableName string) (*models
 
 	var tableInfo models.TableInfo
 	tableInfo.Name = aws.ToString(out.Table.TableName)
+	tableInfo.Keys = p.keySchemaToKeyAttributes(out.Table.KeySchema)
 
-	for _, keySchema := range out.Table.KeySchema {
-		if keySchema.KeyType == types.KeyTypeHash {
-			tableInfo.Keys.PartitionKey = aws.ToString(keySchema.AttributeName)
-		} else if keySchema.KeyType == types.KeyTypeRange {
-			tableInfo.Keys.SortKey = aws.ToString(keySchema.AttributeName)
+	tableInfo.GSIs = make([]models.TableGSI, len(out.Table.GlobalSecondaryIndexes))
+	for i, gsiIndex := range out.Table.GlobalSecondaryIndexes {
+		tableInfo.GSIs[i] = models.TableGSI{
+			Name: aws.ToString(gsiIndex.IndexName),
+			Keys: p.keySchemaToKeyAttributes(gsiIndex.KeySchema),
 		}
 	}
 
@@ -55,6 +56,17 @@ func (p *Provider) DescribeTable(ctx context.Context, tableName string) (*models
 	}
 
 	return &tableInfo, nil
+}
+
+func (p *Provider) keySchemaToKeyAttributes(keySchemaElements []types.KeySchemaElement) (keyAttribute models.KeyAttribute) {
+	for _, keySchema := range keySchemaElements {
+		if keySchema.KeyType == types.KeyTypeHash {
+			keyAttribute.PartitionKey = aws.ToString(keySchema.AttributeName)
+		} else if keySchema.KeyType == types.KeyTypeRange {
+			keyAttribute.SortKey = aws.ToString(keySchema.AttributeName)
+		}
+	}
+	return keyAttribute
 }
 
 func (p *Provider) PutItem(ctx context.Context, name string, item models.Item) error {

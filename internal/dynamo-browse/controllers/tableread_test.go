@@ -100,6 +100,24 @@ func TestTableReadController_Query(t *testing.T) {
 		}, ""))
 	})
 
+	t.Run("should run query on index with filter based on user query", func(t *testing.T) {
+		srv := newService(t, serviceConfig{tableName: "bravo-table"})
+
+		tempFile := tempFile(t)
+
+		invokeCommand(t, srv.readController.Init())
+		invokeCommandWithPrompts(t, srv.readController.PromptForQuery(), `alpha = "This is some value"`)
+		invokeCommand(t, srv.exportController.ExportCSV(tempFile))
+
+		bts, err := os.ReadFile(tempFile)
+		assert.NoError(t, err)
+
+		assert.Equal(t, string(bts), strings.Join([]string{
+			"pk,sk,alpha\n",
+			"foo,bar,This is some value\n",
+		}, ""))
+	})
+
 	t.Run("should return error if result set is not set", func(t *testing.T) {
 		srv := newService(t, serviceConfig{tableName: "non-existant-table"})
 
@@ -250,6 +268,7 @@ var testData = []testdynamo.TestData{
 	},
 	{
 		TableName: "bravo-table",
+		Index:     []string{"alpha"},
 		Data: []map[string]interface{}{
 			{
 				"pk":    "foo",
