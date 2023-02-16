@@ -208,7 +208,7 @@ func (qc *queryCalcInfo) clone() *queryCalcInfo {
 	for k, v := range qc.seenKeys {
 		newKeys[k] = v
 	}
-	return &queryCalcInfo{seenKeys: newKeys}
+	return &queryCalcInfo{keysUnderTest: qc.keysUnderTest, seenKeys: newKeys}
 }
 
 func (qc *queryCalcInfo) hasSeenPrimaryKey() bool {
