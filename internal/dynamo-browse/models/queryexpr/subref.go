@@ -1,7 +1,6 @@
 package queryexpr
 
 import (
-	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
@@ -24,19 +23,13 @@ func (r *astSubRef) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, 
 		return nil, OperandNotANameError(r.String())
 	}
 
-	quals := make([]string, 0)
+	quals := make([]any, 0)
 	for _, sr := range r.SubRefs {
 		sv, err := sr.evalToStrOrInt(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
-
-		switch val := sv.(type) {
-		case string:
-			quals = append(quals, val)
-		case int:
-			quals = append(quals, fmt.Sprintf("[%v]", val))
-		}
+		quals = append(quals, sv)
 	}
 	return irNamePath{name: namePath.name, quals: quals}, nil
 }

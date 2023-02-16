@@ -1,9 +1,11 @@
 package queryexpr
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"strings"
 )
 
 func (dt *astRef) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
@@ -43,7 +45,7 @@ func (a *astRef) String() string {
 
 type irNamePath struct {
 	name  string
-	quals []string
+	quals []any
 }
 
 func (i irNamePath) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
@@ -62,9 +64,16 @@ func (i irNamePath) keyName() string {
 }
 
 func (i irNamePath) calcName(info *models.TableInfo) expression.NameBuilder {
-	nb := expression.Name(i.name)
+	var fullName strings.Builder
+	fullName.WriteString(i.name)
+
 	for _, qual := range i.quals {
-		nb = nb.AppendName(expression.Name(qual))
+		switch v := qual.(type) {
+		case string:
+			fullName.WriteString("." + v)
+		case int:
+			fullName.WriteString(fmt.Sprintf("[%v]", qual))
+		}
 	}
-	return nb
+	return expression.NameNoDotSplit(fullName.String())
 }
