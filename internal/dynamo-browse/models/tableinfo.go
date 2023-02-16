@@ -4,6 +4,12 @@ type TableInfo struct {
 	Name              string
 	Keys              KeyAttribute
 	DefinedAttributes []string
+	GSIs              []TableGSI
+}
+
+type TableGSI struct {
+	Name string
+	Keys KeyAttribute
 }
 
 func (ti *TableInfo) Equal(other *TableInfo) bool {
