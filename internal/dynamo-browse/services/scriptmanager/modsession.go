@@ -33,8 +33,15 @@ func (um *sessionModule) query(ctx context.Context, args ...object.Object) objec
 		}
 
 		// Table name
-		if val, isVal := objMap.Get("table").(*object.String); isVal && val.Value() != "" {
-			options.TableName = val.Value()
+		if val := objMap.Get("table"); val != object.Nil && val.IsTruthy() {
+			switch tv := val.(type) {
+			case *object.String:
+				options.TableName = tv.Value()
+			case *tableProxy:
+				options.TableName = tv.table.Name
+			default:
+				return object.Errorf("type error: query option 'table' must be either a string or table")
+			}
 		}
 
 		// Placeholders
@@ -111,12 +118,26 @@ func (um *sessionModule) setResultSet(ctx context.Context, args ...object.Object
 	return nil
 }
 
+func (um *sessionModule) currentTable(ctx context.Context, args ...object.Object) object.Object {
+	if err := arg.Require("session.current_table", 0, args); err != nil {
+		return err
+	}
+
+	rs := um.sessionService.ResultSet(ctx)
+	if rs == nil {
+		return object.Nil
+	}
+
+	return &tableProxy{table: rs.TableInfo}
+}
+
 func (um *sessionModule) register(scp *scope.Scope) {
 	modScope := scope.New(scope.Opts{})
 	mod := object.NewModule("session", modScope)
 
 	modScope.AddBuiltins([]*object.Builtin{
 		object.NewBuiltin("query", um.query, mod),
+		object.NewBuiltin("current_table", um.currentTable, mod),
 		object.NewBuiltin("result_set", um.resultSet, mod),
 		object.NewBuiltin("selected_item", um.selectedItem, mod),
 		object.NewBuiltin("set_result_set", um.setResultSet, mod),

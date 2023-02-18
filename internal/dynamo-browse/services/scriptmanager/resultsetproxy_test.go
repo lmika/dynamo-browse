@@ -13,7 +13,11 @@ import (
 
 func TestResultSetProxy(t *testing.T) {
 	t.Run("should property return properties of a resultset and item", func(t *testing.T) {
-		rs := &models.ResultSet{}
+		rs := &models.ResultSet{
+			TableInfo: &models.TableInfo{
+				Name: "test-table",
+			},
+		}
 		rs.SetItems([]models.Item{
 			{"pk": &types.AttributeValueMemberS{Value: "abc"}},
 			{"pk": &types.AttributeValueMemberS{Value: "1232"}},
@@ -28,6 +32,8 @@ func TestResultSetProxy(t *testing.T) {
 			res := session.query("some expr").unwrap()
 
 			// Test properties of the result set
+			assert(res.table.name, "hello")
+
 			assert(res == res, "result_set.equals")
 			assert(res.length == 2, "result_set.length")
 			
