@@ -176,6 +176,15 @@ func (s *Service) LookupCommand(name string) *Command {
 	return nil
 }
 
+func (s *Service) LookupKeyBinding(keyBinding string) *Command {
+	for _, p := range s.plugins {
+		if cmd, hasCmd := p.definedKeyBindings[keyBinding]; hasCmd {
+			return cmd
+		}
+	}
+	return nil
+}
+
 func (s *Service) parentScope() *scope.Scope {
 	scp := scope.New(scope.Opts{})
 	(&uiModule{uiService: s.ifaces.UI}).register(scp)

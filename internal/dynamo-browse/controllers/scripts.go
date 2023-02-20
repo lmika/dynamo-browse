@@ -119,6 +119,23 @@ func (sc *ScriptController) LookupCommand(name string) commandctrl.Command {
 	}
 }
 
+func (sc *ScriptController) LookupKeyBinding(keyBinding string) tea.Cmd {
+	cmd := sc.scriptManager.LookupKeyBinding(keyBinding)
+	if cmd == nil {
+		return nil
+	}
+
+	return func() tea.Msg {
+		errChan := sc.waitAndPrintScriptError()
+		ctx := context.Background()
+
+		if err := cmd.Invoke(ctx, nil, errChan); err != nil {
+			return events.Error(err)
+		}
+		return nil
+	}
+}
+
 type uiImpl struct {
 	sc *ScriptController
 }

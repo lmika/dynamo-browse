@@ -285,6 +285,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, events.SetTeaMessage(m.jobController.CancelRunningJob(m.promptToQuit))
 			case key.Matches(msg, m.keyMap.Quit):
 				return m, m.promptToQuit
+			default:
+				if cmd := m.scriptController.LookupKeyBinding(msg.String()); cmd != nil {
+					return m, cmd
+				}
 			}
 		}
 	}
