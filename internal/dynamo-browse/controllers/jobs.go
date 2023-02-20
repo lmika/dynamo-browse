@@ -5,6 +5,7 @@ import (
 	"github.com/lmika/audax/internal/common/ui/events"
 	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 	bus "github.com/lmika/events"
+	"log"
 )
 
 type JobsController struct {
@@ -18,6 +19,9 @@ func NewJobsController(service *jobs.Services, bus *bus.Bus, immediate bool) *Jo
 		service:   service,
 		immediate: immediate,
 	}
+	bus.On(jobs.JobStartEvent, func(job jobs.EventData) { jc.sendForegroundJobState(job.Job, "") })
+	bus.On(jobs.JobIdleEvent, func() { jc.sendForegroundJobState(nil, "") })
+	bus.On(jobs.JobUpdateEvent, func(job jobs.EventData, update string) { jc.sendForegroundJobState(job.Job, update) })
 
 	return jc
 }
@@ -35,4 +39,31 @@ func (js *JobsController) CancelRunningJob(ifNoJobsRunning func() tea.Msg) tea.M
 		}
 	}
 	return ifNoJobsRunning()
+}
+
+func (jc *JobsController) sendForegroundJobState(job jobs.Job, update string) {
+	if job == nil {
+		log.Printf("job service idle")
+		jc.msgSender(events.ForegroundJobUpdate{
+			JobRunning: false,
+		})
+		return
+	}
+
+	var statusMessage string
+	if dj, ok := job.(jobs.DescribableJob); ok {
+		statusMessage = dj.Description
+	} else {
+		statusMessage = "Working…"
+	}
+
+	if len(update) > 0 {
+		statusMessage += " " + update
+	}
+	log.Printf("job update: %v", statusMessage)
+
+	jc.msgSender(events.ForegroundJobUpdate{
+		JobRunning: true,
+		JobStatus:  statusMessage,
+	})
 }

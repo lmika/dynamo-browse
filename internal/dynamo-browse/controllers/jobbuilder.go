@@ -4,6 +4,7 @@ import (
 	"context"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
 )
 
 func NewJob[T any](jc *JobsController, description string, job func(ctx context.Context) (T, error)) JobBuilder[T] {
@@ -61,7 +62,7 @@ func (jb JobBuilder[T]) executeJob(ctx context.Context) tea.Msg {
 }
 
 func (jb JobBuilder[T]) doSubmit() tea.Msg {
-	jb.jc.service.SubmitForegroundJob(func(ctx context.Context) {
+	if err := jb.jc.service.SubmitForegroundJob(jobs.WithDescription(jb.description, jobs.JobFunc(func(ctx context.Context) {
 		msg := jb.executeJob(ctx)
 
 		jb.jc.msgSender(msg)
@@ -73,12 +74,9 @@ func (jb JobBuilder[T]) doSubmit() tea.Msg {
 				JobStatus:  "",
 			})
 		}
-	}, func(msg string) {
-		jb.jc.msgSender(events.ForegroundJobUpdate{
-			JobRunning: true,
-			JobStatus:  jb.description + " " + msg,
-		})
-	})
+	}))); err != nil {
+		return events.Error(err)
+	}
 
 	return events.ForegroundJobUpdate{
 		JobRunning: true,
