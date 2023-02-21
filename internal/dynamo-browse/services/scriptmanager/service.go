@@ -4,10 +4,13 @@ import (
 	"context"
 	"github.com/cloudcmds/tamarin/exec"
 	"github.com/cloudcmds/tamarin/scope"
+	"github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/pkg/errors"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Service struct {
@@ -119,7 +122,7 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 	}
 
 	newPlugin := &ScriptPlugin{
-		name:          filepath.Base(filename),
+		name:          strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)),
 		scriptService: s,
 	}
 
@@ -176,13 +179,41 @@ func (s *Service) LookupCommand(name string) *Command {
 	return nil
 }
 
-func (s *Service) LookupKeyBinding(keyBinding string) *Command {
+func (s *Service) LookupKeyBinding(key string) (string, *Command) {
 	for _, p := range s.plugins {
-		if cmd, hasCmd := p.definedKeyBindings[keyBinding]; hasCmd {
-			return cmd
+		log.Printf("%v in %v?", key, p.keyToKeyBinding)
+		if bindingName, hasBinding := p.keyToKeyBinding[key]; hasBinding {
+			log.Printf("yes, binding = %v, which is %v", bindingName, p.definedKeyBindings[bindingName])
+			if cmd, hasCmd := p.definedKeyBindings[bindingName]; hasCmd {
+				return bindingName, cmd
+			}
 		}
 	}
-	return nil
+	return "", nil
+}
+
+func (s *Service) RebindKeyBinding(keyBinding string, newKey string) error {
+	if newKey == "" {
+		for _, p := range s.plugins {
+			for k, b := range p.keyToKeyBinding {
+				if b == keyBinding {
+					delete(p.keyToKeyBinding, k)
+				}
+			}
+		}
+		return nil
+	}
+
+	for _, p := range s.plugins {
+		if _, hasCmd := p.definedKeyBindings[keyBinding]; hasCmd {
+			if newKey != "" {
+				p.keyToKeyBinding[newKey] = keyBinding
+			}
+			return nil
+		}
+	}
+
+	return keybindings.InvalidBindingError(keyBinding)
 }
 
 func (s *Service) parentScope() *scope.Scope {

@@ -7,6 +7,7 @@ type ScriptPlugin struct {
 	name               string
 	definedCommands    map[string]*Command
 	definedKeyBindings map[string]*Command
+	keyToKeyBinding    map[string]string
 }
 
 func (sp *ScriptPlugin) Name() string {

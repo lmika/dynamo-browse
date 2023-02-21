@@ -2,10 +2,16 @@ package scriptmanager
 
 import (
 	"context"
+	"fmt"
 	"github.com/cloudcmds/tamarin/arg"
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/cloudcmds/tamarin/scope"
 	"github.com/pkg/errors"
+	"regexp"
+)
+
+var (
+	validKeyBindingNames = regexp.MustCompile(`^[-a-zA-Z0-9_]+$`)
 )
 
 type extModule struct {
@@ -75,8 +81,21 @@ func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) objec
 	bindingName, err := object.AsString(args[0])
 	if err != nil {
 		return err
+	} else if !validKeyBindingNames.MatchString(bindingName) {
+		return object.NewError(errors.New("value error: binding name must match regexp [-a-zA-Z0-9_]+"))
 	}
-	fnRes, isFnRes := args[1].(*object.Function)
+
+	options, err := object.AsMap(args[1])
+	if err != nil {
+		return err
+	}
+
+	var defaultKey string
+	if strVal, isStrVal := options.Get("default").(*object.String); isStrVal {
+		defaultKey = strVal.Value()
+	}
+
+	fnRes, isFnRes := args[2].(*object.Function)
 	if !isFnRes {
 		return object.NewError(errors.New("expected second arg to be a function"))
 	}
@@ -103,9 +122,14 @@ func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) objec
 		return nil
 	}
 
+	fullBindingName := fmt.Sprintf("ext.%v.%v", m.scriptPlugin.name, bindingName)
+
 	if m.scriptPlugin.definedKeyBindings == nil {
 		m.scriptPlugin.definedKeyBindings = make(map[string]*Command)
+		m.scriptPlugin.keyToKeyBinding = make(map[string]string)
 	}
-	m.scriptPlugin.definedKeyBindings[bindingName] = &Command{plugin: m.scriptPlugin, cmdFn: newCommand}
+
+	m.scriptPlugin.definedKeyBindings[fullBindingName] = &Command{plugin: m.scriptPlugin, cmdFn: newCommand}
+	m.scriptPlugin.keyToKeyBinding[defaultKey] = fullBindingName
 	return nil
 }

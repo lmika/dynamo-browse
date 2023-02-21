@@ -54,11 +54,12 @@ type Model struct {
 
 	mainViewIndex int
 
-	root      tea.Model
-	tableView *dynamotableview.Model
-	itemView  *dynamoitemview.Model
-	mainView  tea.Model
-	keyMap    *keybindings.ViewKeyBindings
+	root                 tea.Model
+	tableView            *dynamotableview.Model
+	itemView             *dynamoitemview.Model
+	mainView             tea.Model
+	keyMap               *keybindings.ViewKeyBindings
+	keyBindingController *controllers.KeyBindingController
 }
 
 func NewModel(
@@ -231,6 +232,7 @@ func NewModel(
 		itemView:             div,
 		mainView:             mainView,
 		keyMap:               defaultKeyMap.View,
+		keyBindingController: keyBindingController,
 	}
 }
 
@@ -286,9 +288,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keyMap.Quit):
 				return m, m.promptToQuit
 			default:
-				if cmd := m.scriptController.LookupKeyBinding(msg.String()); cmd != nil {
+				if cmd := m.keyBindingController.LookupCustomBinding(msg.String()); cmd != nil {
 					return m, cmd
 				}
+				//if cmd := m.scriptController.LookupKeyBinding(msg.String()); cmd != nil {
+				//	return m, cmd
+				//}
 			}
 		}
 	}
