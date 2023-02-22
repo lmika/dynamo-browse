@@ -12,6 +12,78 @@ import (
 	"testing"
 )
 
+func TestModSession_Table(t *testing.T) {
+	t.Run("should return details of the current table", func(t *testing.T) {
+		tableDef := models.TableInfo{
+			Name: "test_table",
+			Keys: models.KeyAttribute{
+				PartitionKey: "pk",
+				SortKey:      "sk",
+			},
+			GSIs: []models.TableGSI{
+				{
+					Name: "index-1",
+					Keys: models.KeyAttribute{
+						PartitionKey: "ipk",
+						SortKey:      "isk",
+					},
+				},
+			},
+		}
+		rs := models.ResultSet{TableInfo: &tableDef}
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().ResultSet(mock.Anything).Return(&rs)
+
+		testFS := testScriptFile(t, "test.tm", `
+			table := session.current_table()
+
+			assert(table.name == "test_table")
+			assert(table.keys["partition"] == "pk")
+			assert(table.keys["sort"] == "sk")
+			assert(len(table.gsis) == 1)
+			assert(table.gsis[0].name == "index-1")
+			assert(table.gsis[0].keys["partition"] == "ipk")
+			assert(table.gsis[0].keys["sort"] == "isk")
+
+			assert(table == session.result_set().table)
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedSessionService.AssertExpectations(t)
+	})
+
+	t.Run("should return nil if no current result set", func(t *testing.T) {
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().ResultSet(mock.Anything).Return(nil)
+
+		testFS := testScriptFile(t, "test.tm", `
+			table := session.current_table()
+
+			assert(table == nil)
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedSessionService.AssertExpectations(t)
+	})
+}
+
 func TestModSession_Query(t *testing.T) {
 	t.Run("should successfully return query result", func(t *testing.T) {
 		rs := &models.ResultSet{}
@@ -92,6 +164,42 @@ func TestModSession_Query(t *testing.T) {
 		testFS := testScriptFile(t, "test.tm", `
 			res := session.query("some expr", {
 				table: "some-table",
+			})
+			assert(!res.is_err())
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			UI:      mockedUIService,
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedUIService.AssertExpectations(t)
+		mockedSessionService.AssertExpectations(t)
+	})
+
+	t.Run("should successfully specify table proxy", func(t *testing.T) {
+		rs := &models.ResultSet{}
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().ResultSet(mock.Anything).Return(&models.ResultSet{
+			TableInfo: &models.TableInfo{
+				Name: "some-resultset-table",
+			},
+		})
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{
+			TableName: "some-resultset-table",
+		}).Return(rs, nil)
+
+		mockedUIService := mocks.NewUIService(t)
+
+		testFS := testScriptFile(t, "test.tm", `
+			res := session.query("some expr", {
+				table: session.result_set().table,
 			})
 			assert(!res.is_err())
 		`)

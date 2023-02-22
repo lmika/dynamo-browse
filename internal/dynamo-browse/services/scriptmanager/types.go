@@ -3,9 +3,11 @@ package scriptmanager
 import "context"
 
 type ScriptPlugin struct {
-	scriptService   *Service
-	name            string
-	definedCommands map[string]*Command
+	scriptService      *Service
+	name               string
+	definedCommands    map[string]*Command
+	definedKeyBindings map[string]*Command
+	keyToKeyBinding    map[string]string
 }
 
 func (sp *ScriptPlugin) Name() string {

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"io/fs"
 )
@@ -24,4 +25,11 @@ type SettingsProvider interface {
 	ScriptLookupFS() ([]fs.FS, error)
 	SetScriptLookupPaths(value string) error
 	ScriptLookupPaths() string
+}
+
+type CustomKeyBindingSource interface {
+	LookupBinding(theKey string) string
+	CustomKeyCommand(key string) tea.Cmd
+	UnbindKey(key string)
+	Rebind(bindingName string, newKey string) error
 }

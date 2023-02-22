@@ -2,8 +2,6 @@ package keybindings
 
 import (
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/pkg/errors"
-	"log"
 	"reflect"
 	"strings"
 )
@@ -23,37 +21,56 @@ func NewService(keyBinding any) *Service {
 	}
 }
 
-func (s *Service) Rebind(name string, newKey string, force bool) error {
-	// Check if there already exists a binding (or clear it)
+func (s *Service) LookupBinding(theKey string) string {
 	var foundBinding = ""
 	s.walkBindingFields(func(bindingName string, binding *key.Binding) bool {
 		for _, boundKey := range binding.Keys() {
-			if boundKey == newKey {
-				if force {
-					// TODO: only filter out "boundKey" rather clear
-					log.Printf("clearing binding of %v", bindingName)
+			if boundKey == theKey {
+				foundBinding = bindingName
+				return false
+			}
+		}
+		return true
+	})
+	return foundBinding
+}
+
+func (s *Service) UnbindKey(theKey string) {
+	s.walkBindingFields(func(bindingName string, binding *key.Binding) bool {
+		for _, boundKey := range binding.Keys() {
+			if boundKey == theKey {
+				l := len(binding.Keys())
+				if l == 1 {
 					*binding = key.NewBinding()
-					return true
-				} else {
-					foundBinding = bindingName
-					return false
+				} else if l > 1 {
+					newKeys := make([]string, 0)
+					for _, k := range binding.Keys() {
+						if k != theKey {
+							newKeys = append(newKeys, k)
+						}
+					}
+					*binding = key.NewBinding(key.WithKeys(newKeys...))
 				}
 			}
 		}
 		return true
 	})
+}
 
-	if foundBinding != "" {
-		return KeyAlreadyBoundError{Key: newKey, ExistingBindingName: foundBinding}
-	}
-
+func (s *Service) Rebind(name string, newKey string) error {
 	// Rebind
 	binding := s.findFieldForBinding(name)
 	if binding == nil {
-		return errors.Errorf("invalid binding: %v", name)
+		return InvalidBindingError(name)
 	}
 
-	*binding = key.NewBinding(key.WithKeys(newKey))
+	if len(binding.Keys()) == 0 {
+		*binding = key.NewBinding(key.WithKeys(newKey))
+	} else {
+		newKeys := append([]string{newKey}, binding.Keys()...)
+		*binding = key.NewBinding(key.WithKeys(newKeys...))
+	}
+
 	return nil
 }
 

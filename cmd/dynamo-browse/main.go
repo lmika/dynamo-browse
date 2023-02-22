@@ -114,7 +114,7 @@ func main() {
 	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController, settingsController, eventBus)
 
 	keyBindingService := keybindings_service.NewService(keyBindings)
-	keyBindingController := controllers.NewKeyBindingController(keyBindingService)
+	keyBindingController := controllers.NewKeyBindingController(keyBindingService, scriptController)
 
 	commandController := commandctrl.NewCommandController(inputHistoryService)
 	commandController.AddCommandLookupExtension(scriptController)

@@ -91,6 +91,8 @@ func (r *resultSetProxy) Iter() object.Iterator {
 
 func (r *resultSetProxy) GetAttr(name string) (object.Object, bool) {
 	switch name {
+	case "table":
+		return &tableProxy{table: r.resultSet.TableInfo}, true
 	case "length":
 		return object.NewInt(int64(len(r.resultSet.Items()))), true
 	}

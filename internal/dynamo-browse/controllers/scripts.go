@@ -214,3 +214,33 @@ func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanage
 	}
 	return newResultSet, nil
 }
+
+func (sc *ScriptController) CustomKeyCommand(key string) tea.Cmd {
+	_, cmd := sc.scriptManager.LookupKeyBinding(key)
+	if cmd == nil {
+		return nil
+	}
+
+	return func() tea.Msg {
+		errChan := sc.waitAndPrintScriptError()
+		ctx := context.Background()
+
+		if err := cmd.Invoke(ctx, nil, errChan); err != nil {
+			return events.Error(err)
+		}
+		return nil
+	}
+}
+
+func (sc *ScriptController) Rebind(bindingName string, newKey string) error {
+	return sc.scriptManager.RebindKeyBinding(bindingName, newKey)
+}
+
+func (sc *ScriptController) LookupBinding(theKey string) string {
+	bindingName, _ := sc.scriptManager.LookupKeyBinding(theKey)
+	return bindingName
+}
+
+func (sc *ScriptController) UnbindKey(key string) {
+	sc.scriptManager.UnbindKey(key)
+}
