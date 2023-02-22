@@ -7,7 +7,6 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/pkg/errors"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,15 +180,21 @@ func (s *Service) LookupCommand(name string) *Command {
 
 func (s *Service) LookupKeyBinding(key string) (string, *Command) {
 	for _, p := range s.plugins {
-		log.Printf("%v in %v?", key, p.keyToKeyBinding)
 		if bindingName, hasBinding := p.keyToKeyBinding[key]; hasBinding {
-			log.Printf("yes, binding = %v, which is %v", bindingName, p.definedKeyBindings[bindingName])
 			if cmd, hasCmd := p.definedKeyBindings[bindingName]; hasCmd {
 				return bindingName, cmd
 			}
 		}
 	}
 	return "", nil
+}
+
+func (s *Service) UnbindKey(key string) {
+	for _, p := range s.plugins {
+		if _, hasBinding := p.keyToKeyBinding[key]; hasBinding {
+			delete(p.keyToKeyBinding, key)
+		}
+	}
 }
 
 func (s *Service) RebindKeyBinding(keyBinding string, newKey string) error {

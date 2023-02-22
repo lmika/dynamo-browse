@@ -30,5 +30,6 @@ type SettingsProvider interface {
 type CustomKeyBindingSource interface {
 	LookupBinding(theKey string) string
 	CustomKeyCommand(key string) tea.Cmd
+	UnbindKey(key string)
 	Rebind(bindingName string, newKey string) error
 }

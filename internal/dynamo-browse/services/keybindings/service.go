@@ -35,6 +35,28 @@ func (s *Service) LookupBinding(theKey string) string {
 	return foundBinding
 }
 
+func (s *Service) UnbindKey(theKey string) {
+	s.walkBindingFields(func(bindingName string, binding *key.Binding) bool {
+		for _, boundKey := range binding.Keys() {
+			if boundKey == theKey {
+				l := len(binding.Keys())
+				if l == 1 {
+					*binding = key.NewBinding()
+				} else if l > 1 {
+					newKeys := make([]string, 0)
+					for _, k := range binding.Keys() {
+						if k != theKey {
+							newKeys = append(newKeys, k)
+						}
+					}
+					*binding = key.NewBinding(key.WithKeys(newKeys...))
+				}
+			}
+		}
+		return true
+	})
+}
+
 func (s *Service) Rebind(name string, newKey string) error {
 	// Check if there already exists a binding (or clear it)
 	//var foundBinding = ""
@@ -65,7 +87,13 @@ func (s *Service) Rebind(name string, newKey string) error {
 		return InvalidBindingError(name)
 	}
 
-	*binding = key.NewBinding(key.WithKeys(newKey))
+	if len(binding.Keys()) == 0 {
+		*binding = key.NewBinding(key.WithKeys(newKey))
+	} else {
+		newKeys := append([]string{newKey}, binding.Keys()...)
+		*binding = key.NewBinding(key.WithKeys(newKeys...))
+	}
+
 	return nil
 }
 

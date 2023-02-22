@@ -40,7 +40,7 @@ func (kb *KeyBindingController) Rebind(bindingName string, newKey string, force 
 	//if errors.As(err, &keyAlreadyBoundErr) {
 	promptMsg := fmt.Sprintf("Key '%v' already bound to '%v'.  Continue? ", newKey, existingBinding)
 	return events.ConfirmYes(promptMsg, func() tea.Msg {
-		kb.rebind(existingBinding, "")
+		kb.unbindKey(newKey)
 
 		err := kb.rebind(bindingName, newKey)
 		if err != nil {
@@ -65,6 +65,11 @@ func (kb *KeyBindingController) rebind(bindingName string, newKey string) error 
 	}
 
 	return kb.customBindingSource.Rebind(bindingName, newKey)
+}
+
+func (kb *KeyBindingController) unbindKey(key string) {
+	kb.service.UnbindKey(key)
+	kb.customBindingSource.UnbindKey(key)
 }
 
 func (kb *KeyBindingController) findExistingBinding(key string) string {

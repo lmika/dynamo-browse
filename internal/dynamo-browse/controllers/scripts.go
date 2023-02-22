@@ -240,3 +240,7 @@ func (sc *ScriptController) LookupBinding(theKey string) string {
 	bindingName, _ := sc.scriptManager.LookupKeyBinding(theKey)
 	return bindingName
 }
+
+func (sc *ScriptController) UnbindKey(key string) {
+	sc.scriptManager.UnbindKey(key)
+}
