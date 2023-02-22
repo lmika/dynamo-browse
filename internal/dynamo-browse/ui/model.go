@@ -289,12 +289,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.promptToQuit
 			default:
 				if cmd := m.keyBindingController.LookupCustomBinding(msg.String()); cmd != nil {
-					log.Printf("cmd = %v", cmd)
 					return m, cmd
 				}
-				//if cmd := m.scriptController.LookupKeyBinding(msg.String()); cmd != nil {
-				//	return m, cmd
-				//}
 			}
 		}
 	}

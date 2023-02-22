@@ -58,29 +58,6 @@ func (s *Service) UnbindKey(theKey string) {
 }
 
 func (s *Service) Rebind(name string, newKey string) error {
-	// Check if there already exists a binding (or clear it)
-	//var foundBinding = ""
-	//s.walkBindingFields(func(bindingName string, binding *key.Binding) bool {
-	//	for _, boundKey := range binding.Keys() {
-	//		if boundKey == newKey {
-	//			if force {
-	//				// TODO: only filter out "boundKey" rather clear
-	//				log.Printf("clearing binding of %v", bindingName)
-	//				*binding = key.NewBinding()
-	//				return true
-	//			} else {
-	//				foundBinding = bindingName
-	//				return false
-	//			}
-	//		}
-	//	}
-	//	return true
-	//})
-	//
-	//if foundBinding != "" {
-	//	return KeyAlreadyBoundError{Key: newKey, ExistingBindingName: foundBinding}
-	//}
-
 	// Rebind
 	binding := s.findFieldForBinding(name)
 	if binding == nil {

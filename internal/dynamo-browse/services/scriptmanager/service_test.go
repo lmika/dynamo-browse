@@ -55,7 +55,7 @@ func TestService_LoadScript(t *testing.T) {
 		plugin, err := srv.LoadScript(ctx, "test.tm")
 		assert.NoError(t, err)
 		assert.NotNil(t, plugin)
-		assert.Equal(t, "test.tm", plugin.Name())
+		assert.Equal(t, "test", plugin.Name())
 
 		cmd := srv.LookupCommand("somewhere")
 		assert.NotNil(t, cmd)
