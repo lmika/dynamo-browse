@@ -7,8 +7,9 @@ import (
 )
 
 type Columns struct {
-	TableInfo *models.TableInfo
-	Columns   []Column
+	TableInfo     *models.TableInfo
+	WasRearranged bool
+	Columns       []Column
 }
 
 func NewColumnsFromResultSet(rs *models.ResultSet) *Columns {
@@ -26,6 +27,42 @@ func NewColumnsFromResultSet(rs *models.ResultSet) *Columns {
 		TableInfo: rs.TableInfo,
 		Columns:   cols,
 	}
+}
+
+func (cols *Columns) AddMissingColumns(rs *models.ResultSet) {
+	existingColumns := make(map[string]Column)
+	for _, col := range cols.Columns {
+		existingColumns[col.Name] = col
+	}
+
+	rsCols := rs.Columns()
+	var newCols []Column
+
+	if cols.WasRearranged {
+		newCols = append([]Column{}, cols.Columns...)
+		for _, c := range rsCols {
+			if _, hasCol := existingColumns[c]; !hasCol {
+				newCols = append(newCols, Column{
+					Name:      c,
+					Evaluator: SimpleFieldValueEvaluator(c),
+				})
+			}
+		}
+	} else {
+		newCols = make([]Column, len(rsCols))
+		for i, c := range rsCols {
+			if existingCol, hasCol := existingColumns[c]; hasCol {
+				newCols[i] = existingCol
+			} else {
+				newCols[i] = Column{
+					Name:      c,
+					Evaluator: SimpleFieldValueEvaluator(c),
+				}
+			}
+		}
+	}
+
+	cols.Columns = newCols
 }
 
 func (cols *Columns) VisibleColumns() []Column {

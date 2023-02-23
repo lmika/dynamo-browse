@@ -38,6 +38,7 @@ func (cc *ColumnsController) ShiftColumnLeft(idx int) tea.Msg {
 
 	col := cc.colModel.Columns[idx-1]
 	cc.colModel.Columns[idx-1], cc.colModel.Columns[idx] = cc.colModel.Columns[idx], col
+	cc.colModel.WasRearranged = true
 
 	return ColumnsUpdated{}
 }
@@ -49,6 +50,7 @@ func (cc *ColumnsController) ShiftColumnRight(idx int) tea.Msg {
 
 	col := cc.colModel.Columns[idx+1]
 	cc.colModel.Columns[idx+1], cc.colModel.Columns[idx] = cc.colModel.Columns[idx], col
+	cc.colModel.WasRearranged = true
 
 	return ColumnsUpdated{}
 }
@@ -63,6 +65,8 @@ func (cc *ColumnsController) onNewResultSet(rs *models.ResultSet, op resultSetUp
 
 	if cc.colModel == nil || (op == resultSetUpdateInit || op == resultSetUpdateQuery) {
 		cc.colModel = columns.NewColumnsFromResultSet(rs)
+	} else {
+		cc.colModel.AddMissingColumns(rs)
 	}
 }
 
@@ -89,6 +93,7 @@ func (cc *ColumnsController) AddColumn(afterIndex int) tea.Msg {
 
 			cc.colModel.Columns = newCols
 		}
+		cc.colModel.WasRearranged = true
 
 		return tea.Batch(
 			events.SetTeaMessage(ColumnsUpdated{}),
@@ -106,6 +111,7 @@ func (cc *ColumnsController) DeleteColumn(afterIndex int) tea.Msg {
 	newCols = append(newCols, cc.colModel.Columns[:afterIndex]...)
 	newCols = append(newCols, cc.colModel.Columns[afterIndex+1:]...)
 	cc.colModel.Columns = newCols
+	cc.colModel.WasRearranged = true
 
 	return ColumnsUpdated{}
 }
