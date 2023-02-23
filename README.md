@@ -17,7 +17,7 @@ Binary packages can be [download from the release page](https://github.com/lmika
 If you have Go 1.18 or later, you can install using the following command:
 
 ```
-go install github.com/lmika/dynamo-browse/cmd/dynamo-browse@v0.1.0
+go install github.com/lmika/dynamo-browse/cmd/dynamo-browse@v0.1.1
 ```
 
 ## License
