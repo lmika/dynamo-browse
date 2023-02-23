@@ -1,31 +1,25 @@
-# Audax Toolset
+# Dynamo-Browse
 
-A set of small, terminal based UI (TUI, sometimes called "Rougelike") tools for
-administering AWS services.
+A CLI tool for browsing DynamoDB tables.
 
-They were built to make it easy to do quick things with
-common AWS services, such as DynamoDB, without having to learn incantations with the CLI or
-go to the AWS console itself.  This keeps you focused on your task and saves you from
-breaking concentration, especially if you do a lot in the terminal.
+![dynamo-browse](https://dynamobrowse.app/images/dynamo-browse/main-item-view.png)
 
-![dynamo-browse](https://audax.tools/images/dynamo-browse/main-item-view.png)
-
-## The Toolset
-
-More info about the available tools are available here:
-
-- [dynamo-browse](https://audax.tools/dynamo-browse): Browse DynamoDB tables
+This was built to make it easy to quickly view and lightly edit
+DynamoDB tables, running locally or within AWS, from the Terminal
+without having to learn incantations with the CLI or
+go to the AWS console itself.  This helps from unnecessary context switching
+if you tend to use the terminal a lot.
 
 ## Install
 
-Binary packages can be [download from the release page](https://github.com/lmika/audax/releases/latest).
+Binary packages can be [download from the release page](https://github.com/lmika/dynamo-browse/releases/latest).
 
-If you have Go 1.18, you can install using the following command:
+If you have Go 1.18 or later, you can install using the following command:
 
 ```
-go install github.com/lmika/audax/cmd/dynamo-browse@v0.1.0
+go install github.com/lmika/dynamo-browse/cmd/dynamo-browse@v0.1.0
 ```
 
 ## License
 
-Audax toolset is released under the MIT License.
+Dynamo-Browse is released under the MIT License.
