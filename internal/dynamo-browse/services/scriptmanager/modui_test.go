@@ -39,11 +39,12 @@ func TestModUI_Prompt(t *testing.T) {
 		mockedUIService.AssertExpectations(t)
 	})
 
-	t.Run("should return error if prompt was cancelled", func(t *testing.T) {
+	t.Run("should return nil if prompt was cancelled", func(t *testing.T) {
 		testFS := testScriptFile(t, "test.tm", `
 			ui.print("Hello, world")
 			var name = ui.prompt("What is your name? ")
 			ui.print("After")
+			ui.print(nil)
 		`)
 
 		promptChan := make(chan string)
@@ -53,6 +54,8 @@ func TestModUI_Prompt(t *testing.T) {
 
 		mockedUIService := mocks.NewUIService(t)
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Hello, world")
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "After")
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "nil")
 		mockedUIService.EXPECT().Prompt(mock.Anything, "What is your name? ").Return(promptChan)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -61,9 +64,8 @@ func TestModUI_Prompt(t *testing.T) {
 		})
 
 		err := <-srv.RunAdHocScript(ctx, "test.tm")
-		assert.Error(t, err)
+		assert.NoError(t, err)
 
-		mockedUIService.AssertNotCalled(t, "Prompt", "after")
 		mockedUIService.AssertExpectations(t)
 	})
 

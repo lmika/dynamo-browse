@@ -95,7 +95,6 @@ func main() {
 	for i := 0; i < totalItems; i++ {
 		if err := tableService.Put(ctx, inventoryTableInfo, models.Item{
 			"pk":   &types.AttributeValueMemberS{Value: key},
-			"sk":   &types.AttributeValueMemberN{Value: fmt.Sprint(i)},
 			"uuid": &types.AttributeValueMemberS{Value: gofakeit.UUID()},
 		}); err != nil {
 			log.Fatalln(err)

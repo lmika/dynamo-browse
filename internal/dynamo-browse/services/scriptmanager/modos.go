@@ -22,7 +22,7 @@ func (om *osModule) exec(ctx context.Context, args ...object.Object) object.Obje
 		return objErr
 	}
 
-	opts := optionFromCtx(ctx)
+	opts := scriptEnvFromCtx(ctx).options
 	if !opts.Permissions.AllowShellCommands {
 		return object.NewErrResult(object.Errorf("permission error: no permission to shell out"))
 	}
@@ -46,7 +46,7 @@ func (om *osModule) env(ctx context.Context, args ...object.Object) object.Objec
 		return objErr
 	}
 
-	opts := optionFromCtx(ctx)
+	opts := scriptEnvFromCtx(ctx).options
 	if !opts.Permissions.AllowEnv {
 		return object.Nil
 	}

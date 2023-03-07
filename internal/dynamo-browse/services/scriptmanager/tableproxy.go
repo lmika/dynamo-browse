@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	tableProxyPartitionKey = "partition"
-	tableProxySortKey      = "sort"
+	tableProxyPartitionKey = "hash"
+	tableProxySortKey      = "range"
 )
 
 type tableProxy struct {
@@ -42,6 +42,13 @@ func (t *tableProxy) GetAttr(name string) (object.Object, bool) {
 	case "name":
 		return object.NewString(t.table.Name), true
 	case "keys":
+		if t.table.Keys.SortKey == "" {
+			return object.NewMap(map[string]object.Object{
+				tableProxyPartitionKey: object.NewString(t.table.Keys.PartitionKey),
+				tableProxySortKey:      object.Nil,
+			}), true
+		}
+
 		return object.NewMap(map[string]object.Object{
 			tableProxyPartitionKey: object.NewString(t.table.Keys.PartitionKey),
 			tableProxySortKey:      object.NewString(t.table.Keys.SortKey),
@@ -66,11 +73,11 @@ func newTableIndexProxy(gsi models.TableGSI) object.Object {
 }
 
 func (t tableIndexProxy) Type() object.Type {
-	return "index"
+	return "table_index"
 }
 
 func (t tableIndexProxy) Inspect() string {
-	return "index(gsi," + t.gsi.Name + ")"
+	return "table_index(gsi," + t.gsi.Name + ")"
 }
 
 func (t tableIndexProxy) Interface() interface{} {

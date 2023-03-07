@@ -139,9 +139,8 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			newTextInput, cmd := s.textInput.Update(msg)
-			s.textInput = newTextInput
-			return s, cmd
+			s.textInput = cc.Collect(s.textInput.Update(msg)).(textinput.Model)
+			return s, cc.Cmd()
 		} else {
 			s.statusMessage = ""
 		}

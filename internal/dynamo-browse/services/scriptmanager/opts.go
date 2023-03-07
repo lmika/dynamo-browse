@@ -34,15 +34,21 @@ type Permissions struct {
 	AllowEnv bool
 }
 
-type optionCtxKeyType struct{}
+// scriptEnv is the runtime environment for a particular script execution
+type scriptEnv struct {
+	filename string
+	options  Options
+}
 
-var optionCtxKey = optionCtxKeyType{}
+type scriptEnvKeyType struct{}
 
-func optionFromCtx(ctx context.Context) Options {
-	perms, _ := ctx.Value(optionCtxKey).(Options)
+var scriptEnvKey = scriptEnvKeyType{}
+
+func scriptEnvFromCtx(ctx context.Context) scriptEnv {
+	perms, _ := ctx.Value(scriptEnvKey).(scriptEnv)
 	return perms
 }
 
-func ctxWithOptions(ctx context.Context, perms Options) context.Context {
-	return context.WithValue(ctx, optionCtxKey, perms)
+func ctxWithScriptEnv(ctx context.Context, perms scriptEnv) context.Context {
+	return context.WithValue(ctx, scriptEnvKey, perms)
 }

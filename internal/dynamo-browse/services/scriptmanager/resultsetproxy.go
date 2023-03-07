@@ -177,27 +177,6 @@ func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Obj
 		return object.NewError(err)
 	}
 	return tVal
-
-	// TODO
-	//switch v := av.(type) {
-	//case *types.AttributeValueMemberS:
-	//	return object.NewString(v.Value)
-	//case *types.AttributeValueMemberN:
-	//	// TODO: better
-	//	f, err := strconv.ParseFloat(v.Value, 64)
-	//	if err != nil {
-	//		return object.NewError(errors.Errorf("value error: invalid N value: %v", v.Value))
-	//	}
-	//	return object.NewFloat(f)
-	//case *types.AttributeValueMemberBOOL:
-	//	if v.Value {
-	//		return object.True
-	//	}
-	//	return object.False
-	//case *types.AttributeValueMemberNULL:
-	//	return object.Nil
-	//}
-	//return object.NewError(errors.New("TODO"))
 }
 
 func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.Object {

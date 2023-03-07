@@ -3,10 +3,12 @@ package scriptmanager
 import (
 	"context"
 	"github.com/cloudcmds/tamarin/exec"
+	"github.com/cloudcmds/tamarin/object"
 	"github.com/cloudcmds/tamarin/scope"
 	"github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
 	"github.com/pkg/errors"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,7 +88,7 @@ func (s *Service) StartAdHocScript(ctx context.Context, filename string, errChan
 func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan chan error) {
 	defer close(errChan)
 
-	code, err := s.readScript(filename)
+	code, err := s.readScript(filename, true)
 	if err != nil {
 		errChan <- errors.Wrapf(err, "cannot load script file %v", filename)
 		return
@@ -94,12 +96,16 @@ func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan
 
 	scp := scope.New(scope.Opts{Parent: s.parentScope()})
 
-	ctx = ctxWithOptions(ctx, s.options)
+	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename), options: s.options})
 
 	if _, err = exec.Execute(ctx, exec.Opts{
 		Input: string(code),
 		File:  filename,
 		Scope: scp,
+		Builtins: []*object.Builtin{
+			object.NewBuiltin("print", printBuiltin),
+			object.NewBuiltin("printf", printfBuiltin),
+		},
 	}); err != nil {
 		errChan <- errors.Wrapf(err, "script %v", filename)
 		return
@@ -114,7 +120,7 @@ type loadedScriptResult struct {
 func (s *Service) loadScript(ctx context.Context, filename string, resChan chan loadedScriptResult) {
 	defer close(resChan)
 
-	code, err := s.readScript(filename)
+	code, err := s.readScript(filename, false)
 	if err != nil {
 		resChan <- loadedScriptResult{err: errors.Wrapf(err, "cannot load script file %v", filename)}
 		return
@@ -129,7 +135,7 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 
 	(&extModule{scriptPlugin: newPlugin}).register(scp)
 
-	ctx = ctxWithOptions(ctx, s.options)
+	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename), options: s.options})
 
 	if _, err = exec.Execute(ctx, exec.Opts{
 		Input: string(code),
@@ -143,8 +149,33 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 	resChan <- loadedScriptResult{scriptPlugin: newPlugin}
 }
 
-func (s *Service) readScript(filename string) ([]byte, error) {
+func (s *Service) readScript(filename string, allowCwd bool) ([]byte, error) {
+	if allowCwd {
+		if cwd, err := os.Getwd(); err == nil {
+			fullScriptPath := filepath.Join(cwd, filename)
+			log.Printf("checking %v", fullScriptPath)
+			if stat, err := os.Stat(fullScriptPath); err == nil && !stat.IsDir() {
+				code, err := os.ReadFile(filename)
+				if err != nil {
+					return nil, err
+				}
+				return code, nil
+			}
+		} else {
+			log.Printf("warn: cannot get cwd for reading script %v: %v", filename, err)
+		}
+	}
+
+	if strings.HasPrefix(filename, string(filepath.Separator)) {
+		code, err := os.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return code, nil
+	}
+
 	for _, currFS := range s.lookupPaths {
+		log.Printf("checking %v/%v", currFS, filename)
 		stat, err := fs.Stat(currFS, filename)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {

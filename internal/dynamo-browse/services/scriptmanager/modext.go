@@ -31,6 +31,8 @@ func (m *extModule) register(scp *scope.Scope) {
 }
 
 func (m *extModule) command(ctx context.Context, args ...object.Object) object.Object {
+	thisEnv := scriptEnvFromCtx(ctx)
+
 	if err := arg.Require("ext.command", 2, args); err != nil {
 		return err
 	}
@@ -56,7 +58,9 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 			objArgs[i] = object.NewString(a)
 		}
 
-		ctx = ctxWithOptions(ctx, m.scriptPlugin.scriptService.options)
+		newEnv := thisEnv
+		newEnv.options = m.scriptPlugin.scriptService.options
+		ctx = ctxWithScriptEnv(ctx, newEnv)
 
 		res := callFn(ctx, fnRes.Scope(), fnRes, objArgs)
 		if object.IsError(res) {
@@ -74,6 +78,8 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 }
 
 func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) object.Object {
+	thisEnv := scriptEnvFromCtx(ctx)
+
 	if err := arg.Require("ext.key_binding", 3, args); err != nil {
 		return err
 	}
@@ -112,7 +118,9 @@ func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) objec
 			objArgs[i] = object.NewString(a)
 		}
 
-		ctx = ctxWithOptions(ctx, m.scriptPlugin.scriptService.options)
+		newEnv := thisEnv
+		newEnv.options = m.scriptPlugin.scriptService.options
+		ctx = ctxWithScriptEnv(ctx, newEnv)
 
 		res := callFn(ctx, fnRes.Scope(), fnRes, objArgs)
 		if object.IsError(res) {

@@ -40,7 +40,7 @@ func (um *uiModule) prompt(ctx context.Context, args ...object.Object) object.Ob
 		if hasResp {
 			return object.NewString(resp)
 		} else {
-			return object.NewError(ctx.Err())
+			return object.Nil
 		}
 	case <-ctx.Done():
 		return object.NewError(ctx.Err())

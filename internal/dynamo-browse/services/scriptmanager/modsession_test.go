@@ -39,12 +39,12 @@ func TestModSession_Table(t *testing.T) {
 			table := session.current_table()
 
 			assert(table.name == "test_table")
-			assert(table.keys["partition"] == "pk")
-			assert(table.keys["sort"] == "sk")
+			assert(table.keys["hash"] == "pk")
+			assert(table.keys["range"] == "sk")
 			assert(len(table.gsis) == 1)
 			assert(table.gsis[0].name == "index-1")
-			assert(table.gsis[0].keys["partition"] == "ipk")
-			assert(table.gsis[0].keys["sort"] == "isk")
+			assert(table.gsis[0].keys["hash"] == "ipk")
+			assert(table.gsis[0].keys["range"] == "isk")
 
 			assert(table == session.result_set().table)
 		`)
