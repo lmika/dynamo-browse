@@ -22,7 +22,7 @@ brews:
       name: homebrew-audax
       token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
     folder: Formula
-    homepage:  https://audax.tools
+    homepage:  https://dynamobrowse.app/
     description: TUI tools for AWS administration
     license: MIT
 checksum:
