@@ -238,6 +238,13 @@ func TestModExpr_Query(t *testing.T) {
 				exprNameIsString(0, 0, "pk", "prefix"),
 			),
 
+			scanCase("with between", `pk between "a" and "z"`,
+				`#0 BETWEEN :0 AND :1`,
+				exprName(0, "pk"),
+				exprValueIsString(0, "a"),
+				exprValueIsString(1, "z"),
+			),
+
 			scanCase("with in", `pk in ("alpha", "bravo", "charlie")`,
 				`#0 IN (:0, :1, :2)`,
 				exprName(0, "pk"),

@@ -38,9 +38,15 @@ type astIn struct {
 }
 
 type astComparisonOp struct {
-	Ref   *astEqualityOp `parser:"@@"`
-	Op    string         `parser:"( @('<' | '<=' | '>' | '>=')"`
-	Value *astEqualityOp `parser:"@@ )?"`
+	Ref   *astBetweenOp `parser:"@@"`
+	Op    string        `parser:"( @('<' | '<=' | '>' | '>=')"`
+	Value *astBetweenOp `parser:"@@ )?"`
+}
+
+type astBetweenOp struct {
+	Ref  *astEqualityOp `parser:"@@"`
+	From *astEqualityOp `parser:"( 'between' @@ "`
+	To   *astEqualityOp `parser:" 'and' @@ )?"`
 }
 
 type astEqualityOp struct {
