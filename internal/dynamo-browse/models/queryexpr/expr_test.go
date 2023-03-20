@@ -34,6 +34,13 @@ func TestModExpr_Query(t *testing.T) {
 					SortKey:      "sk",
 				},
 			},
+			{
+				Name: "with-apples-and-oranges",
+				Keys: models.KeyAttribute{
+					PartitionKey: "apples",
+					SortKey:      "oranges",
+				},
+			},
 		},
 	}
 
@@ -380,6 +387,45 @@ func TestModExpr_Query(t *testing.T) {
 				}
 			})
 		}
+	})
+
+	t.Run("with index clash", func(t *testing.T) {
+		t.Run("should return error if attempt to run query with two indices that can be chosen", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this"`)
+			assert.NoError(t, err)
+
+			_, err = modExpr.Plan(tableInfo)
+			assert.Error(t, err)
+		})
+
+		t.Run("should run as scan if explicitly forced to", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this" using scan`)
+			assert.NoError(t, err)
+
+			plan, err := modExpr.Plan(tableInfo)
+			assert.NoError(t, err)
+			assert.False(t, plan.CanQuery)
+		})
+
+		t.Run("should run as query with the 'with-apples' index", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this" using index("with-apples")`)
+			assert.NoError(t, err)
+
+			plan, err := modExpr.Plan(tableInfo)
+			assert.NoError(t, err)
+			assert.True(t, plan.CanQuery)
+			assert.Equal(t, "with-apples", plan.IndexName)
+		})
+
+		t.Run("should run as query with the 'with-apples-and-oranges' index", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this" using index("with-apples-and-oranges")`)
+			assert.NoError(t, err)
+
+			plan, err := modExpr.Plan(tableInfo)
+			assert.NoError(t, err)
+			assert.True(t, plan.CanQuery)
+			assert.Equal(t, "with-apples-and-oranges", plan.IndexName)
+		})
 	})
 }
 

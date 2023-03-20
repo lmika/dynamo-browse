@@ -182,6 +182,9 @@ func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanage
 	if opts.ValuePlaceholders != nil {
 		expr = expr.WithValueParams(opts.ValuePlaceholders)
 	}
+	if opts.IndexName != "" {
+		expr = expr.WithIndex(opts.IndexName)
+	}
 
 	// Get the table info
 	var tableInfo *models.TableInfo

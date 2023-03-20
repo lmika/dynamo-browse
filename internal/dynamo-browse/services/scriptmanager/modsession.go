@@ -44,6 +44,11 @@ func (um *sessionModule) query(ctx context.Context, args ...object.Object) objec
 			}
 		}
 
+		// Index name
+		if val, isStr := objMap.Get("index").(*object.String); isStr {
+			options.IndexName = val.Value()
+		}
+
 		// Placeholders
 		if argsVal, isArgsValMap := objMap.Get("args").(*object.Map); isArgsValMap {
 			options.NamePlaceholders = make(map[string]string)

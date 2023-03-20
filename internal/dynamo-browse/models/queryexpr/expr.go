@@ -16,12 +16,14 @@ import (
 
 type QueryExpr struct {
 	ast    *astExpr
+	index  string
 	names  map[string]string
 	values map[string]types.AttributeValue
 }
 
 type serializedExpr struct {
 	Expr   string
+	Index  string
 	Names  map[string]string
 	Values []byte
 }
@@ -39,6 +41,7 @@ func DeserializeFrom(r io.Reader) (*QueryExpr, error) {
 	}
 
 	qe.names = se.Names
+	qe.index = se.Index
 
 	if len(se.Values) > 0 {
 		vals, err := attrcodec.NewDecoder(bytes.NewReader(se.Values)).Decode()
@@ -56,7 +59,7 @@ func DeserializeFrom(r io.Reader) (*QueryExpr, error) {
 }
 
 func (md *QueryExpr) SerializeTo(w io.Writer) error {
-	se := serializedExpr{Expr: md.String(), Names: md.names}
+	se := serializedExpr{Expr: md.String(), Index: md.index, Names: md.names}
 	if md.values != nil {
 		var bts bytes.Buffer
 		if err := attrcodec.NewEncoder(&bts).Encode(&types.AttributeValueMemberM{Value: md.values}); err != nil {
@@ -90,6 +93,7 @@ func (md *QueryExpr) Equal(other *QueryExpr) bool {
 	}
 
 	return md.ast.String() == other.ast.String() &&
+		md.index == other.index &&
 		maps.Equal(md.names, other.names) &&
 		maps.EqualFunc(md.values, md.values, attrutils.Equals)
 }
@@ -104,6 +108,7 @@ func (md *QueryExpr) HashCode() uint64 {
 
 	h := fnv.New64a()
 	h.Write([]byte(md.ast.String()))
+	h.Write([]byte(md.index))
 
 	// the names must be in sorted order to maintain consistant key ordering
 	if len(md.names) > 0 {
@@ -134,6 +139,7 @@ func (md *QueryExpr) HashCode() uint64 {
 func (md *QueryExpr) WithNameParams(value map[string]string) *QueryExpr {
 	return &QueryExpr{
 		ast:    md.ast,
+		index:  md.index,
 		names:  value,
 		values: md.values,
 	}
@@ -158,13 +164,23 @@ func (md *QueryExpr) ValueParamOrNil(name string) types.AttributeValue {
 func (md *QueryExpr) WithValueParams(value map[string]types.AttributeValue) *QueryExpr {
 	return &QueryExpr{
 		ast:    md.ast,
+		index:  md.index,
 		names:  md.names,
 		values: value,
 	}
 }
 
+func (md *QueryExpr) WithIndex(index string) *QueryExpr {
+	return &QueryExpr{
+		ast:    md.ast,
+		index:  index,
+		names:  md.names,
+		values: md.values,
+	}
+}
+
 func (md *QueryExpr) Plan(tableInfo *models.TableInfo) (*models.QueryExecutionPlan, error) {
-	return md.ast.calcQuery(md.evalContext(), tableInfo)
+	return md.ast.calcQuery(md.evalContext(), tableInfo, md.index)
 }
 
 func (md *QueryExpr) EvalItem(item models.Item) (types.AttributeValue, error) {

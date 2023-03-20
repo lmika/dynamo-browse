@@ -137,3 +137,20 @@ type ValueNotUsableAsASubref struct {
 func (e ValueNotUsableAsASubref) Error() string {
 	return "value cannot be used as a subref"
 }
+
+type MultiplePlansWithIndexError struct {
+	PossibleIndices []string
+}
+
+func (e MultiplePlansWithIndexError) Error() string {
+	return fmt.Sprintf("multiple plans with index found. Specify index or scan with 'using' clause: possible indices are %v", e.PossibleIndices)
+}
+
+type NoPlausiblePlanWithIndexError struct {
+	PreferredIndex  string
+	PossibleIndices []string
+}
+
+func (e NoPlausiblePlanWithIndexError) Error() string {
+	return fmt.Sprintf("no plan with index '%v' found: possible indices are %v", e.PreferredIndex, e.PossibleIndices)
+}
