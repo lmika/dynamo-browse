@@ -172,6 +172,10 @@ func (a *astExpr) calcQuery(ctx *evalContext, info *models.TableInfo, preferredI
 	}
 	if len(queryPlans) == 1 {
 		return queryPlans[0], nil
+	} else if len(queryPlans) == 0 {
+		return nil, NoPlausiblePlanWithIndexError{
+			PreferredIndex: preferredIndex,
+		}
 	}
 
 	return nil, MultiplePlansWithIndexError{

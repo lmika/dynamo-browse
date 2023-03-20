@@ -426,6 +426,14 @@ func TestModExpr_Query(t *testing.T) {
 			assert.True(t, plan.CanQuery)
 			assert.Equal(t, "with-apples-and-oranges", plan.IndexName)
 		})
+
+		t.Run("should return error if the chosen index can't be used", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this" using index("with-missing")`)
+			assert.NoError(t, err)
+
+			_, err = modExpr.Plan(tableInfo)
+			assert.Error(t, err)
+		})
 	})
 }
 
