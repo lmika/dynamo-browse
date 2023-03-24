@@ -7,6 +7,8 @@ import (
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
+	"log"
+	"os"
 	"strings"
 )
 
@@ -49,6 +51,26 @@ func (a *astFunctionCall) evalToIR(ctx *evalContext, info *models.TableInfo) (ir
 		fromVal := irNodes[0].(valueIRAtom).goValue().(int64)
 		toVal := irNodes[1].(valueIRAtom).goValue().(int64)
 		return irRangeFn{fromVal, toVal}, nil
+	case "file":
+		if len(irNodes) != 1 {
+			return nil, InvalidArgumentNumberError{Name: "file", Expected: 1, Actual: len(irNodes)}
+		}
+
+		// TEMP
+		fileName := irNodes[0].(valueIRAtom).goValue().(string)
+
+		bytes, err := os.ReadFile(fileName)
+		if err != nil {
+			return nil, err
+		}
+
+		lines := strings.Split(string(bytes), "\n")
+		lines = sliceutils.Map(lines, strings.TrimSpace)
+		lines = sliceutils.Filter(lines, func(s string) bool { return s != "" })
+		log.Printf("lines = %v", lines)
+
+		linesAsAny := sliceutils.Map[string, any](lines, func(s string) any { return s })
+		return multiValueFnResult{items: linesAsAny}, nil
 	}
 	return nil, UnrecognisedFunctionError{Name: nameIr.keyName()}
 }
@@ -146,4 +168,16 @@ func (i irRangeFn) calcGoValues(info *models.TableInfo) ([]any, error) {
 		xs = append(xs, x)
 	}
 	return xs, nil
+}
+
+type multiValueFnResult struct {
+	items []any
+}
+
+func (i multiValueFnResult) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	return expression.ConditionBuilder{}, errors.New("cannot run as scan")
+}
+
+func (i multiValueFnResult) calcGoValues(info *models.TableInfo) ([]any, error) {
+	return i.items, nil
 }
