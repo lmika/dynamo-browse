@@ -36,4 +36,9 @@ var nativeFuncs = map[string]nativeFunc{
 		}
 		return &types.AttributeValueMemberN{Value: strconv.Itoa(l)}, nil
 	},
+
+	"_x_now": func(ctx context.Context, args []types.AttributeValue) (types.AttributeValue, error) {
+		now := timeSourceFromContext(ctx).now().Unix()
+		return &types.AttributeValueMemberN{Value: strconv.FormatInt(now, 10)}, nil
+	},
 }

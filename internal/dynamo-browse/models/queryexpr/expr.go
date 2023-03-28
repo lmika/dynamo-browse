@@ -19,6 +19,9 @@ type QueryExpr struct {
 	index  string
 	names  map[string]string
 	values map[string]types.AttributeValue
+
+	// tests fields only
+	timeSource timeSource
 }
 
 type serializedExpr struct {
@@ -253,6 +256,7 @@ type evalContext struct {
 	nameLookup        func(string) (string, bool)
 	valuePlaceholders map[string]types.AttributeValue
 	valueLookup       func(string) (types.AttributeValue, bool)
+	timeSource        timeSource
 }
 
 func (ec *evalContext) lookupName(name string) (string, bool) {
@@ -279,4 +283,11 @@ func (ec *evalContext) lookupValue(name string) (types.AttributeValue, bool) {
 	}
 
 	return nil, false
+}
+
+func (ec *evalContext) getTimeSource() timeSource {
+	if ts := ec.timeSource; ts != nil {
+		return ts
+	}
+	return defaultTimeSource{}
 }

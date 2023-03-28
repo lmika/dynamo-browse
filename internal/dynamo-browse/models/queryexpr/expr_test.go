@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"testing"
+	"time"
 
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/stretchr/testify/assert"
@@ -563,6 +564,29 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 				assert.NoError(t, err)
 
 				res, err := modExpr.EvalItem(item)
+				assert.NoError(t, err)
+
+				assert.Equal(t, scenario.expected, res)
+			})
+		}
+	})
+
+	t.Run("functions", func(t *testing.T) {
+		timeNow := time.Now()
+
+		scenarios := []struct {
+			expr     string
+			expected types.AttributeValue
+		}{
+			// _x_now() -- unreleased version of now
+			{expr: `_x_now()`, expected: &types.AttributeValueMemberN{Value: fmt.Sprint(timeNow.Unix())}},
+		}
+		for _, scenario := range scenarios {
+			t.Run(scenario.expr, func(t *testing.T) {
+				modExpr, err := queryexpr.Parse(scenario.expr)
+				assert.NoError(t, err)
+
+				res, err := modExpr.WithTestTimeSource(timeNow).EvalItem(item)
 				assert.NoError(t, err)
 
 				assert.Equal(t, scenario.expected, res)

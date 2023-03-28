@@ -96,7 +96,8 @@ func (a *astFunctionCall) evalItem(ctx *evalContext, item models.Item) (types.At
 		return nil, err
 	}
 
-	return fn(context.Background(), args)
+	cCtx := context.WithValue(context.Background(), timeSourceContextKey, ctx.timeSource)
+	return fn(cCtx, args)
 }
 
 func (a *astFunctionCall) canModifyItem(ctx *evalContext, item models.Item) bool {
