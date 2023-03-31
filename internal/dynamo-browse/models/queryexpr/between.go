@@ -31,11 +31,11 @@ func (a *astBetweenOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAto
 		return nil, err
 	}
 
-	fromOprIR, isFromOprIR := fromIR.(oprIRAtom)
+	fromOprIR, isFromOprIR := fromIR.(valueIRAtom)
 	if !isFromOprIR {
 		return nil, OperandNotAnOperandError{}
 	}
-	toOprIR, isToOprIR := toIR.(oprIRAtom)
+	toOprIR, isToOprIR := toIR.(valueIRAtom)
 	if !isToOprIR {
 		return nil, OperandNotAnOperandError{}
 	}
@@ -83,8 +83,8 @@ func (a *astBetweenOp) String() string {
 
 type irBetween struct {
 	name nameIRAtom
-	from oprIRAtom
-	to   oprIRAtom
+	from valueIRAtom
+	to   valueIRAtom
 }
 
 func (i irBetween) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
@@ -93,4 +93,25 @@ func (i irBetween) calcQueryForScan(info *models.TableInfo) (expression.Conditio
 	tb := i.to.calcOperand(info)
 
 	return nb.Between(fb, tb), nil
+}
+
+func (i irBetween) canBeExecutedAsQuery(qci *queryCalcInfo) bool {
+	keyName := i.name.keyName()
+	if keyName == "" {
+		return false
+	}
+
+	if keyName == qci.keysUnderTest.SortKey {
+		return qci.addKey(keyName)
+	}
+
+	return false
+}
+
+func (i irBetween) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
+	nb := i.name.keyName()
+	fb := i.from.goValue()
+	tb := i.to.goValue()
+
+	return expression.Key(nb).Between(expression.Value(fb), expression.Value(tb)), nil
 }

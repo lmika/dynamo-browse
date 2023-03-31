@@ -120,6 +120,13 @@ func TestModExpr_Query(t *testing.T) {
 				exprNameIsString(0, 0, "pk", "prefix"),
 				exprNameIsNumber(1, 1, "sk", "100"),
 			),
+			scanCase("when request pk is equals and sk is greater or equal to",
+				`pk="prefix" and sk between 100 and 200`,
+				`(#0 = :0) AND (#1 BETWEEN :1 AND :2)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsNumber(1, 1, "sk", "100"),
+				exprValueIsNumber(2, "200"),
+			),
 
 			scanCase("with placeholders",
 				`:partition=$valuePrefix and :sort=$valueAnother`,
