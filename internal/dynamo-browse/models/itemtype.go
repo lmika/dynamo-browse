@@ -8,4 +8,6 @@ const (
 	NumberItemType ItemType = "N"
 	BoolItemType   ItemType = "BOOL"
 	NullItemType   ItemType = "NULL"
+
+	ExprValueItemType ItemType = "exprvalue"
 )

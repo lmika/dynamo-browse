@@ -108,6 +108,16 @@ func (e InvalidArgumentNumberError) Error() string {
 	return fmt.Sprintf("function '%v' expected %v args but received %v", e.Name, e.Expected, e.Actual)
 }
 
+type InvalidArgumentTypeError struct {
+	Name     string
+	ArgIndex int
+	Expected string
+}
+
+func (e InvalidArgumentTypeError) Error() string {
+	return fmt.Sprintf("function '%v' expected arg %v to be of type %v", e.Name, e.ArgIndex, e.Expected)
+}
+
 type UnrecognisedFunctionError struct {
 	Name string
 }

@@ -122,6 +122,8 @@ func (twc *TableWriteController) SetAttributeValue(idx int, itemType models.Item
 		return twc.setBoolValue(idx, path)
 	case models.NullItemType:
 		return twc.setNullValue(idx, path)
+	case models.ExprValueItemType:
+		return twc.setToExpressionValue(idx, path)
 	default:
 		return events.Error(errors.New("unsupported attribute type"))
 	}
@@ -134,6 +136,39 @@ func (twc *TableWriteController) setStringValue(idx int, attr *queryexpr.QueryEx
 			if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
 				if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
 					if err := attr.SetEvalItem(item, &types.AttributeValueMemberS{Value: value}); err != nil {
+						return err
+					}
+					set.SetDirty(idx, true)
+					return nil
+				}); err != nil {
+					return err
+				}
+				set.RefreshColumns()
+				return nil
+			}); err != nil {
+				return events.Error(err)
+			}
+			return ResultSetUpdated{}
+		},
+	}
+}
+
+func (twc *TableWriteController) setToExpressionValue(idx int, attr *queryexpr.QueryExpr) tea.Msg {
+	return events.PromptForInputMsg{
+		Prompt: "expr value: ",
+		OnDone: func(value string) tea.Msg {
+			valueExpr, err := queryexpr.Parse(value)
+			if err != nil {
+				return events.Error(err)
+			}
+
+			if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
+				if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
+					newValue, err := valueExpr.EvalItem(item)
+					if err != nil {
+						return err
+					}
+					if err := attr.SetEvalItem(item, newValue); err != nil {
 						return err
 					}
 					set.SetDirty(idx, true)
