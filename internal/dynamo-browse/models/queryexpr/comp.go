@@ -2,7 +2,6 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
@@ -47,7 +46,7 @@ func (a *astComparisonOp) evalToIR(ctx *evalContext, info *models.TableInfo) (ir
 	return irGenericCmp{leftOpr, rightOpr, cmpType}, nil
 }
 
-func (a *astComparisonOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astComparisonOp) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	left, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
@@ -61,20 +60,21 @@ func (a *astComparisonOp) evalItem(ctx *evalContext, item models.Item) (types.At
 		return nil, err
 	}
 
-	cmp, isComparable := attrutils.CompareScalarAttributes(left, right)
+	// TODO: use expr value here
+	cmp, isComparable := attrutils.CompareScalarAttributes(left.asAttributeValue(), right.asAttributeValue())
 	if !isComparable {
-		return nil, ValuesNotComparable{Left: left, Right: right}
+		return nil, ValuesNotComparable{Left: left.asAttributeValue(), Right: right.asAttributeValue()}
 	}
 
 	switch opToCmdType[a.Op] {
 	case cmpTypeLt:
-		return &types.AttributeValueMemberBOOL{Value: cmp < 0}, nil
+		return boolExprValue(cmp < 0), nil
 	case cmpTypeLe:
-		return &types.AttributeValueMemberBOOL{Value: cmp <= 0}, nil
+		return boolExprValue(cmp <= 0), nil
 	case cmpTypeGt:
-		return &types.AttributeValueMemberBOOL{Value: cmp > 0}, nil
+		return boolExprValue(cmp > 0), nil
 	case cmpTypeGe:
-		return &types.AttributeValueMemberBOOL{Value: cmp >= 0}, nil
+		return boolExprValue(cmp >= 0), nil
 	}
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
@@ -86,7 +86,7 @@ func (a *astComparisonOp) canModifyItem(ctx *evalContext, item models.Item) bool
 	return a.Ref.canModifyItem(ctx, item)
 }
 
-func (a *astComparisonOp) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astComparisonOp) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if a.Op != "" {
 		return PathNotSettableError{}
 	}
@@ -143,34 +143,34 @@ func (a irKeyFieldCmp) canBeExecutedAsQuery(qci *queryCalcInfo) bool {
 
 func (a irKeyFieldCmp) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	nb := a.name.calcName(info)
-	vb := a.value.goValue()
+	vb := a.value.exprValue()
 
 	switch a.cmpType {
 	case cmpTypeLt:
-		return nb.LessThan(expression.Value(vb)), nil
+		return nb.LessThan(buildExpressionFromValue(vb)), nil
 	case cmpTypeLe:
-		return nb.LessThanEqual(expression.Value(vb)), nil
+		return nb.LessThanEqual(buildExpressionFromValue(vb)), nil
 	case cmpTypeGt:
-		return nb.GreaterThan(expression.Value(vb)), nil
+		return nb.GreaterThan(buildExpressionFromValue(vb)), nil
 	case cmpTypeGe:
-		return nb.GreaterThanEqual(expression.Value(vb)), nil
+		return nb.GreaterThanEqual(buildExpressionFromValue(vb)), nil
 	}
 	return expression.ConditionBuilder{}, errors.New("unsupported cmp type")
 }
 
 func (a irKeyFieldCmp) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
 	keyName := a.name.keyName()
-	vb := a.value.goValue()
+	vb := a.value.exprValue()
 
 	switch a.cmpType {
 	case cmpTypeLt:
-		return expression.Key(keyName).LessThan(expression.Value(vb)), nil
+		return expression.Key(keyName).LessThan(buildExpressionFromValue(vb)), nil
 	case cmpTypeLe:
-		return expression.Key(keyName).LessThanEqual(expression.Value(vb)), nil
+		return expression.Key(keyName).LessThanEqual(buildExpressionFromValue(vb)), nil
 	case cmpTypeGt:
-		return expression.Key(keyName).GreaterThan(expression.Value(vb)), nil
+		return expression.Key(keyName).GreaterThan(buildExpressionFromValue(vb)), nil
 	case cmpTypeGe:
-		return expression.Key(keyName).GreaterThanEqual(expression.Value(vb)), nil
+		return expression.Key(keyName).GreaterThanEqual(buildExpressionFromValue(vb)), nil
 	}
 	return expression.KeyConditionBuilder{}, errors.New("unsupported cmp type")
 }

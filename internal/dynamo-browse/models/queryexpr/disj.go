@@ -2,7 +2,6 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"strings"
 )
@@ -24,7 +23,7 @@ func (a *astDisjunction) evalToIR(ctx *evalContext, tableInfo *models.TableInfo)
 	return &irDisjunction{conj: conj}, nil
 }
 
-func (a *astDisjunction) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astDisjunction) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	val, err := a.Operands[0].evalItem(ctx, item)
 	if err != nil {
 		return nil, err
@@ -35,7 +34,7 @@ func (a *astDisjunction) evalItem(ctx *evalContext, item models.Item) (types.Att
 
 	for _, opr := range a.Operands[1:] {
 		if isAttributeTrue(val) {
-			return &types.AttributeValueMemberBOOL{Value: true}, nil
+			return boolExprValue(true), nil
 		}
 
 		val, err = opr.evalItem(ctx, item)
@@ -44,7 +43,7 @@ func (a *astDisjunction) evalItem(ctx *evalContext, item models.Item) (types.Att
 		}
 	}
 
-	return &types.AttributeValueMemberBOOL{Value: isAttributeTrue(val)}, nil
+	return boolExprValue(isAttributeTrue(val)), nil
 }
 
 func (a *astDisjunction) canModifyItem(ctx *evalContext, item models.Item) bool {
@@ -55,7 +54,7 @@ func (a *astDisjunction) canModifyItem(ctx *evalContext, item models.Item) bool 
 	return false
 }
 
-func (a *astDisjunction) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astDisjunction) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if len(a.Operands) == 1 {
 		return a.Operands[0].setEvalItem(ctx, item, value)
 	}

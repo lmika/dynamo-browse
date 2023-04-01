@@ -2,8 +2,8 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"math/big"
 	"strings"
 )
 
@@ -36,7 +36,7 @@ func (a *astConjunction) evalToIR(ctx *evalContext, tableInfo *models.TableInfo)
 	return &irMultiConjunction{atoms: atoms}, nil
 }
 
-func (a *astConjunction) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astConjunction) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	val, err := a.Operands[0].evalItem(ctx, item)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func (a *astConjunction) evalItem(ctx *evalContext, item models.Item) (types.Att
 
 	for _, opr := range a.Operands[1:] {
 		if !isAttributeTrue(val) {
-			return &types.AttributeValueMemberBOOL{Value: false}, nil
+			return boolExprValue(false), nil
 		}
 
 		val, err = opr.evalItem(ctx, item)
@@ -56,7 +56,7 @@ func (a *astConjunction) evalItem(ctx *evalContext, item models.Item) (types.Att
 		}
 	}
 
-	return &types.AttributeValueMemberBOOL{Value: isAttributeTrue(val)}, nil
+	return boolExprValue(isAttributeTrue(val)), nil
 }
 
 func (a *astConjunction) canModifyItem(ctx *evalContext, item models.Item) bool {
@@ -67,7 +67,7 @@ func (a *astConjunction) canModifyItem(ctx *evalContext, item models.Item) bool 
 	return false
 }
 
-func (a *astConjunction) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astConjunction) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if len(a.Operands) == 1 {
 		return a.Operands[0].setEvalItem(ctx, item, value)
 	}
@@ -168,16 +168,16 @@ func (d *irMultiConjunction) calcQueryForScan(info *models.TableInfo) (expressio
 	return conjExpr, nil
 }
 
-func isAttributeTrue(attr types.AttributeValue) bool {
+func isAttributeTrue(attr exprValue) bool {
 	switch val := attr.(type) {
-	case *types.AttributeValueMemberS:
-		return val.Value != ""
-	case *types.AttributeValueMemberN:
-		return val.Value != "0"
-	case *types.AttributeValueMemberBOOL:
-		return val.Value
-	case *types.AttributeValueMemberNULL:
+	case nullExprValue:
 		return false
+	case boolExprValue:
+		return bool(val)
+	case stringableExprValue:
+		return val.asString() != ""
+	case numberableExprValue:
+		return val.asBigFloat().Cmp(&big.Float{}) != 0
 	}
 	return true
 }

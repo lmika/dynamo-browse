@@ -4,7 +4,6 @@ import (
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
@@ -181,73 +180,6 @@ func (a *astExpr) calcQuery(ctx *evalContext, info *models.TableInfo, preferredI
 	return nil, MultiplePlansWithIndexError{
 		PossibleIndices: sliceutils.Map(queryPlans, func(p *models.QueryExecutionPlan) string { return p.IndexName }),
 	}
-
-	/*
-		type queryTestAttempt struct {
-			index         string
-			keysUnderTest models.KeyAttribute
-		}
-		queryTestAttempts := append(
-			[]queryTestAttempt{{keysUnderTest: info.Keys}},
-			sliceutils.Map(
-				sliceutils.Filter(
-					info.GSIs,
-					func(gsi models.TableGSI) bool {
-						return preferredIndex == "" || gsi.Name == preferredIndex
-					},
-				),
-				func(gsi models.TableGSI) queryTestAttempt {
-					return queryTestAttempt{index: gsi.Name, keysUnderTest: gsi.Keys}
-				},
-			)...)
-
-		ir, err := a.evalToIR(ctx, info)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, attempt := range queryTestAttempts {
-			var qci = queryCalcInfo{keysUnderTest: attempt.keysUnderTest}
-			if canExecuteAsQuery(ir, &qci) {
-				ke, err := ir.(queryableIRAtom).calcQueryForQuery()
-				if err != nil {
-					return nil, err
-				}
-
-				builder := expression.NewBuilder()
-				builder = builder.WithKeyCondition(ke)
-
-				expr, err := builder.Build()
-				if err != nil {
-					return nil, err
-				}
-
-				return &models.QueryExecutionPlan{
-					CanQuery:   true,
-					IndexName:  attempt.index,
-					Expression: expr,
-				}, nil
-			}
-		}
-
-		cb, err := ir.calcQueryForScan(info)
-		if err != nil {
-			return nil, err
-		}
-
-		builder := expression.NewBuilder()
-		builder = builder.WithFilter(cb)
-
-		expr, err := builder.Build()
-		if err != nil {
-			return nil, err
-		}
-
-		return &models.QueryExecutionPlan{
-			CanQuery:   false,
-			Expression: expr,
-		}, nil
-	*/
 }
 
 func (a *astExpr) determinePlausibleExecutionPlans(ctx *evalContext, info *models.TableInfo) ([]*models.QueryExecutionPlan, error) {
@@ -316,11 +248,11 @@ func (a *astExpr) evalToIR(ctx *evalContext, tableInfo *models.TableInfo) (irAto
 	return a.Root.evalToIR(ctx, tableInfo)
 }
 
-func (a *astExpr) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astExpr) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	return a.Root.evalItem(ctx, item)
 }
 
-func (a *astExpr) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astExpr) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	return a.Root.setEvalItem(ctx, item, value)
 }
 

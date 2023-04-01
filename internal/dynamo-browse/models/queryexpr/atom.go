@@ -1,7 +1,6 @@
 package queryexpr
 
 import (
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
@@ -21,14 +20,14 @@ func (a *astAtom) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, er
 	return nil, errors.New("unhandled atom case")
 }
 
-func (a *astAtom) rightOperandDynamoValue() (types.AttributeValue, error) {
-	switch {
-	case a.Literal != nil:
-		return a.Literal.dynamoValue()
-	}
-
-	return nil, errors.New("unhandled atom case")
-}
+//func (a *astAtom) rightOperandDynamoValue() (types.AttributeValue, error) {
+//	switch {
+//	case a.Literal != nil:
+//		return a.Literal.dynamoValue()
+//	}
+//
+//	return nil, errors.New("unhandled atom case")
+//}
 
 func (a *astAtom) unqualifiedName() (string, bool) {
 	switch {
@@ -39,12 +38,12 @@ func (a *astAtom) unqualifiedName() (string, bool) {
 	return "", false
 }
 
-func (a *astAtom) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astAtom) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	switch {
 	case a.Ref != nil:
 		return a.Ref.evalItem(ctx, item)
 	case a.Literal != nil:
-		return a.Literal.dynamoValue()
+		return a.Literal.exprValue()
 	case a.Placeholder != nil:
 		return a.Placeholder.evalItem(ctx, item)
 	case a.Paren != nil:
@@ -66,7 +65,7 @@ func (a *astAtom) canModifyItem(ctx *evalContext, item models.Item) bool {
 	return false
 }
 
-func (a *astAtom) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astAtom) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	switch {
 	case a.Ref != nil:
 		return a.Ref.setEvalItem(ctx, item, value)

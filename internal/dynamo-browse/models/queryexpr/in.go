@@ -1,10 +1,7 @@
 package queryexpr
 
 import (
-	"bytes"
-	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
@@ -71,6 +68,13 @@ func (a *astIn) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, erro
 				return nil, OperandNotANameError(a.Ref.String())
 			}
 			ir = irContains{needle: lit, haystack: t}
+		case valueIRAtom:
+			nameIR, isNameIR := leftIR.(irNamePath)
+			if !isNameIR {
+				return nil, OperandNotANameError(a.Ref.String())
+			}
+
+			ir = irLiteralValues{name: nameIR, values: t}
 		case oprIRAtom:
 			nameIR, isNameIR := leftIR.(irNamePath)
 			if !isNameIR {
@@ -78,13 +82,13 @@ func (a *astIn) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, erro
 			}
 
 			ir = irIn{name: nameIR, values: []oprIRAtom{t}}
-		case multiValueIRAtom:
-			nameIR, isNameIR := leftIR.(irNamePath)
-			if !isNameIR {
-				return nil, OperandNotANameError(a.Ref.String())
-			}
-
-			ir = irLiteralValues{name: nameIR, values: t}
+		//case multiValueIRAtom:
+		//	nameIR, isNameIR := leftIR.(irNamePath)
+		//	if !isNameIR {
+		//		return nil, OperandNotANameError(a.Ref.String())
+		//	}
+		//
+		//	ir = irLiteralValues{name: nameIR, values: t}
 		default:
 			return nil, OperandNotAnOperandError{}
 		}
@@ -96,7 +100,7 @@ func (a *astIn) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, erro
 	return ir, nil
 }
 
-func (a *astIn) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astIn) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	val, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
@@ -112,14 +116,15 @@ func (a *astIn) evalItem(ctx *evalContext, item models.Item) (types.AttributeVal
 			if err != nil {
 				return nil, err
 			}
-			cmp, isComparable := attrutils.CompareScalarAttributes(val, evalOp)
+			// TODO: use native types here
+			cmp, isComparable := attrutils.CompareScalarAttributes(val.asAttributeValue(), evalOp.asAttributeValue())
 			if !isComparable {
 				continue
 			} else if cmp == 0 {
-				return &types.AttributeValueMemberBOOL{Value: true}, nil
+				return boolExprValue(true), nil
 			}
 		}
-		return &types.AttributeValueMemberBOOL{Value: false}, nil
+		return boolExprValue(false), nil
 	case a.SingleOperand != nil:
 		evalOp, err := a.SingleOperand.evalItem(ctx, item)
 		if err != nil {
@@ -127,69 +132,75 @@ func (a *astIn) evalItem(ctx *evalContext, item models.Item) (types.AttributeVal
 		}
 
 		switch t := evalOp.(type) {
-		case *types.AttributeValueMemberS:
-			str, canToStr := attrutils.AttributeToString(val)
+		case stringableExprValue:
+			str, canToStr := val.(stringableExprValue)
 			if !canToStr {
-				return &types.AttributeValueMemberBOOL{Value: false}, nil
+				return boolExprValue(false), nil
 			}
 
-			return &types.AttributeValueMemberBOOL{Value: strings.Contains(t.Value, str)}, nil
-		case *types.AttributeValueMemberL:
-			for _, listItem := range t.Value {
-				cmp, isComparable := attrutils.CompareScalarAttributes(val, listItem)
+			return boolExprValue(strings.Contains(t.asString(), str.asString())), nil
+		case slicableExprValue:
+			for i := 0; i < t.len(); i++ {
+				va, err := t.valueAt(i)
+				if err != nil {
+					return nil, err
+				}
+
+				// TODO: use expr value types here
+				cmp, isComparable := attrutils.CompareScalarAttributes(val.asAttributeValue(), va.asAttributeValue())
 				if !isComparable {
 					continue
 				} else if cmp == 0 {
-					return &types.AttributeValueMemberBOOL{Value: true}, nil
+					return boolExprValue(true), nil
 				}
 			}
-			return &types.AttributeValueMemberBOOL{Value: false}, nil
-		case *types.AttributeValueMemberSS:
-			str, canToStr := attrutils.AttributeToString(val)
+			return boolExprValue(false), nil
+		//case *types.AttributeValueMemberSS:
+		//	str, canToStr := attrutils.AttributeToString(val)
+		//	if !canToStr {
+		//		return boolExprValue(false), nil
+		//	}
+		//
+		//	for _, listItem := range t.Value {
+		//		if str != listItem {
+		//			return boolExprValue(false), nil
+		//		}
+		//	}
+		//	return boolExprValue(true), nil
+		//case *types.AttributeValueMemberBS:
+		//	b, isB := val.(*types.AttributeValueMemberB)
+		//	if !isB {
+		//		return boolExprValue(false), nil
+		//	}
+		//
+		//	for _, listItem := range t.Value {
+		//		if !bytes.Equal(b.Value, listItem) {
+		//			return boolExprValue(false), nil
+		//		}
+		//	}
+		//	return boolExprValue(true), nil
+		//case *types.AttributeValueMemberNS:
+		//	n, isN := val.(*types.AttributeValueMemberN)
+		//	if !isN {
+		//		return boolExprValue(false), nil
+		//	}
+		//
+		//	for _, listItem := range t.Value {
+		//		// TODO: this is not actually right
+		//		if n.Value != listItem {
+		//			return boolExprValue(false), nil
+		//		}
+		//	}
+		//	return boolExprValue(true), nil
+		case mappableExprValue:
+			str, canToStr := val.(stringableExprValue)
 			if !canToStr {
-				return &types.AttributeValueMemberBOOL{Value: false}, nil
+				return boolExprValue(false), nil
 			}
-
-			for _, listItem := range t.Value {
-				if str != listItem {
-					return &types.AttributeValueMemberBOOL{Value: false}, nil
-				}
-			}
-			return &types.AttributeValueMemberBOOL{Value: true}, nil
-		case *types.AttributeValueMemberBS:
-			b, isB := val.(*types.AttributeValueMemberB)
-			if !isB {
-				return &types.AttributeValueMemberBOOL{Value: false}, nil
-			}
-
-			for _, listItem := range t.Value {
-				if !bytes.Equal(b.Value, listItem) {
-					return &types.AttributeValueMemberBOOL{Value: false}, nil
-				}
-			}
-			return &types.AttributeValueMemberBOOL{Value: true}, nil
-		case *types.AttributeValueMemberNS:
-			n, isN := val.(*types.AttributeValueMemberN)
-			if !isN {
-				return &types.AttributeValueMemberBOOL{Value: false}, nil
-			}
-
-			for _, listItem := range t.Value {
-				// TODO: this is not actually right
-				if n.Value != listItem {
-					return &types.AttributeValueMemberBOOL{Value: false}, nil
-				}
-			}
-			return &types.AttributeValueMemberBOOL{Value: true}, nil
-		case *types.AttributeValueMemberM:
-			str, canToStr := attrutils.AttributeToString(val)
-			if !canToStr {
-				return &types.AttributeValueMemberBOOL{Value: false}, nil
-			}
-			_, hasItem := t.Value[str]
-			return &types.AttributeValueMemberBOOL{Value: hasItem}, nil
+			hasKey := t.hasKey(str.asString())
+			return boolExprValue(hasKey), nil
 		}
-		return nil, ValuesNotInnableError{Val: evalOp}
+		return nil, ValuesNotInnableError{Val: evalOp.asAttributeValue()}
 	}
 	return nil, errors.New("internal error: unhandled 'in' case")
 }
@@ -201,7 +212,7 @@ func (a *astIn) canModifyItem(ctx *evalContext, item models.Item) bool {
 	return a.Ref.canModifyItem(ctx, item)
 }
 
-func (a *astIn) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astIn) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if len(a.Operand) != 0 || a.SingleOperand != nil {
 		return PathNotSettableError{}
 	}
@@ -263,19 +274,38 @@ func (i irIn) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuil
 
 type irLiteralValues struct {
 	name   nameIRAtom
-	values multiValueIRAtom
+	values valueIRAtom
 }
 
-func (i irLiteralValues) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	vals, err := i.values.calcGoValues(info)
-	if err != nil {
-		return expression.ConditionBuilder{}, err
+func (iv irLiteralValues) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	if sliceable, isSliceable := iv.values.exprValue().(slicableExprValue); isSliceable {
+		if sliceable.len() == 1 {
+			va, err := sliceable.valueAt(0)
+			if err != nil {
+				return expression.ConditionBuilder{}, err
+			}
+
+			return iv.name.calcName(info).In(buildExpressionFromValue(va)), nil
+		} else if sliceable.len() == 0 {
+			// name is not in an empty slice, so this branch always evaluates to false
+			// TODO: would be better to not even include this branch in some way?
+			return expression.Equal(expression.Value(false), expression.Value(true)), nil
+		}
+
+		items := make([]expression.OperandBuilder, sliceable.len())
+		for i := 0; i < sliceable.len(); i++ {
+			va, err := sliceable.valueAt(i)
+			if err != nil {
+				return expression.ConditionBuilder{}, err
+			}
+
+			items[i] = buildExpressionFromValue(va)
+		}
+
+		return iv.name.calcName(info).In(items[0], items[1:]...), nil
 	}
 
-	oprValues := sliceutils.Map(vals, func(t any) expression.OperandBuilder {
-		return expression.Value(t)
-	})
-	return i.name.calcName(info).In(oprValues[0], oprValues[1:]...), nil
+	return iv.name.calcName(info).In(buildExpressionFromValue(iv.values.exprValue())), nil
 }
 
 type irContains struct {
@@ -284,8 +314,11 @@ type irContains struct {
 }
 
 func (i irContains) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
-	needle := i.needle.goValue()
-	haystack := i.haystack.calcName(info)
+	strNeedle, isString := i.needle.exprValue().(stringableExprValue)
+	if !isString {
+		return expression.ConditionBuilder{}, errors.New("value cannot be converted to string")
+	}
 
-	return haystack.Contains(fmt.Sprint(needle)), nil
+	haystack := i.haystack.calcName(info)
+	return haystack.Contains(strNeedle.asString()), nil
 }

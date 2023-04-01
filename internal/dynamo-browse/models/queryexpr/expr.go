@@ -187,7 +187,14 @@ func (md *QueryExpr) Plan(tableInfo *models.TableInfo) (*models.QueryExecutionPl
 }
 
 func (md *QueryExpr) EvalItem(item models.Item) (types.AttributeValue, error) {
-	return md.ast.evalItem(md.evalContext(), item)
+	val, err := md.ast.evalItem(md.evalContext(), item)
+	if err != nil {
+		return nil, err
+	}
+	if val == nil {
+		return nil, nil
+	}
+	return val.asAttributeValue(), nil
 }
 
 func (md *QueryExpr) DeleteAttribute(item models.Item) error {
@@ -195,7 +202,11 @@ func (md *QueryExpr) DeleteAttribute(item models.Item) error {
 }
 
 func (md *QueryExpr) SetEvalItem(item models.Item, newValue types.AttributeValue) error {
-	return md.ast.setEvalItem(md.evalContext(), item, newValue)
+	val, err := newExprValueFromAttributeValue(newValue)
+	if err != nil {
+		return err
+	}
+	return md.ast.setEvalItem(md.evalContext(), item, val)
 }
 
 func (md *QueryExpr) IsModifiablePath(item models.Item) bool {

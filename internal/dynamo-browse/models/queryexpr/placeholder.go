@@ -1,7 +1,6 @@
 package queryexpr
 
 import (
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
@@ -21,7 +20,12 @@ func (p *astPlaceholder) evalToIR(ctx *evalContext, info *models.TableInfo) (irA
 			return nil, MissingPlaceholderError{Placeholder: p.Placeholder}
 		}
 
-		return irValue{value: val}, nil
+		ev, err := newExprValueFromAttributeValue(val)
+		if err != nil {
+			return nil, err
+		}
+
+		return irValue{value: ev}, nil
 	} else if placeholderType == namePlaceholderPrefix {
 		name, hasName := ctx.lookupName(placeholder)
 		if !hasName {
@@ -34,7 +38,7 @@ func (p *astPlaceholder) evalToIR(ctx *evalContext, info *models.TableInfo) (irA
 	return nil, errors.New("unrecognised placeholder")
 }
 
-func (p *astPlaceholder) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (p *astPlaceholder) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	placeholderType := p.Placeholder[0]
 	placeholder := p.Placeholder[1:]
 
@@ -43,7 +47,7 @@ func (p *astPlaceholder) evalItem(ctx *evalContext, item models.Item) (types.Att
 		if !hasVal {
 			return nil, MissingPlaceholderError{Placeholder: p.Placeholder}
 		}
-		return val, nil
+		return newExprValueFromAttributeValue(val)
 	} else if placeholderType == namePlaceholderPrefix {
 		name, hasName := ctx.lookupName(placeholder)
 		if !hasName {
@@ -55,7 +59,7 @@ func (p *astPlaceholder) evalItem(ctx *evalContext, item models.Item) (types.Att
 			return nil, nil
 		}
 
-		return res, nil
+		return newExprValueFromAttributeValue(res)
 	}
 
 	return nil, errors.New("unrecognised placeholder")
@@ -66,7 +70,7 @@ func (p *astPlaceholder) canModifyItem(ctx *evalContext, item models.Item) bool 
 	return placeholderType == namePlaceholderPrefix
 }
 
-func (p *astPlaceholder) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (p *astPlaceholder) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	placeholderType := p.Placeholder[0]
 	placeholder := p.Placeholder[1:]
 
@@ -78,7 +82,7 @@ func (p *astPlaceholder) setEvalItem(ctx *evalContext, item models.Item, value t
 			return MissingPlaceholderError{Placeholder: p.Placeholder}
 		}
 
-		item[name] = value
+		item[name] = value.asAttributeValue()
 		return nil
 	}
 

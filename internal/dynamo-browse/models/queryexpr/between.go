@@ -3,7 +3,6 @@ package queryexpr
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 )
 
@@ -43,7 +42,7 @@ func (a *astBetweenOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAto
 	return irBetween{name: nameIR, from: fromOprIR, to: toOprIR}, nil
 }
 
-func (a *astBetweenOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astBetweenOp) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	val, err := a.Ref.evalItem(ctx, item)
 	if a.From == nil {
 		return val, err
@@ -59,7 +58,7 @@ func (a *astBetweenOp) canModifyItem(ctx *evalContext, item models.Item) bool {
 	return a.Ref.canModifyItem(ctx, item)
 }
 
-func (a *astBetweenOp) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astBetweenOp) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if a.From != nil {
 		return PathNotSettableError{}
 	}
@@ -110,8 +109,8 @@ func (i irBetween) canBeExecutedAsQuery(qci *queryCalcInfo) bool {
 
 func (i irBetween) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
 	nb := i.name.keyName()
-	fb := i.from.goValue()
-	tb := i.to.goValue()
+	fb := i.from.exprValue()
+	tb := i.to.exprValue()
 
-	return expression.Key(nb).Between(expression.Value(fb), expression.Value(tb)), nil
+	return expression.Key(nb).Between(buildExpressionFromValue(fb), buildExpressionFromValue(tb)), nil
 }

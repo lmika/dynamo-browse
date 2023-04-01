@@ -164,6 +164,13 @@ func TestModExpr_Query(t *testing.T) {
 				exprNameIsString(0, 0, "color", "yellow"),
 				exprNameIsString(1, 1, "shade", "dark"),
 			),
+
+			// Function calls
+			scanCase("use the value of fn call in query",
+				`pk = _x_concat("Hello ", "world")`,
+				`#0 = :0`,
+				exprNameIsString(0, 0, "pk", "Hello world"),
+			),
 		}
 
 		for _, scenario := range scenarios {

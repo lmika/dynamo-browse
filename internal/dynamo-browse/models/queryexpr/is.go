@@ -2,9 +2,7 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"reflect"
 	"strings"
 )
@@ -12,50 +10,50 @@ import (
 type isTypeInfo struct {
 	isAny         bool
 	attributeType expression.DynamoDBAttributeType
-	goType        reflect.Type
+	goTypes       []reflect.Type
 }
 
 var validIsTypeNames = map[string]isTypeInfo{
 	"ANY": {isAny: true},
 	"B": {
 		attributeType: expression.Binary,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberB{}),
+		// TODO
 	},
 	"BOOL": {
 		attributeType: expression.Boolean,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberBOOL{}),
+		goTypes:       []reflect.Type{reflect.TypeOf(boolExprValue(false))},
 	},
 	"S": {
 		attributeType: expression.String,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberS{}),
+		goTypes:       []reflect.Type{reflect.TypeOf(stringExprValue(""))},
 	},
 	"N": {
 		attributeType: expression.Number,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberN{}),
+		goTypes:       []reflect.Type{reflect.TypeOf(int64ExprValue(0)), reflect.TypeOf(bigNumExprValue{})},
 	},
 	"NULL": {
 		attributeType: expression.Null,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberNULL{}),
+		goTypes:       []reflect.Type{reflect.TypeOf(nullExprValue{})},
 	},
 	"L": {
 		attributeType: expression.List,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberL{}),
+		goTypes:       []reflect.Type{reflect.TypeOf(listExprValue{}), reflect.TypeOf(listProxyValue{})},
 	},
 	"M": {
 		attributeType: expression.Map,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberM{}),
+		goTypes:       []reflect.Type{reflect.TypeOf(mapExprValue{}), reflect.TypeOf(mapProxyValue{})},
 	},
 	"BS": {
 		attributeType: expression.BinarySet,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberBS{}),
+		// TODO
 	},
 	"NS": {
 		attributeType: expression.NumberSet,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberNS{}),
+		// TODO
 	},
 	"SS": {
 		attributeType: expression.StringSet,
-		goType:        reflect.TypeOf(&types.AttributeValueMemberSS{}),
+		// TODO
 	},
 }
 
@@ -83,14 +81,14 @@ func (a *astIsOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, er
 	if !isValueIR {
 		return nil, ValueMustBeLiteralError{}
 	}
-	strValue, isStringValue := valueIR.goValue().(string)
+	strValue, isStringValue := valueIR.exprValue().(stringableExprValue)
 	if !isStringValue {
 		return nil, ValueMustBeStringError{}
 	}
 
-	typeInfo, isValidType := validIsTypeNames[strings.ToUpper(strValue)]
+	typeInfo, isValidType := validIsTypeNames[strings.ToUpper(strValue.asString())]
 	if !isValidType {
-		return nil, InvalidTypeForIsError{TypeName: strValue}
+		return nil, InvalidTypeForIsError{TypeName: strValue.asString()}
 	}
 
 	var ir = irIs{name: nameIR, typeInfo: typeInfo}
@@ -104,7 +102,7 @@ func (a *astIsOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, er
 	return ir, nil
 }
 
-func (a *astIsOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astIsOp) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	ref, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
@@ -118,13 +116,13 @@ func (a *astIsOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeV
 	if err != nil {
 		return nil, err
 	}
-	str, canToStr := attrutils.AttributeToString(expTypeVal)
+	str, canToStr := expTypeVal.(stringableExprValue)
 	if !canToStr {
 		return nil, ValueMustBeStringError{}
 	}
-	typeInfo, hasTypeInfo := validIsTypeNames[strings.ToUpper(str)]
+	typeInfo, hasTypeInfo := validIsTypeNames[strings.ToUpper(str.asString())]
 	if !hasTypeInfo {
-		return nil, InvalidTypeForIsError{TypeName: str}
+		return nil, InvalidTypeForIsError{TypeName: str.asString()}
 	}
 
 	var resultOfIs bool
@@ -132,12 +130,18 @@ func (a *astIsOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeV
 		resultOfIs = ref != nil
 	} else {
 		refType := reflect.TypeOf(ref)
-		resultOfIs = typeInfo.goType.AssignableTo(refType)
+
+		for _, t := range typeInfo.goTypes {
+			if t.AssignableTo(refType) {
+				resultOfIs = true
+				break
+			}
+		}
 	}
 	if a.HasNot {
 		resultOfIs = !resultOfIs
 	}
-	return &types.AttributeValueMemberBOOL{Value: resultOfIs}, nil
+	return boolExprValue(resultOfIs), nil
 }
 
 func (a *astIsOp) canModifyItem(ctx *evalContext, item models.Item) bool {
@@ -147,7 +151,7 @@ func (a *astIsOp) canModifyItem(ctx *evalContext, item models.Item) bool {
 	return a.Ref.canModifyItem(ctx, item)
 }
 
-func (a *astIsOp) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astIsOp) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if a.Value != nil {
 		return PathNotSettableError{}
 	}

@@ -1,10 +1,8 @@
 package queryexpr
 
 import (
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"strconv"
 	"strings"
 )
 
@@ -34,7 +32,7 @@ func (r *astSubRef) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, 
 	return irNamePath{name: namePath.name, quals: quals}, nil
 }
 
-func (r *astSubRef) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (r *astSubRef) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	res, err := r.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
@@ -48,7 +46,7 @@ func (r *astSubRef) evalItem(ctx *evalContext, item models.Item) (types.Attribut
 	return res, nil
 }
 
-func (r *astSubRef) evalSubRefs(ctx *evalContext, item models.Item, res types.AttributeValue, subRefs []*astSubRefType) (types.AttributeValue, error) {
+func (r *astSubRef) evalSubRefs(ctx *evalContext, item models.Item, res exprValue, subRefs []*astSubRefType) (exprValue, error) {
 	for i, sr := range subRefs {
 		sv, err := sr.evalToStrOrInt(ctx, nil)
 		if err != nil {
@@ -57,24 +55,30 @@ func (r *astSubRef) evalSubRefs(ctx *evalContext, item models.Item, res types.At
 
 		switch val := sv.(type) {
 		case string:
-			var hasV bool
-			mapRes, isMapRes := res.(*types.AttributeValueMemberM)
+			mapRes, isMapRes := res.(mappableExprValue)
 			if !isMapRes {
 				return nil, newValueNotAMapError(r, subRefs[:i+1])
 			}
 
-			res, hasV = mapRes.Value[val]
-			if !hasV {
-				return nil, nil
+			if mapRes.hasKey(val) {
+				res, err = mapRes.valueOf(val)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				res = nil
 			}
-		case int:
-			listRes, isMapRes := res.(*types.AttributeValueMemberL)
+		case int64:
+			listRes, isMapRes := res.(slicableExprValue)
 			if !isMapRes {
 				return nil, newValueNotAListError(r, subRefs[:i+1])
 			}
 
-			// TODO - deal with index properly
-			res = listRes.Value[val]
+			// TODO - deal with index properly (i.e. error handling)
+			res, err = listRes.valueAt(int(val))
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return res, nil
@@ -84,7 +88,7 @@ func (r *astSubRef) canModifyItem(ctx *evalContext, item models.Item) bool {
 	return r.Ref.canModifyItem(ctx, item)
 }
 
-func (r *astSubRef) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (r *astSubRef) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if len(r.SubRefs) == 0 {
 		return r.Ref.setEvalItem(ctx, item, value)
 	}
@@ -108,20 +112,19 @@ func (r *astSubRef) setEvalItem(ctx *evalContext, item models.Item, value types.
 
 	switch val := sv.(type) {
 	case string:
-		mapRes, isMapRes := parentItem.(*types.AttributeValueMemberM)
+		mapRes, isMapRes := parentItem.(modifiableMapExprValue)
 		if !isMapRes {
 			return newValueNotAMapError(r, r.SubRefs)
 		}
 
-		mapRes.Value[val] = value
-	case int:
-		listRes, isMapRes := parentItem.(*types.AttributeValueMemberL)
+		mapRes.setValueOf(val, value)
+	case int64:
+		listRes, isMapRes := parentItem.(modifiableSliceExprValue)
 		if !isMapRes {
 			return newValueNotAListError(r, r.SubRefs)
 		}
 
-		// TODO: handle indexes
-		listRes.Value[val] = value
+		listRes.setValueAt(int(val), value)
 	}
 	return nil
 }
@@ -164,23 +167,20 @@ func (r *astSubRef) deleteAttribute(ctx *evalContext, item models.Item) error {
 
 	switch val := sv.(type) {
 	case string:
-		mapRes, isMapRes := parentItem.(*types.AttributeValueMemberM)
+		mapRes, isMapRes := parentItem.(modifiableMapExprValue)
 		if !isMapRes {
 			return newValueNotAMapError(r, r.SubRefs)
 		}
 
-		delete(mapRes.Value, val)
-	case int:
-		listRes, isMapRes := parentItem.(*types.AttributeValueMemberL)
+		mapRes.deleteValueOf(val)
+	case int64:
+		listRes, isMapRes := parentItem.(modifiableSliceExprValue)
 		if !isMapRes {
 			return newValueNotAListError(r, r.SubRefs)
 		}
 
 		// TODO: handle indexes out of bounds
-		oldList := listRes.Value
-		newList := append([]types.AttributeValue{}, oldList[:val]...)
-		newList = append(newList, oldList[val+1:]...)
-		listRes.Value = newList
+		listRes.deleteValueAt(int(val))
 	}
 	return nil
 }
@@ -214,18 +214,10 @@ func (sr *astSubRefType) evalToStrOrInt(ctx *evalContext, item models.Item) (any
 		return nil, err
 	}
 	switch v := subEvalItem.(type) {
-	case *types.AttributeValueMemberS:
-		return v.Value, nil
-	case *types.AttributeValueMemberN:
-		intVal, err := strconv.Atoi(v.Value)
-		if err == nil {
-			return intVal, nil
-		}
-		flVal, err := strconv.ParseFloat(v.Value, 64)
-		if err == nil {
-			return int(flVal), nil
-		}
-		return nil, err
+	case stringableExprValue:
+		return v.asString(), nil
+	case numberableExprValue:
+		return v.asInt(), nil
 	}
 	return nil, ValueNotUsableAsASubref{}
 }

@@ -3,7 +3,6 @@ package queryexpr
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"strings"
 )
@@ -16,21 +15,21 @@ func (dt *astRef) unqualifiedName() (string, bool) {
 	return dt.Name, true
 }
 
-func (dt *astRef) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (dt *astRef) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	res, hasV := item[dt.Name]
 	if !hasV {
 		return nil, nil
 	}
 
-	return res, nil
+	return newExprValueFromAttributeValue(res)
 }
 
 func (dt *astRef) canModifyItem(ctx *evalContext, item models.Item) bool {
 	return true
 }
 
-func (dt *astRef) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
-	item[dt.Name] = value
+func (dt *astRef) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
+	item[dt.Name] = value.asAttributeValue()
 	return nil
 }
 
@@ -71,7 +70,7 @@ func (i irNamePath) calcName(info *models.TableInfo) expression.NameBuilder {
 		switch v := qual.(type) {
 		case string:
 			fullName.WriteString("." + v)
-		case int:
+		case int64:
 			fullName.WriteString(fmt.Sprintf("[%v]", qual))
 		}
 	}
