@@ -70,7 +70,6 @@ type astIsOp struct {
 type astSubRef struct {
 	Ref     *astFunctionCall `parser:"@@"`
 	SubRefs []*astSubRefType `parser:"@@*"`
-	//Quals []string `parser:"('.' @Ident)*"`
 }
 
 type astSubRefType struct {

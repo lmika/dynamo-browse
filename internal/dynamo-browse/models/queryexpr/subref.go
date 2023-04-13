@@ -139,20 +139,6 @@ func (r *astSubRef) deleteAttribute(ctx *evalContext, item models.Item) error {
 		return err
 	}
 
-	/*
-		for i, key := range r.Quals {
-			mapItem, isMapItem := parentItem.(*types.AttributeValueMemberM)
-			if !isMapItem {
-				return PathNotSettableError{}
-			}
-
-			if isLast := i == len(r.Quals)-1; isLast {
-				delete(mapItem.Value, key)
-			} else {
-				parentItem = mapItem.Value[key]
-			}
-		}
-	*/
 	if len(r.SubRefs) > 1 {
 		parentItem, err = r.evalSubRefs(ctx, item, parentItem, r.SubRefs[0:len(r.SubRefs)-1])
 		if err != nil {

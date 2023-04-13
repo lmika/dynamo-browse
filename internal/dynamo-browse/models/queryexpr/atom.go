@@ -20,15 +20,6 @@ func (a *astAtom) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, er
 	return nil, errors.New("unhandled atom case")
 }
 
-//func (a *astAtom) rightOperandDynamoValue() (types.AttributeValue, error) {
-//	switch {
-//	case a.Literal != nil:
-//		return a.Literal.dynamoValue()
-//	}
-//
-//	return nil, errors.New("unhandled atom case")
-//}
-
 func (a *astAtom) unqualifiedName() (string, bool) {
 	switch {
 	case a.Ref != nil:

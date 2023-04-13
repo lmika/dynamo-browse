@@ -15,20 +15,12 @@ var nativeFuncs = map[string]nativeFunc{
 
 		var l int
 		switch t := args[0].(type) {
-		//case *types.AttributeValueMemberB:
-		//	l = len(t.Value)
 		case stringExprValue:
 			l = len(t)
 		case mappableExprValue:
 			l = t.len()
 		case slicableExprValue:
 			l = t.len()
-		//case *types.AttributeValueMemberSS:
-		//	l = len(t.Value)
-		//case *types.AttributeValueMemberNS:
-		//	l = len(t.Value)
-		//case *types.AttributeValueMemberBS:
-		//	l = len(t.Value)
 		default:
 			return nil, errors.New("cannot take size of arg")
 		}
@@ -76,18 +68,7 @@ var nativeFuncs = map[string]nativeFunc{
 		if !isYNum {
 			return nil, InvalidArgumentTypeError{Name: "_x_add", ArgIndex: 1, Expected: "N"}
 		}
-		//
-		//xNumVal, _, err := big.ParseFloat(xVal.Value, 10, 63, big.ToNearestEven)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//
-		//yNumVal, _, err := big.ParseFloat(yVal.Value, 10, 63, big.ToNearestEven)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//
-		//return &types.AttributeValueMemberN{Value: xNumVal.Add(xNumVal, yNumVal).String()}, nil
+
 		return bigNumExprValue{num: xVal.asBigFloat().Add(xVal.asBigFloat(), yVal.asBigFloat())}, nil
 	},
 

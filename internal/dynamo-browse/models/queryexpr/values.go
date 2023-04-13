@@ -16,31 +16,7 @@ func (a *astLiteralValue) evalToIR(ctx *evalContext, info *models.TableInfo) (ir
 	return irValue{value: v}, nil
 }
 
-//func (a *astLiteralValue) dynamoValue() (types.AttributeValue, error) {
-//	if a == nil {
-//		return nil, nil
-//	}
-//
-//	goValue, err := a.goValue()
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	switch v := goValue.(type) {
-//	case string:
-//		return &types.AttributeValueMemberS{Value: v}, nil
-//	case int64:
-//		return &types.AttributeValueMemberN{Value: strconv.FormatInt(v, 10)}, nil
-//	}
-//
-//	return nil, errors.New("unrecognised type")
-//}
-
 func (a *astLiteralValue) exprValue() (exprValue, error) {
-	//if a == nil {
-	//	return nil, nil
-	//}
-
 	switch {
 	case a.StringVal != nil:
 		s, err := strconv.Unquote(*a.StringVal)

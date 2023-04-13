@@ -82,13 +82,6 @@ func (a *astIn) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, erro
 			}
 
 			ir = irIn{name: nameIR, values: []oprIRAtom{t}}
-		//case multiValueIRAtom:
-		//	nameIR, isNameIR := leftIR.(irNamePath)
-		//	if !isNameIR {
-		//		return nil, OperandNotANameError(a.Ref.String())
-		//	}
-		//
-		//	ir = irLiteralValues{name: nameIR, values: t}
 		default:
 			return nil, OperandNotAnOperandError{}
 		}
@@ -155,43 +148,6 @@ func (a *astIn) evalItem(ctx *evalContext, item models.Item) (exprValue, error) 
 				}
 			}
 			return boolExprValue(false), nil
-		//case *types.AttributeValueMemberSS:
-		//	str, canToStr := attrutils.AttributeToString(val)
-		//	if !canToStr {
-		//		return boolExprValue(false), nil
-		//	}
-		//
-		//	for _, listItem := range t.Value {
-		//		if str != listItem {
-		//			return boolExprValue(false), nil
-		//		}
-		//	}
-		//	return boolExprValue(true), nil
-		//case *types.AttributeValueMemberBS:
-		//	b, isB := val.(*types.AttributeValueMemberB)
-		//	if !isB {
-		//		return boolExprValue(false), nil
-		//	}
-		//
-		//	for _, listItem := range t.Value {
-		//		if !bytes.Equal(b.Value, listItem) {
-		//			return boolExprValue(false), nil
-		//		}
-		//	}
-		//	return boolExprValue(true), nil
-		//case *types.AttributeValueMemberNS:
-		//	n, isN := val.(*types.AttributeValueMemberN)
-		//	if !isN {
-		//		return boolExprValue(false), nil
-		//	}
-		//
-		//	for _, listItem := range t.Value {
-		//		// TODO: this is not actually right
-		//		if n.Value != listItem {
-		//			return boolExprValue(false), nil
-		//		}
-		//	}
-		//	return boolExprValue(true), nil
 		case mappableExprValue:
 			str, canToStr := val.(stringableExprValue)
 			if !canToStr {

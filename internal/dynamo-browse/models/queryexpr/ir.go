@@ -39,10 +39,6 @@ type valueIRAtom interface {
 	exprValue() exprValue
 }
 
-//type multiValueIRAtom interface {
-//	calcGoValues(info *models.TableInfo) ([]any, error)
-//}
-
 func canExecuteAsQuery(ir irAtom, qci *queryCalcInfo) bool {
 	queryable, isQuearyable := ir.(queryableIRAtom)
 	if !isQuearyable {
