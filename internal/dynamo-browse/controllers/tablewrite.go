@@ -274,12 +274,17 @@ func (twc *TableWriteController) DeleteAttribute(idx int, key string) tea.Msg {
 	}
 
 	if err := twc.state.withResultSetReturningError(func(set *models.ResultSet) error {
-		err := path.DeleteAttribute(set.Items()[idx])
-		if err != nil {
+		if err := applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
+			if err := path.DeleteAttribute(set.Items()[idx]); err != nil {
+				return err
+			}
+
+			set.SetDirty(idx, true)
+			return nil
+		}); err != nil {
 			return err
 		}
 
-		set.SetDirty(idx, true)
 		set.RefreshColumns()
 		return nil
 	}); err != nil {
