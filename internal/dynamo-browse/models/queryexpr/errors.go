@@ -98,6 +98,14 @@ func (n InvalidTypeForIsError) Error() string {
 	return "invalid type for 'is': " + n.TypeName
 }
 
+type InvalidTypeForBetweenError struct {
+	TypeName string
+}
+
+func (n InvalidTypeForBetweenError) Error() string {
+	return "invalid type for 'between': " + n.TypeName
+}
+
 type InvalidArgumentNumberError struct {
 	Name     string
 	Expected int

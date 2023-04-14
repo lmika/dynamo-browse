@@ -48,7 +48,46 @@ func (a *astBetweenOp) evalItem(ctx *evalContext, item models.Item) (exprValue, 
 		return val, err
 	}
 
-	panic("TODO")
+	fromIR, err := a.From.evalItem(ctx, item)
+	if err != nil {
+		return nil, err
+	}
+
+	toIR, err := a.To.evalItem(ctx, item)
+	if err != nil {
+		return nil, err
+	}
+
+	switch v := val.(type) {
+	case stringableExprValue:
+		fromNumVal, isFromNumVal := fromIR.(stringableExprValue)
+		if !isFromNumVal {
+			return nil, ValuesNotComparable{Left: val.asAttributeValue(), Right: fromIR.asAttributeValue()}
+		}
+
+		toNumVal, isToNumVal := toIR.(stringableExprValue)
+		if !isToNumVal {
+			return nil, ValuesNotComparable{Left: val.asAttributeValue(), Right: toNumVal.asAttributeValue()}
+		}
+
+		return boolExprValue(v.asString() >= fromNumVal.asString() && v.asString() <= toNumVal.asString()), nil
+	case numberableExprValue:
+		fromNumVal, isFromNumVal := fromIR.(numberableExprValue)
+		if !isFromNumVal {
+			return nil, ValuesNotComparable{Left: val.asAttributeValue(), Right: fromIR.asAttributeValue()}
+		}
+
+		toNumVal, isToNumVal := toIR.(numberableExprValue)
+		if !isToNumVal {
+			return nil, ValuesNotComparable{Left: val.asAttributeValue(), Right: toNumVal.asAttributeValue()}
+		}
+
+		fromCmp := v.asBigFloat().Cmp(fromNumVal.asBigFloat())
+		toCmp := v.asBigFloat().Cmp(toNumVal.asBigFloat())
+
+		return boolExprValue(fromCmp >= 0 && toCmp <= 0), nil
+	}
+	return nil, InvalidTypeForBetweenError{TypeName: val.typeName()}
 }
 
 func (a *astBetweenOp) canModifyItem(ctx *evalContext, item models.Item) bool {

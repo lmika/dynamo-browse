@@ -516,7 +516,9 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: "three between one and five", expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: "three between 10 and 15", expected: &types.AttributeValueMemberBOOL{Value: false}},
 			{expr: "three between 1 and 2", expected: &types.AttributeValueMemberBOOL{Value: false}},
-			{expr: "8 between five and 10", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: "8 between five and 10", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three between 1 and 3", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three between 3 and 5", expected: &types.AttributeValueMemberBOOL{Value: true}},
 
 			{expr: `"e" between "a" and "z"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: `"eee" between "aaa" and "zzz"`, expected: &types.AttributeValueMemberBOOL{Value: true}},

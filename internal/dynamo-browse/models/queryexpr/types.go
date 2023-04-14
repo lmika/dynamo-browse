@@ -11,6 +11,7 @@ import (
 )
 
 type exprValue interface {
+	typeName() string
 	asGoValue() any
 	asAttributeValue() types.AttributeValue
 }
@@ -96,6 +97,10 @@ func (s stringExprValue) asString() string {
 	return string(s)
 }
 
+func (s stringExprValue) typeName() string {
+	return "S"
+}
+
 type int64ExprValue int64
 
 func (i int64ExprValue) asGoValue() any {
@@ -114,6 +119,10 @@ func (i int64ExprValue) asBigFloat() *big.Float {
 	var f big.Float
 	f.SetInt64(int64(i))
 	return &f
+}
+
+func (s int64ExprValue) typeName() string {
+	return "N"
 }
 
 type bigNumExprValue struct {
@@ -137,6 +146,10 @@ func (i bigNumExprValue) asBigFloat() *big.Float {
 	return i.num
 }
 
+func (s bigNumExprValue) typeName() string {
+	return "N"
+}
+
 type boolExprValue bool
 
 func (b boolExprValue) asGoValue() any {
@@ -147,6 +160,10 @@ func (b boolExprValue) asAttributeValue() types.AttributeValue {
 	return &types.AttributeValueMemberBOOL{Value: bool(b)}
 }
 
+func (s boolExprValue) typeName() string {
+	return "BOOL"
+}
+
 type nullExprValue struct{}
 
 func (b nullExprValue) asGoValue() any {
@@ -155,6 +172,10 @@ func (b nullExprValue) asGoValue() any {
 
 func (b nullExprValue) asAttributeValue() types.AttributeValue {
 	return &types.AttributeValueMemberNULL{Value: true}
+}
+
+func (s nullExprValue) typeName() string {
+	return "NULL"
 }
 
 type listExprValue []exprValue
@@ -177,6 +198,10 @@ func (bs listExprValue) len() int {
 
 func (bs listExprValue) valueAt(i int) (exprValue, error) {
 	return bs[i], nil
+}
+
+func (s listExprValue) typeName() string {
+	return "L"
 }
 
 type mapExprValue map[string]exprValue
@@ -206,12 +231,24 @@ func (bs mapExprValue) valueOf(name string) (exprValue, error) {
 	return bs[name], nil
 }
 
+func (s mapExprValue) typeName() string {
+	return "M"
+}
+
 type listProxyValue struct {
 	list *types.AttributeValueMemberL
 }
 
 func (bs listProxyValue) asGoValue() any {
-	panic("TODO")
+	resultingList := make([]any, len(bs.list.Value))
+	for i, item := range bs.list.Value {
+		if av, _ := newExprValueFromAttributeValue(item); av != nil {
+			resultingList[i] = av.asGoValue()
+		} else {
+			resultingList[i] = nil
+		}
+	}
+	return resultingList
 }
 
 func (bs listProxyValue) asAttributeValue() types.AttributeValue {
@@ -236,12 +273,24 @@ func (bs listProxyValue) deleteValueAt(idx int) {
 	bs.list = &types.AttributeValueMemberL{Value: newList}
 }
 
+func (s listProxyValue) typeName() string {
+	return "L"
+}
+
 type mapProxyValue struct {
 	mapValue *types.AttributeValueMemberM
 }
 
 func (bs mapProxyValue) asGoValue() any {
-	panic("TODO")
+	resultingMap := make(map[string]any)
+	for k, item := range bs.mapValue.Value {
+		if av, _ := newExprValueFromAttributeValue(item); av != nil {
+			resultingMap[k] = av.asGoValue()
+		} else {
+			resultingMap[k] = nil
+		}
+	}
+	return resultingMap
 }
 
 func (bs mapProxyValue) asAttributeValue() types.AttributeValue {
@@ -269,12 +318,16 @@ func (bs mapProxyValue) deleteValueOf(name string) {
 	delete(bs.mapValue.Value, name)
 }
 
+func (s mapProxyValue) typeName() string {
+	return "M"
+}
+
 type stringSetProxyValue struct {
 	stringSet *types.AttributeValueMemberSS
 }
 
 func (bs stringSetProxyValue) asGoValue() any {
-	panic("TODO")
+	return bs.stringSet.Value
 }
 
 func (bs stringSetProxyValue) asAttributeValue() types.AttributeValue {
@@ -301,12 +354,16 @@ func (bs stringSetProxyValue) deleteValueAt(idx int) {
 	bs.stringSet = &types.AttributeValueMemberSS{Value: newList}
 }
 
+func (s stringSetProxyValue) typeName() string {
+	return "SS"
+}
+
 type numberSetProxyValue struct {
 	numberSet *types.AttributeValueMemberNS
 }
 
 func (bs numberSetProxyValue) asGoValue() any {
-	panic("TODO")
+	return bs.numberSet.Value
 }
 
 func (bs numberSetProxyValue) asAttributeValue() types.AttributeValue {
@@ -336,4 +393,8 @@ func (bs numberSetProxyValue) deleteValueAt(idx int) {
 	newList := append([]string{}, bs.numberSet.Value[:idx]...)
 	newList = append(newList, bs.numberSet.Value[idx+1:]...)
 	bs.numberSet = &types.AttributeValueMemberNS{Value: newList}
+}
+
+func (s numberSetProxyValue) typeName() string {
+	return "NS"
 }
