@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
 	"testing"
+	"time"
 
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/stretchr/testify/assert"
@@ -32,6 +33,13 @@ func TestModExpr_Query(t *testing.T) {
 				Keys: models.KeyAttribute{
 					PartitionKey: "apples",
 					SortKey:      "sk",
+				},
+			},
+			{
+				Name: "with-apples-and-oranges",
+				Keys: models.KeyAttribute{
+					PartitionKey: "apples",
+					SortKey:      "oranges",
 				},
 			},
 		},
@@ -112,6 +120,13 @@ func TestModExpr_Query(t *testing.T) {
 				exprNameIsString(0, 0, "pk", "prefix"),
 				exprNameIsNumber(1, 1, "sk", "100"),
 			),
+			scanCase("when request pk is equals and sk is greater or equal to",
+				`pk="prefix" and sk between 100 and 200`,
+				`(#0 = :0) AND (#1 BETWEEN :1 AND :2)`,
+				exprNameIsString(0, 0, "pk", "prefix"),
+				exprNameIsNumber(1, 1, "sk", "100"),
+				exprValueIsNumber(2, "200"),
+			),
 
 			scanCase("with placeholders",
 				`:partition=$valuePrefix and :sort=$valueAnother`,
@@ -148,6 +163,13 @@ func TestModExpr_Query(t *testing.T) {
 				indexName("with-color"),
 				exprNameIsString(0, 0, "color", "yellow"),
 				exprNameIsString(1, 1, "shade", "dark"),
+			),
+
+			// Function calls
+			scanCase("use the value of fn call in query",
+				`pk = _x_concat("Hello ", "world")`,
+				`#0 = :0`,
+				exprNameIsString(0, 0, "pk", "Hello world"),
 			),
 		}
 
@@ -236,6 +258,13 @@ func TestModExpr_Query(t *testing.T) {
 			),
 			scanCase("with not", `not pk="prefix"`, `NOT (#0 = :0)`,
 				exprNameIsString(0, 0, "pk", "prefix"),
+			),
+
+			scanCase("with between", `pk between "a" and "z"`,
+				`#0 BETWEEN :0 AND :1`,
+				exprName(0, "pk"),
+				exprValueIsString(0, "a"),
+				exprValueIsString(1, "z"),
 			),
 
 			scanCase("with in", `pk in ("alpha", "bravo", "charlie")`,
@@ -374,6 +403,53 @@ func TestModExpr_Query(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("with index clash", func(t *testing.T) {
+		t.Run("should return error if attempt to run query with two indices that can be chosen", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this"`)
+			assert.NoError(t, err)
+
+			_, err = modExpr.Plan(tableInfo)
+			assert.Error(t, err)
+		})
+
+		t.Run("should run as scan if explicitly forced to", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this" using scan`)
+			assert.NoError(t, err)
+
+			plan, err := modExpr.Plan(tableInfo)
+			assert.NoError(t, err)
+			assert.False(t, plan.CanQuery)
+		})
+
+		t.Run("should run as query with the 'with-apples' index", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this" using index("with-apples")`)
+			assert.NoError(t, err)
+
+			plan, err := modExpr.Plan(tableInfo)
+			assert.NoError(t, err)
+			assert.True(t, plan.CanQuery)
+			assert.Equal(t, "with-apples", plan.IndexName)
+		})
+
+		t.Run("should run as query with the 'with-apples-and-oranges' index", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this" using index("with-apples-and-oranges")`)
+			assert.NoError(t, err)
+
+			plan, err := modExpr.Plan(tableInfo)
+			assert.NoError(t, err)
+			assert.True(t, plan.CanQuery)
+			assert.Equal(t, "with-apples-and-oranges", plan.IndexName)
+		})
+
+		t.Run("should return error if the chosen index can't be used", func(t *testing.T) {
+			modExpr, err := queryexpr.Parse(`apples="this" using index("with-missing")`)
+			assert.NoError(t, err)
+
+			_, err = modExpr.Plan(tableInfo)
+			assert.Error(t, err)
+		})
+	})
 }
 
 func TestQueryExpr_EvalItem(t *testing.T) {
@@ -395,7 +471,9 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 					&types.AttributeValueMemberN{Value: "7"},
 				},
 			},
+			"one":   &types.AttributeValueMemberN{Value: "1"},
 			"three": &types.AttributeValueMemberN{Value: "3"},
+			"five":  &types.AttributeValueMemberN{Value: "5"},
 		}
 	)
 
@@ -432,6 +510,19 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: "three >= 2", expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: "three < 2", expected: &types.AttributeValueMemberBOOL{Value: false}},
 			{expr: "three <= 2", expected: &types.AttributeValueMemberBOOL{Value: false}},
+
+			// Between
+			{expr: "three between 1 and 5", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three between one and five", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three between 10 and 15", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: "three between 1 and 2", expected: &types.AttributeValueMemberBOOL{Value: false}},
+			{expr: "8 between five and 10", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three between 1 and 3", expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: "three between 3 and 5", expected: &types.AttributeValueMemberBOOL{Value: true}},
+
+			{expr: `"e" between "a" and "z"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `"eee" between "aaa" and "zzz"`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `"e" between "between" and "beyond"`, expected: &types.AttributeValueMemberBOOL{Value: false}},
 
 			// In
 			{expr: "three in (2, 3, 4, 5)", expected: &types.AttributeValueMemberBOOL{Value: true}},
@@ -502,6 +593,29 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 				assert.NoError(t, err)
 
 				res, err := modExpr.EvalItem(item)
+				assert.NoError(t, err)
+
+				assert.Equal(t, scenario.expected, res)
+			})
+		}
+	})
+
+	t.Run("functions", func(t *testing.T) {
+		timeNow := time.Now()
+
+		scenarios := []struct {
+			expr     string
+			expected types.AttributeValue
+		}{
+			// _x_now() -- unreleased version of now
+			{expr: `_x_now()`, expected: &types.AttributeValueMemberN{Value: fmt.Sprint(timeNow.Unix())}},
+		}
+		for _, scenario := range scenarios {
+			t.Run(scenario.expr, func(t *testing.T) {
+				modExpr, err := queryexpr.Parse(scenario.expr)
+				assert.NoError(t, err)
+
+				res, err := modExpr.WithTestTimeSource(timeNow).EvalItem(item)
 				assert.NoError(t, err)
 
 				assert.Equal(t, scenario.expected, res)

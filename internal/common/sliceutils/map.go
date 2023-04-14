@@ -39,3 +39,22 @@ func Filter[T any](ts []T, fn func(t T) bool) []T {
 	}
 	return us
 }
+
+func FindFirst[T any](ts []T, fn func(t T) bool) (returnedT T, found bool) {
+	for _, t := range ts {
+		if fn(t) {
+			return t, true
+		}
+	}
+	return returnedT, false
+}
+
+func FindLast[T any](ts []T, fn func(t T) bool) (returnedT T, found bool) {
+	for i := len(ts) - 1; i >= 0; i-- {
+		t := ts[i]
+		if fn(t) {
+			return t, true
+		}
+	}
+	return returnedT, false
+}

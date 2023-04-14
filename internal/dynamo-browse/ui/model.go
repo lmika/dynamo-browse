@@ -144,6 +144,8 @@ func NewModel(
 						itemType = models.BoolItemType
 					case "-NULL":
 						itemType = models.NullItemType
+					case "-TO":
+						itemType = models.ExprValueItemType
 					default:
 						return events.Error(errors.New("unrecognised item type"))
 					}

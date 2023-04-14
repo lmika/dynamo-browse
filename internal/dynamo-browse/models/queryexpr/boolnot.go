@@ -2,7 +2,6 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"strings"
 )
@@ -20,7 +19,7 @@ func (a *astBooleanNot) evalToIR(ctx *evalContext, tableInfo *models.TableInfo) 
 	return &irBoolNot{atom: irNode}, nil
 }
 
-func (a *astBooleanNot) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astBooleanNot) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	val, err := a.Operand.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
@@ -30,7 +29,7 @@ func (a *astBooleanNot) evalItem(ctx *evalContext, item models.Item) (types.Attr
 		return val, nil
 	}
 
-	return &types.AttributeValueMemberBOOL{Value: !isAttributeTrue(val)}, nil
+	return boolExprValue(!isAttributeTrue(val)), nil
 }
 
 func (a *astBooleanNot) canModifyItem(ctx *evalContext, item models.Item) bool {
@@ -40,7 +39,7 @@ func (a *astBooleanNot) canModifyItem(ctx *evalContext, item models.Item) bool {
 	return a.Operand.canModifyItem(ctx, item)
 }
 
-func (a *astBooleanNot) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astBooleanNot) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if a.HasNot {
 		return PathNotSettableError{}
 	}

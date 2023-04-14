@@ -91,10 +91,14 @@ func main() {
 		}
 	}
 
-	key := gofakeit.UUID()
+	var key = gofakeit.UUID()
 	for i := 0; i < totalItems; i++ {
+		if i%50 == 0 {
+			key = gofakeit.UUID()
+		}
 		if err := tableService.Put(ctx, inventoryTableInfo, models.Item{
 			"pk":   &types.AttributeValueMemberS{Value: key},
+			"sk":   &types.AttributeValueMemberN{Value: fmt.Sprint(i % 50)},
 			"uuid": &types.AttributeValueMemberS{Value: gofakeit.UUID()},
 		}); err != nil {
 			log.Fatalln(err)

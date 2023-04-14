@@ -5,56 +5,31 @@ import (
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/pkg/errors"
 )
 
 func (a *astLiteralValue) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
-	v, err := a.goValue()
+	v, err := a.exprValue()
 	if err != nil {
 		return nil, err
 	}
 	return irValue{value: v}, nil
 }
 
-func (a *astLiteralValue) dynamoValue() (types.AttributeValue, error) {
-	if a == nil {
-		return nil, nil
-	}
-
-	goValue, err := a.goValue()
-	if err != nil {
-		return nil, err
-	}
-
-	switch v := goValue.(type) {
-	case string:
-		return &types.AttributeValueMemberS{Value: v}, nil
-	case int64:
-		return &types.AttributeValueMemberN{Value: strconv.FormatInt(v, 10)}, nil
-	}
-
-	return nil, errors.New("unrecognised type")
-}
-
-func (a *astLiteralValue) goValue() (any, error) {
-	if a == nil {
-		return nil, nil
-	}
-
+func (a *astLiteralValue) exprValue() (exprValue, error) {
 	switch {
 	case a.StringVal != nil:
 		s, err := strconv.Unquote(*a.StringVal)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot unquote string")
 		}
-		return s, nil
+		return stringExprValue(s), nil
 	case a.IntVal != nil:
-		return *a.IntVal, nil
+		return int64ExprValue(*a.IntVal), nil
 	case a.TrueBoolValue:
-		return true, nil
+		return boolExprValue(true), nil
 	case a.FalseBoolValue:
-		return false, nil
+		return boolExprValue(false), nil
 	}
 	return nil, errors.New("unrecognised type")
 }
@@ -78,17 +53,17 @@ func (a *astLiteralValue) String() string {
 }
 
 type irValue struct {
-	value any
+	value exprValue
 }
 
 func (i irValue) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	return expression.ConditionBuilder{}, NodeCannotBeConvertedToQueryError{}
 }
 
-func (i irValue) goValue() any {
+func (i irValue) exprValue() exprValue {
 	return i.value
 }
 
 func (a irValue) calcOperand(info *models.TableInfo) expression.OperandBuilder {
-	return expression.Value(a.goValue())
+	return expression.Value(a.value.asGoValue())
 }

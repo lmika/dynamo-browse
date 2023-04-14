@@ -3,7 +3,6 @@ package queryexpr
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
@@ -29,7 +28,7 @@ func (a *astFunctionCall) evalToIR(ctx *evalContext, info *models.TableInfo) (ir
 		return nil, err
 	}
 
-	// TODO: do this properly
+	// Special handling of functions that have IR nodes
 	switch nameIr.keyName() {
 	case "size":
 		if len(irNodes) != 1 {
@@ -40,20 +39,34 @@ func (a *astFunctionCall) evalToIR(ctx *evalContext, info *models.TableInfo) (ir
 			return nil, OperandNotANameError(a.Args[0].String())
 		}
 		return irSizeFn{name}, nil
-	case "range":
-		if len(irNodes) != 2 {
-			return nil, InvalidArgumentNumberError{Name: "range", Expected: 2, Actual: len(irNodes)}
-		}
-
-		// TEMP
-		fromVal := irNodes[0].(valueIRAtom).goValue().(int64)
-		toVal := irNodes[1].(valueIRAtom).goValue().(int64)
-		return irRangeFn{fromVal, toVal}, nil
 	}
-	return nil, UnrecognisedFunctionError{Name: nameIr.keyName()}
+
+	builtinFn, hasBuiltin := nativeFuncs[nameIr.keyName()]
+	if !hasBuiltin {
+		return nil, UnrecognisedFunctionError{Name: nameIr.keyName()}
+	}
+
+	// Normal functions which are evaluated to regular values
+	irValues, err := sliceutils.MapWithError(irNodes, func(a irAtom) (exprValue, error) {
+		v, isV := a.(valueIRAtom)
+		if !isV {
+			return nil, errors.New("cannot use value")
+		}
+		return v.exprValue(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	val, err := builtinFn(context.Background(), irValues)
+	if err != nil {
+		return nil, err
+	}
+
+	return irValue{value: val}, nil
 }
 
-func (a *astFunctionCall) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astFunctionCall) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	if !a.IsCall {
 		return a.Caller.evalItem(ctx, item)
 	}
@@ -67,14 +80,15 @@ func (a *astFunctionCall) evalItem(ctx *evalContext, item models.Item) (types.At
 		return nil, UnrecognisedFunctionError{Name: name}
 	}
 
-	args, err := sliceutils.MapWithError(a.Args, func(a *astExpr) (types.AttributeValue, error) {
+	args, err := sliceutils.MapWithError(a.Args, func(a *astExpr) (exprValue, error) {
 		return a.evalItem(ctx, item)
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return fn(context.Background(), args)
+	cCtx := context.WithValue(context.Background(), timeSourceContextKey, ctx.timeSource)
+	return fn(cCtx, args)
 }
 
 func (a *astFunctionCall) canModifyItem(ctx *evalContext, item models.Item) bool {
@@ -85,7 +99,7 @@ func (a *astFunctionCall) canModifyItem(ctx *evalContext, item models.Item) bool
 	return a.Caller.canModifyItem(ctx, item)
 }
 
-func (a *astFunctionCall) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astFunctionCall) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	// TODO: Should a function vall return an item?
 	if a.IsCall {
 		return PathNotSettableError{}
@@ -146,4 +160,16 @@ func (i irRangeFn) calcGoValues(info *models.TableInfo) ([]any, error) {
 		xs = append(xs, x)
 	}
 	return xs, nil
+}
+
+type multiValueFnResult struct {
+	items []any
+}
+
+func (i multiValueFnResult) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
+	return expression.ConditionBuilder{}, errors.New("cannot run as scan")
+}
+
+func (i multiValueFnResult) calcGoValues(info *models.TableInfo) ([]any, error) {
+	return i.items, nil
 }

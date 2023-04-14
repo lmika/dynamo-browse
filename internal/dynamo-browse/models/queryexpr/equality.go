@@ -2,7 +2,6 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
@@ -59,7 +58,7 @@ func (a *astEqualityOp) evalToIR(ctx *evalContext, info *models.TableInfo) (irAt
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
 }
 
-func (a *astEqualityOp) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astEqualityOp) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	left, err := a.Ref.evalItem(ctx, item)
 	if err != nil {
 		return nil, err
@@ -74,30 +73,32 @@ func (a *astEqualityOp) evalItem(ctx *evalContext, item models.Item) (types.Attr
 		return nil, err
 	}
 
+	// TODO: use expr values here
+
 	switch a.Op {
 	case "=":
-		cmp, isComparable := attrutils.CompareScalarAttributes(left, right)
+		cmp, isComparable := attrutils.CompareScalarAttributes(left.asAttributeValue(), right.asAttributeValue())
 		if !isComparable {
-			return nil, ValuesNotComparable{Left: left, Right: right}
+			return nil, ValuesNotComparable{Left: left.asAttributeValue(), Right: right.asAttributeValue()}
 		}
-		return &types.AttributeValueMemberBOOL{Value: cmp == 0}, nil
+		return boolExprValue(cmp == 0), nil
 	case "!=":
-		cmp, isComparable := attrutils.CompareScalarAttributes(left, right)
+		cmp, isComparable := attrutils.CompareScalarAttributes(left.asAttributeValue(), right.asAttributeValue())
 		if !isComparable {
-			return nil, ValuesNotComparable{Left: left, Right: right}
+			return nil, ValuesNotComparable{Left: left.asAttributeValue(), Right: right.asAttributeValue()}
 		}
-		return &types.AttributeValueMemberBOOL{Value: cmp != 0}, nil
+		return boolExprValue(cmp != 0), nil
 	case "^=":
-		strValue, isStrValue := right.(*types.AttributeValueMemberS)
+		strValue, isStrValue := right.(stringableExprValue)
 		if !isStrValue {
 			return nil, errors.New("operand '^=' must be string")
 		}
 
-		leftAsStr, canBeString := attrutils.AttributeToString(left)
+		leftAsStr, canBeString := left.(stringableExprValue)
 		if !canBeString {
-			return nil, ValueNotConvertableToString{Val: left}
+			return nil, ValueNotConvertableToString{Val: leftAsStr.asAttributeValue()}
 		}
-		return &types.AttributeValueMemberBOOL{Value: strings.HasPrefix(leftAsStr, strValue.Value)}, nil
+		return boolExprValue(strings.HasPrefix(leftAsStr.asString(), strValue.asString())), nil
 	}
 
 	return nil, errors.Errorf("unrecognised operator: %v", a.Op)
@@ -110,7 +111,7 @@ func (a *astEqualityOp) canModifyItem(ctx *evalContext, item models.Item) bool {
 	return a.Ref.canModifyItem(ctx, item)
 }
 
-func (a *astEqualityOp) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astEqualityOp) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	if a.Op != "" {
 		return PathNotSettableError{}
 	}
@@ -157,8 +158,8 @@ func (a irKeyFieldEq) calcQueryForScan(info *models.TableInfo) (expression.Condi
 }
 
 func (a irKeyFieldEq) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
-	vb := a.value.goValue()
-	return expression.Key(a.name.keyName()).Equal(expression.Value(vb)), nil
+	vb := a.value.exprValue()
+	return expression.Key(a.name.keyName()).Equal(buildExpressionFromValue(vb)), nil
 }
 
 type irGenericEq struct {
@@ -203,21 +204,21 @@ func (a irFieldBeginsWith) canBeExecutedAsQuery(qci *queryCalcInfo) bool {
 
 func (a irFieldBeginsWith) calcQueryForScan(info *models.TableInfo) (expression.ConditionBuilder, error) {
 	nb := a.name.calcName(info)
-	vb := a.value.goValue()
-	strValue, isStrValue := vb.(string)
+	vb := a.value.exprValue()
+	strValue, isStrValue := vb.(stringableExprValue)
 	if !isStrValue {
 		return expression.ConditionBuilder{}, errors.New("operand '^=' must be string")
 	}
 
-	return nb.BeginsWith(strValue), nil
+	return nb.BeginsWith(strValue.asString()), nil
 }
 
 func (a irFieldBeginsWith) calcQueryForQuery() (expression.KeyConditionBuilder, error) {
-	vb := a.value.goValue()
-	strValue, isStrValue := vb.(string)
+	vb := a.value.exprValue()
+	strValue, isStrValue := vb.(stringableExprValue)
 	if !isStrValue {
 		return expression.KeyConditionBuilder{}, errors.New("operand '^=' must be string")
 	}
 
-	return expression.Key(a.name.keyName()).BeginsWith(strValue), nil
+	return expression.Key(a.name.keyName()).BeginsWith(strValue.asString()), nil
 }

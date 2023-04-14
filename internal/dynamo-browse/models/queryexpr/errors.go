@@ -98,6 +98,14 @@ func (n InvalidTypeForIsError) Error() string {
 	return "invalid type for 'is': " + n.TypeName
 }
 
+type InvalidTypeForBetweenError struct {
+	TypeName string
+}
+
+func (n InvalidTypeForBetweenError) Error() string {
+	return "invalid type for 'between': " + n.TypeName
+}
+
 type InvalidArgumentNumberError struct {
 	Name     string
 	Expected int
@@ -106,6 +114,16 @@ type InvalidArgumentNumberError struct {
 
 func (e InvalidArgumentNumberError) Error() string {
 	return fmt.Sprintf("function '%v' expected %v args but received %v", e.Name, e.Expected, e.Actual)
+}
+
+type InvalidArgumentTypeError struct {
+	Name     string
+	ArgIndex int
+	Expected string
+}
+
+func (e InvalidArgumentTypeError) Error() string {
+	return fmt.Sprintf("function '%v' expected arg %v to be of type %v", e.Name, e.ArgIndex, e.Expected)
 }
 
 type UnrecognisedFunctionError struct {
@@ -136,4 +154,21 @@ type ValueNotUsableAsASubref struct {
 
 func (e ValueNotUsableAsASubref) Error() string {
 	return "value cannot be used as a subref"
+}
+
+type MultiplePlansWithIndexError struct {
+	PossibleIndices []string
+}
+
+func (e MultiplePlansWithIndexError) Error() string {
+	return fmt.Sprintf("multiple plans with index found. Specify index or scan with 'using' clause: possible indices are %v", e.PossibleIndices)
+}
+
+type NoPlausiblePlanWithIndexError struct {
+	PreferredIndex  string
+	PossibleIndices []string
+}
+
+func (e NoPlausiblePlanWithIndexError) Error() string {
+	return fmt.Sprintf("no plan with index '%v' found: possible indices are %v", e.PreferredIndex, e.PossibleIndices)
 }

@@ -4,17 +4,23 @@ import (
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/audax/internal/common/sliceutils"
 	"github.com/lmika/audax/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
+	"strconv"
 )
 
 // Modelled on the expression language here
 // https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html
 
 type astExpr struct {
-	Root *astDisjunction `parser:"@@"`
+	Root    *astDisjunction `parser:"@@"`
+	Options *astOptions     `parser:"( 'using' @@ )?"`
+}
+
+type astOptions struct {
+	Scan  bool   `parser:"@'scan'"`
+	Index string `parser:" | 'index' '(' @String ')'"`
 }
 
 type astDisjunction struct {
@@ -38,9 +44,15 @@ type astIn struct {
 }
 
 type astComparisonOp struct {
-	Ref   *astEqualityOp `parser:"@@"`
-	Op    string         `parser:"( @('<' | '<=' | '>' | '>=')"`
-	Value *astEqualityOp `parser:"@@ )?"`
+	Ref   *astBetweenOp `parser:"@@"`
+	Op    string        `parser:"( @('<' | '<=' | '>' | '>=')"`
+	Value *astBetweenOp `parser:"@@ )?"`
+}
+
+type astBetweenOp struct {
+	Ref  *astEqualityOp `parser:"@@"`
+	From *astEqualityOp `parser:"( 'between' @@ "`
+	To   *astEqualityOp `parser:" 'and' @@ )?"`
 }
 
 type astEqualityOp struct {
@@ -58,7 +70,6 @@ type astIsOp struct {
 type astSubRef struct {
 	Ref     *astFunctionCall `parser:"@@"`
 	SubRefs []*astSubRefType `parser:"@@*"`
-	//Quals []string `parser:"('.' @Ident)*"`
 }
 
 type astSubRefType struct {
@@ -121,7 +132,58 @@ func Parse(expr string) (*QueryExpr, error) {
 	return &QueryExpr{ast: ast}, nil
 }
 
-func (a *astExpr) calcQuery(ctx *evalContext, info *models.TableInfo) (*models.QueryExecutionPlan, error) {
+func (a *astExpr) calcQuery(ctx *evalContext, info *models.TableInfo, preferredIndex string) (*models.QueryExecutionPlan, error) {
+	plans, err := a.determinePlausibleExecutionPlans(ctx, info)
+	if err != nil {
+		return nil, err
+	}
+
+	scanPlan, _ := sliceutils.FindLast(plans, func(p *models.QueryExecutionPlan) bool {
+		return !p.CanQuery
+	})
+	queryPlans := sliceutils.Filter(plans, func(p *models.QueryExecutionPlan) bool {
+		if !p.CanQuery {
+			return false
+		}
+		return true
+	})
+
+	if len(queryPlans) == 0 || (a.Options != nil && a.Options.Scan) {
+		if preferredIndex != "" {
+			return nil, NoPlausiblePlanWithIndexError{
+				PreferredIndex:  preferredIndex,
+				PossibleIndices: sliceutils.Map(queryPlans, func(p *models.QueryExecutionPlan) string { return p.IndexName }),
+			}
+		}
+		return scanPlan, nil
+	}
+
+	if preferredIndex == "" && (a.Options != nil && a.Options.Index != "") {
+		preferredIndex, err = strconv.Unquote(a.Options.Index)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if preferredIndex != "" {
+		queryPlans = sliceutils.Filter(queryPlans, func(p *models.QueryExecutionPlan) bool { return p.IndexName == preferredIndex })
+	}
+	if len(queryPlans) == 1 {
+		return queryPlans[0], nil
+	} else if len(queryPlans) == 0 {
+		return nil, NoPlausiblePlanWithIndexError{
+			PreferredIndex: preferredIndex,
+		}
+	}
+
+	return nil, MultiplePlansWithIndexError{
+		PossibleIndices: sliceutils.Map(queryPlans, func(p *models.QueryExecutionPlan) string { return p.IndexName }),
+	}
+}
+
+func (a *astExpr) determinePlausibleExecutionPlans(ctx *evalContext, info *models.TableInfo) ([]*models.QueryExecutionPlan, error) {
+	plans := make([]*models.QueryExecutionPlan, 0)
+
 	type queryTestAttempt struct {
 		index         string
 		keysUnderTest models.KeyAttribute
@@ -153,11 +215,11 @@ func (a *astExpr) calcQuery(ctx *evalContext, info *models.TableInfo) (*models.Q
 				return nil, err
 			}
 
-			return &models.QueryExecutionPlan{
+			plans = append(plans, &models.QueryExecutionPlan{
 				CanQuery:   true,
 				IndexName:  attempt.index,
 				Expression: expr,
-			}, nil
+			})
 		}
 	}
 
@@ -174,21 +236,22 @@ func (a *astExpr) calcQuery(ctx *evalContext, info *models.TableInfo) (*models.Q
 		return nil, err
 	}
 
-	return &models.QueryExecutionPlan{
+	plans = append(plans, &models.QueryExecutionPlan{
 		CanQuery:   false,
 		Expression: expr,
-	}, nil
+	})
+	return plans, nil
 }
 
 func (a *astExpr) evalToIR(ctx *evalContext, tableInfo *models.TableInfo) (irAtom, error) {
 	return a.Root.evalToIR(ctx, tableInfo)
 }
 
-func (a *astExpr) evalItem(ctx *evalContext, item models.Item) (types.AttributeValue, error) {
+func (a *astExpr) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	return a.Root.evalItem(ctx, item)
 }
 
-func (a *astExpr) setEvalItem(ctx *evalContext, item models.Item, value types.AttributeValue) error {
+func (a *astExpr) setEvalItem(ctx *evalContext, item models.Item, value exprValue) error {
 	return a.Root.setEvalItem(ctx, item, value)
 }
 
