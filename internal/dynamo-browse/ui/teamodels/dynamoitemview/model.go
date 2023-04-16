@@ -4,11 +4,11 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/lmika/audax/internal/dynamo-browse/services/itemrenderer"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/itemrenderer"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/frame"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/styles"
 	"strings"
 )
 

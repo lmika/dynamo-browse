@@ -3,11 +3,11 @@ package dynamotableview
 import (
 	"fmt"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/audax/internal/dynamo-browse/models/itemrender"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/itemrender"
 	"io"
 	"strings"
 
-	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	table "github.com/lmika/go-bubble-table"
 )
 

@@ -2,7 +2,7 @@ package queryexpr
 
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"strings"
 )
 

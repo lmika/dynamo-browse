@@ -2,7 +2,7 @@ package events
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/dynamo-browse/services"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
 )
 
 // Error indicates that an error occurred

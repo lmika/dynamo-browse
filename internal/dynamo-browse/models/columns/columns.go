@@ -2,8 +2,8 @@ package columns
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 )
 
 type Columns struct {

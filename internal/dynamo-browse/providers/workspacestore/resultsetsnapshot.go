@@ -2,8 +2,8 @@ package workspacestore
 
 import (
 	"github.com/asdine/storm"
-	"github.com/lmika/audax/internal/common/workspaces"
-	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
+	"github.com/lmika/dynamo-browse/internal/common/workspaces"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/serialisable"
 	"github.com/pkg/errors"
 	"log"
 )

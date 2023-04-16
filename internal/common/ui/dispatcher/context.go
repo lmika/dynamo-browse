@@ -2,7 +2,7 @@ package dispatcher
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/common/ui/uimodels"
+	"github.com/lmika/dynamo-browse/internal/common/ui/uimodels"
 )
 
 type DispatcherContext struct {

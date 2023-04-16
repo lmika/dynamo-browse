@@ -3,8 +3,8 @@ package controllers
 import (
 	"encoding/csv"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
 	"github.com/pkg/errors"
 	"os"
 )

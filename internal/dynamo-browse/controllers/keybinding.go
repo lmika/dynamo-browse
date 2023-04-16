@@ -3,8 +3,8 @@ package controllers
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/keybindings"
 	"github.com/pkg/errors"
 )
 

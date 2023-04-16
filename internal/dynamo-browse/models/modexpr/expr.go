@@ -1,6 +1,6 @@
 package modexpr
 
-import "github.com/lmika/audax/internal/dynamo-browse/models"
+import "github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 
 type ModExpr struct {
 	ast *astExpr

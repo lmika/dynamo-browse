@@ -1,7 +1,7 @@
 package testworkspace
 
 import (
-	"github.com/lmika/audax/internal/common/workspaces"
+	"github.com/lmika/dynamo-browse/internal/common/workspaces"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"

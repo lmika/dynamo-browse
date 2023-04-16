@@ -5,12 +5,12 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/controllers"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/frame"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/styles"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/frame"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/styles"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
 )
 
 var (

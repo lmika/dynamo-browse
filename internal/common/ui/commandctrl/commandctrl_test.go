@@ -2,11 +2,11 @@ package commandctrl_test
 
 import (
 	"context"
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/services"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
 	"testing"
 
-	"github.com/lmika/audax/internal/common/ui/commandctrl"
+	"github.com/lmika/dynamo-browse/internal/common/ui/commandctrl"
 	"github.com/stretchr/testify/assert"
 )
 

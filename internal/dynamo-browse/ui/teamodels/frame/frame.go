@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
 )
 
 var (

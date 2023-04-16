@@ -5,10 +5,10 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/audax/internal/common/sliceutils"
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
+	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
 )
 
 // StatusAndPrompt is a resizing model which displays a submodel and a status bar.  When the start prompt

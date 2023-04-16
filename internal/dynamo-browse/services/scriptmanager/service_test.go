@@ -2,8 +2,8 @@ package scriptmanager_test
 
 import (
 	"context"
-	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
-	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager/mocks"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/scriptmanager"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/scriptmanager/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io/fs"

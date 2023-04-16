@@ -3,8 +3,8 @@ package queryexpr
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
-	"github.com/lmika/audax/internal/dynamo-browse/models/itemrender"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/itemrender"
 	"strings"
 )
 

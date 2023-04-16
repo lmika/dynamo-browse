@@ -3,9 +3,9 @@ package scriptmanager_test
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager"
-	"github.com/lmika/audax/internal/dynamo-browse/services/scriptmanager/mocks"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/scriptmanager"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/scriptmanager/mocks"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

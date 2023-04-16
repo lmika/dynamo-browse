@@ -1,7 +1,7 @@
 package viewsnapshot
 
 import (
-	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/serialisable"
 	"github.com/pkg/errors"
 	"time"
 )

@@ -2,8 +2,8 @@ package modal
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/layout"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
 	"log"
 )
 
