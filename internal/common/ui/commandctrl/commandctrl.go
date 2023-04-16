@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/shellwords"
 )
 

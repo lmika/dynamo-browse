@@ -1,8 +1,8 @@
 package queryexpr
 
 import (
-	"github.com/lmika/audax/internal/common/sliceutils"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"strings"
 )
 

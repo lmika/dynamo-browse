@@ -2,7 +2,7 @@ package serialisable
 
 import (
 	"bytes"
-	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	"time"
 )
 

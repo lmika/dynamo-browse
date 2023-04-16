@@ -1,6 +1,6 @@
 package viewsnapshot
 
-import "github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
+import "github.com/lmika/dynamo-browse/internal/dynamo-browse/models/serialisable"
 
 type ViewSnapshotStore interface {
 	Save(rs *serialisable.ViewSnapshot) error

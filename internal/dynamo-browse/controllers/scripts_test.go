@@ -2,8 +2,8 @@ package controllers_test
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/controllers"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"

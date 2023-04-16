@@ -3,7 +3,7 @@ package attrcodec_test
 import (
 	"bytes"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/dynamo-browse/models/attrcodec"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrcodec"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"

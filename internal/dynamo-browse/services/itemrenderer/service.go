@@ -2,8 +2,8 @@ package itemrenderer
 
 import (
 	"fmt"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/lmika/audax/internal/dynamo-browse/models/itemrender"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/itemrender"
 	"io"
 	"text/tabwriter"
 )

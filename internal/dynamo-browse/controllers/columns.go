@@ -2,10 +2,10 @@ package controllers
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
-	"github.com/lmika/audax/internal/dynamo-browse/models/columns"
-	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/columns"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	bus "github.com/lmika/events"
 )
 

@@ -1,4 +1,4 @@
-module github.com/lmika/audax
+module github.com/lmika/dynamo-browse
 
 go 1.18
 

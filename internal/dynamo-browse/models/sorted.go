@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/lmika/audax/internal/dynamo-browse/models/attrutils"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
 	"sort"
 )
 

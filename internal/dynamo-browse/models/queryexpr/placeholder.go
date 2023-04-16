@@ -1,7 +1,7 @@
 package queryexpr
 
 import (
-	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 )
 

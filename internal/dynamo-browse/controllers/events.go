@@ -3,7 +3,7 @@ package controllers
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 )
 
 type SetTableItemView struct {

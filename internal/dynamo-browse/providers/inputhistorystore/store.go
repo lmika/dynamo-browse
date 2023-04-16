@@ -3,8 +3,8 @@ package inputhistorystore
 import (
 	"context"
 	"github.com/asdine/storm"
-	"github.com/lmika/audax/internal/common/sliceutils"
-	"github.com/lmika/audax/internal/common/workspaces"
+	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
+	"github.com/lmika/dynamo-browse/internal/common/workspaces"
 	"github.com/pkg/errors"
 	"sort"
 	"time"

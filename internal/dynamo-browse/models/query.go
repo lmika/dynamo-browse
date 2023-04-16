@@ -3,7 +3,7 @@ package models
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
-	"github.com/lmika/audax/internal/dynamo-browse/models/itemrender"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/itemrender"
 )
 
 type QueryExecutionPlan struct {

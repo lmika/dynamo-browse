@@ -2,7 +2,7 @@ package settingstore
 
 import (
 	"github.com/asdine/storm"
-	"github.com/lmika/audax/internal/common/workspaces"
+	"github.com/lmika/dynamo-browse/internal/common/workspaces"
 	"github.com/pkg/errors"
 	"io/fs"
 	"log"

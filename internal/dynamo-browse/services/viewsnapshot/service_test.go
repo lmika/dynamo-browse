@@ -3,11 +3,11 @@ package viewsnapshot_test
 import (
 	"bytes"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/dynamo-browse/models/queryexpr"
-	"github.com/lmika/audax/internal/dynamo-browse/models/serialisable"
-	"github.com/lmika/audax/internal/dynamo-browse/providers/workspacestore"
-	"github.com/lmika/audax/internal/dynamo-browse/services/viewsnapshot"
-	"github.com/lmika/audax/test/testworkspace"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/serialisable"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/workspacestore"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/viewsnapshot"
+	"github.com/lmika/dynamo-browse/test/testworkspace"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

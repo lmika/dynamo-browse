@@ -3,8 +3,8 @@ package controllers
 import (
 	"context"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/services/jobs"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/jobs"
 )
 
 func NewJob[T any](jc *JobsController, description string, job func(ctx context.Context) (T, error)) JobBuilder[T] {

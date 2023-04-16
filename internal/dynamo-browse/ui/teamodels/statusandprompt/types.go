@@ -1,6 +1,6 @@
 package statusandprompt
 
-import "github.com/lmika/audax/internal/common/ui/events"
+import "github.com/lmika/dynamo-browse/internal/common/ui/events"
 
 type pendingInputState struct {
 	originalMsg events.PromptForInputMsg

@@ -5,7 +5,7 @@ import (
 	"github.com/cloudcmds/tamarin/exec"
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/cloudcmds/tamarin/scope"
-	"github.com/lmika/audax/internal/dynamo-browse/services/keybindings"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/keybindings"
 	"github.com/pkg/errors"
 	"io/fs"
 	"log"

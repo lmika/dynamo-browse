@@ -3,7 +3,7 @@ package layout
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmika/audax/internal/dynamo-browse/ui/teamodels/utils"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
 	"strconv"
 	"strings"
 )

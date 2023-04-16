@@ -1,6 +1,6 @@
 package modexpr
 
-import "github.com/lmika/audax/internal/dynamo-browse/models"
+import "github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 
 func (a *astExpr) calcPatchMods(item models.Item) ([]patchMod, error) {
 	patchMods := make([]patchMod, 0)

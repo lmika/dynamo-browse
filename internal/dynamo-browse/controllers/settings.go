@@ -3,7 +3,7 @@ package controllers
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/audax/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
 	"log"

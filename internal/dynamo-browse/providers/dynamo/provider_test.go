@@ -3,12 +3,12 @@ package dynamo_test
 import (
 	"context"
 	"fmt"
-	"github.com/lmika/audax/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/dynamo-browse/providers/dynamo"
-	"github.com/lmika/audax/test/testdynamo"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/dynamo"
+	"github.com/lmika/dynamo-browse/test/testdynamo"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,8 +1,8 @@
 package controllers_test
 
 import (
-	"github.com/lmika/audax/internal/common/ui/events"
-	"github.com/lmika/audax/internal/dynamo-browse/controllers"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

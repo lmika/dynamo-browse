@@ -3,8 +3,8 @@ package queryexpr
 import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/lmika/audax/internal/common/maputils"
-	"github.com/lmika/audax/internal/common/sliceutils"
+	"github.com/lmika/dynamo-browse/internal/common/maputils"
+	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
 	"github.com/pkg/errors"
 	"math/big"
 	"strconv"
