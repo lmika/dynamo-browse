@@ -127,7 +127,7 @@ func (a *astIsOp) evalItem(ctx *evalContext, item models.Item) (exprValue, error
 
 	var resultOfIs bool
 	if typeInfo.isAny {
-		resultOfIs = ref != nil
+		resultOfIs = ref != undefinedExprValue{}
 	} else {
 		refType := reflect.TypeOf(ref)
 

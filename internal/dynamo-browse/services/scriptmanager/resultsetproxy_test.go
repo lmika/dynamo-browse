@@ -78,7 +78,7 @@ func TestResultSetProxy_Find(t *testing.T) {
 
 			assert(res.find('findMe is "any"').attr("pk") == "1232")
 			assert(res.find('findMe = "second"').attr("pk") == "2345")
-			// assert(res.find('pk = sk').attr("primary") == "yes")
+			assert(res.find('pk = sk').attr("primary") == "yes")
 
 			assert(res.find('findMe = "missing"') == nil)
 		`)
