@@ -60,6 +60,42 @@ func TestResultSetProxy(t *testing.T) {
 	})
 }
 
+func TestResultSetProxy_Find(t *testing.T) {
+	t.Run("should return the first item that matches the given expression", func(t *testing.T) {
+		rs := &models.ResultSet{}
+		rs.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}},
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}, "sk": &types.AttributeValueMemberS{Value: "abc"}, "primary": &types.AttributeValueMemberS{Value: "yes"}},
+			{"pk": &types.AttributeValueMemberS{Value: "1232"}, "findMe": &types.AttributeValueMemberS{Value: "yes"}},
+			{"pk": &types.AttributeValueMemberS{Value: "2345"}, "findMe": &types.AttributeValueMemberS{Value: "second"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{}).Return(rs, nil)
+
+		testFS := testScriptFile(t, "test.tm", `
+			res := session.query("some expr").unwrap()
+
+			assert(res.find('findMe is "any"').attr("pk") == "1232")
+			assert(res.find('findMe = "second"').attr("pk") == "2345")
+			// assert(res.find('pk = sk').attr("primary") == "yes")
+
+			assert(res.find('findMe = "missing"') == nil)
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedSessionService.AssertExpectations(t)
+	})
+}
+
 func TestResultSetProxy_GetAttr(t *testing.T) {
 	t.Run("should return the value of items within a result set", func(t *testing.T) {
 		rs := &models.ResultSet{}

@@ -5,6 +5,7 @@ import (
 	"github.com/cloudcmds/tamarin/arg"
 	"github.com/cloudcmds/tamarin/object"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	"github.com/pkg/errors"
 )
@@ -95,9 +96,40 @@ func (r *resultSetProxy) GetAttr(name string) (object.Object, bool) {
 		return &tableProxy{table: r.resultSet.TableInfo}, true
 	case "length":
 		return object.NewInt(int64(len(r.resultSet.Items()))), true
+	case "find":
+		return object.NewBuiltin("find", r.find), true
 	}
 
 	return nil, false
+}
+
+func (i *resultSetProxy) find(ctx context.Context, args ...object.Object) object.Object {
+	if objErr := arg.Require("resultset.find", 1, args); objErr != nil {
+		return objErr
+	}
+
+	str, objErr := object.AsString(args[0])
+	if objErr != nil {
+		return objErr
+	}
+
+	modExpr, err := queryexpr.Parse(str)
+	if err != nil {
+		return object.Errorf("arg error: invalid path expression: %v", err)
+	}
+
+	for idx, item := range i.resultSet.Items() {
+		rs, err := modExpr.EvalItem(item)
+		if err != nil {
+			continue
+		}
+
+		if attrutils.Truthy(rs) {
+			return newItemProxy(i, idx)
+		}
+	}
+
+	return object.Nil
 }
 
 type itemProxy struct {
