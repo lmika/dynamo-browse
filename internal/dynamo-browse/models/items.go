@@ -33,6 +33,14 @@ func (i Item) KeyValue(info *TableInfo) map[string]types.AttributeValue {
 	return itemKey
 }
 
+func (i Item) PKSK(info *TableInfo) (pk types.AttributeValue, sk types.AttributeValue) {
+	pk = i[info.Keys.PartitionKey]
+	if info.Keys.SortKey != "" {
+		sk = i[info.Keys.SortKey]
+	}
+	return pk, sk
+}
+
 func (i Item) AttributeValueAsString(key string) (string, bool) {
 	return attrutils.AttributeToString(i[key])
 }

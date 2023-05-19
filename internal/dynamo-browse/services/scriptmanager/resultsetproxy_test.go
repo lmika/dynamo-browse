@@ -96,6 +96,87 @@ func TestResultSetProxy_Find(t *testing.T) {
 	})
 }
 
+func TestResultSetProxy_Merge(t *testing.T) {
+	t.Run("should return a result set with items from both if both are from the same table", func(t *testing.T) {
+		td := &models.TableInfo{Name: "test", Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"}}
+
+		rs1 := &models.ResultSet{TableInfo: td}
+		rs1.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}, "sk": &types.AttributeValueMemberS{Value: "123"}},
+		})
+
+		rs2 := &models.ResultSet{TableInfo: td}
+		rs2.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "bcd"}, "sk": &types.AttributeValueMemberS{Value: "234"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "rs1", scriptmanager.QueryOptions{}).Return(rs1, nil)
+		mockedSessionService.EXPECT().Query(mock.Anything, "rs2", scriptmanager.QueryOptions{}).Return(rs2, nil)
+
+		testFS := testScriptFile(t, "test.tm", `
+			r1 := session.query("rs1").unwrap()
+			r2 := session.query("rs2").unwrap()
+
+			res := r1.merge(r2)
+
+			assert(res[0].attr("pk") == "abc")
+			assert(res[0].attr("sk") == "123")
+			assert(res[1].attr("pk") == "bcd")
+			assert(res[1].attr("sk") == "234")
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedSessionService.AssertExpectations(t)
+	})
+
+	t.Run("should return nil if result-sets are from different tables", func(t *testing.T) {
+		td1 := &models.TableInfo{Name: "test", Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"}}
+		rs1 := &models.ResultSet{TableInfo: td1}
+		rs1.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}, "sk": &types.AttributeValueMemberS{Value: "123"}},
+		})
+
+		td2 := &models.TableInfo{Name: "test2", Keys: models.KeyAttribute{PartitionKey: "pk2", SortKey: "sk"}}
+		rs2 := &models.ResultSet{TableInfo: td2}
+		rs2.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "bcd"}, "sk": &types.AttributeValueMemberS{Value: "234"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "rs1", scriptmanager.QueryOptions{}).Return(rs1, nil)
+		mockedSessionService.EXPECT().Query(mock.Anything, "rs2", scriptmanager.QueryOptions{}).Return(rs2, nil)
+
+		testFS := testScriptFile(t, "test.tm", `
+			r1 := session.query("rs1").unwrap()
+			r2 := session.query("rs2").unwrap()
+
+			res := r1.merge(r2)
+
+			assert(res == nil)
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedSessionService.AssertExpectations(t)
+	})
+}
+
 func TestResultSetProxy_GetAttr(t *testing.T) {
 	t.Run("should return the value of items within a result set", func(t *testing.T) {
 		rs := &models.ResultSet{}

@@ -12,8 +12,10 @@ import (
 	"github.com/lmika/dynamo-browse/internal/common/ui/osstyle"
 	"github.com/lmika/dynamo-browse/internal/common/workspaces"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/inputhistorystore"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/pasteboardprovider"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/settingstore"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/inputhistory"
@@ -40,6 +42,7 @@ func main() {
 	var flagRO = flag.Bool("ro", false, "enable readonly mode")
 	var flagDefaultLimit = flag.Int("default-limit", 0, "default limit for queries and scans")
 	var flagWorkspace = flag.String("w", "", "workspace file")
+	var flagQuery = flag.String("q", "", "run query")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -84,6 +87,7 @@ func main() {
 	resultSetSnapshotStore := workspacestore.NewResultSetSnapshotStore(ws)
 	settingStore := settingstore.New(ws)
 	inputHistoryStore := inputhistorystore.NewInputHistoryStore(ws)
+	pasteboardProvider := pasteboardprovider.New()
 
 	if *flagRO {
 		if err := settingStore.SetReadOnly(*flagRO); err != nil {
@@ -105,13 +109,50 @@ func main() {
 
 	state := controllers.NewState()
 	jobsController := controllers.NewJobsController(jobsService, eventBus, false)
-	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, jobsController, inputHistoryService, eventBus, *flagTable)
+	tableReadController := controllers.NewTableReadController(
+		state,
+		tableService,
+		workspaceService,
+		itemRendererService,
+		jobsController,
+		inputHistoryService,
+		eventBus,
+		pasteboardProvider,
+		*flagTable,
+	)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
-	exportController := controllers.NewExportController(state, columnsController)
+	exportController := controllers.NewExportController(state, columnsController, pasteboardProvider)
 	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	keyBindings := keybindings.Default()
 	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController, settingsController, eventBus)
+
+	if *flagQuery != "" {
+		if *flagTable == "" {
+			cli.Fatalf("-t will need to be set for -q")
+		}
+
+		ctx := context.Background()
+
+		query, err := queryexpr.Parse(*flagQuery)
+		if err != nil {
+			cli.Fatalf("query: %v", err)
+		}
+
+		ti, err := tableService.Describe(ctx, *flagTable)
+		if err != nil {
+			cli.Fatalf("cannot describe table: %v", err)
+		}
+
+		rs, err := tableService.ScanOrQuery(ctx, ti, query, nil)
+		if err != nil {
+			cli.Fatalf("cannot execute query: %v", err)
+		}
+		if err := exportController.ExportToWriter(os.Stdout, rs); err != nil {
+			cli.Fatalf("cannot export results of query: %v", err)
+		}
+		return
+	}
 
 	keyBindingService := keybindings_service.NewService(keyBindings)
 	keyBindingController := controllers.NewKeyBindingController(keyBindingService, scriptController)
