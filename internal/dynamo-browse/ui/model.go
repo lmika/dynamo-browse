@@ -128,6 +128,9 @@ func NewModel(
 
 			// TEMP
 			"new-item": commandctrl.NoArgCommand(wc.NewItem),
+			"clone": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				return wc.CloneItem(dtv.SelectedItemIndex())
+			},
 			"set-attr": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected field"))

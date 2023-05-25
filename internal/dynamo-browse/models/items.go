@@ -16,7 +16,7 @@ type Item map[string]types.AttributeValue
 func (i Item) Clone() Item {
 	newItem := Item{}
 
-	// TODO: should be a deep clone?
+	// TODO: should be a deep clone? YES!!
 	for k, v := range i {
 		newItem[k] = v
 	}
