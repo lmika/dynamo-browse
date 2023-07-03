@@ -3,6 +3,7 @@ package scriptmanager
 import (
 	"context"
 	"github.com/pkg/errors"
+	"time"
 )
 
 type scriptScheduler struct {
@@ -41,7 +42,7 @@ func (ss *scriptScheduler) runNow(ctx context.Context, job func(ctx context.Cont
 	select {
 	case ss.jobChan <- scriptJob{ctx: ctx, job: job}:
 		return nil
-	default:
+	case <-time.After(500 * time.Millisecond):
 		return errors.New("a script is already running")
 	}
 }
