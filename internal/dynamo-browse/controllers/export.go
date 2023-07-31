@@ -23,45 +23,7 @@ func NewExportController(state *State, tableService TableReadService, jobsContro
 	return &ExportController{state, tableService, jobsController, columns}
 }
 
-func (c *ExportController) ExportCSV(filename string) tea.Msg {
-	resultSet := c.state.ResultSet()
-	if resultSet == nil {
-		return events.Error(errors.New("no result set"))
-	}
-
-	f, err := os.Create(filename)
-	if err != nil {
-		return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-	}
-	defer f.Close()
-
-	cw := csv.NewWriter(f)
-	defer cw.Flush()
-
-	columns := c.columns.Columns().VisibleColumns()
-
-	colNames := make([]string, len(columns))
-	for i, c := range columns {
-		colNames[i] = c.Name
-	}
-	if err := cw.Write(colNames); err != nil {
-		return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-	}
-
-	row := make([]string, len(columns))
-	for _, item := range resultSet.Items() {
-		for i, col := range columns {
-			row[i], _ = attrutils.AttributeToString(col.Evaluator.EvaluateForItem(item))
-		}
-		if err := cw.Write(row); err != nil {
-			return events.Error(errors.Wrapf(err, "cannot export to '%v'", filename))
-		}
-	}
-
-	return nil
-}
-
-func (c *ExportController) ExportAllCSV(ctx context.Context, filename string) tea.Msg {
+func (c *ExportController) ExportCSV(filename string, opts ExportOptions) tea.Msg {
 	resultSet := c.state.ResultSet()
 	if resultSet == nil {
 		return events.Error(errors.New("no result set"))
@@ -100,7 +62,7 @@ func (c *ExportController) ExportAllCSV(ctx context.Context, filename string) te
 			}
 			totalRows += len(resultSet.Items())
 
-			if !resultSet.HasNextPage() {
+			if !opts.AllResults || !resultSet.HasNextPage() {
 				break
 			}
 
@@ -115,4 +77,9 @@ func (c *ExportController) ExportAllCSV(ctx context.Context, filename string) te
 	}).OnDone(func(rows int) tea.Msg {
 		return events.StatusMsg(applyToN("Exported ", rows, "item", "items", " to "+filename))
 	}).Submit()
+}
+
+type ExportOptions struct {
+	// AllResults returns all results from the table
+	AllResults bool
 }

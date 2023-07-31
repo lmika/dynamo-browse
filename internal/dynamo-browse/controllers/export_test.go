@@ -1,9 +1,9 @@
 package controllers_test
 
 import (
-	"context"
 	"fmt"
 	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
@@ -17,7 +17,7 @@ func TestExportController_ExportCSV(t *testing.T) {
 		tempFile := tempFile(t)
 
 		invokeCommand(t, srv.readController.Init())
-		invokeCommand(t, srv.exportController.ExportCSV(tempFile))
+		invokeCommand(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{}))
 
 		bts, err := os.ReadFile(tempFile)
 		assert.NoError(t, err)
@@ -36,7 +36,6 @@ func TestExportController_ExportCSV(t *testing.T) {
 		for _, pageLimit := range pageLimits {
 			t.Run(fmt.Sprintf("page size %d", pageLimit), func(t *testing.T) {
 				t.Run("all results", func(t *testing.T) {
-					ctx := context.Background()
 					srv := newService(t, serviceConfig{tableName: "count-to-30", defaultLimit: 5})
 
 					tempFile := tempFile(t)
@@ -48,7 +47,9 @@ func TestExportController_ExportCSV(t *testing.T) {
 					})...)
 
 					invokeCommand(t, srv.readController.Init())
-					invokeCommand(t, srv.exportController.ExportAllCSV(ctx, tempFile))
+					invokeCommand(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{
+						AllResults: true,
+					}))
 
 					bts, err := os.ReadFile(tempFile)
 					assert.NoError(t, err)
@@ -57,7 +58,6 @@ func TestExportController_ExportCSV(t *testing.T) {
 				})
 
 				t.Run("with query", func(t *testing.T) {
-					ctx := context.Background()
 					srv := newService(t, serviceConfig{tableName: "count-to-30", defaultLimit: 5})
 
 					tempFile := tempFile(t)
@@ -70,7 +70,9 @@ func TestExportController_ExportCSV(t *testing.T) {
 
 					invokeCommand(t, srv.readController.Init())
 					invokeCommandWithPrompt(t, srv.readController.PromptForQuery(), "num<=15")
-					invokeCommand(t, srv.exportController.ExportAllCSV(ctx, tempFile))
+					invokeCommand(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{
+						AllResults: true,
+					}))
 
 					bts, err := os.ReadFile(tempFile)
 					assert.NoError(t, err)
@@ -87,7 +89,7 @@ func TestExportController_ExportCSV(t *testing.T) {
 		tempFile := tempFile(t)
 
 		invokeCommandExpectingError(t, srv.readController.Init())
-		invokeCommandExpectingError(t, srv.exportController.ExportCSV(tempFile))
+		invokeCommandExpectingError(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{}))
 	})
 
 	t.Run("should honour new columns in CSV file", func(t *testing.T) {
@@ -102,7 +104,7 @@ func TestExportController_ExportCSV(t *testing.T) {
 		invokeCommandWithPrompt(t, srv.columnsController.AddColumn(1), "address.street")
 		invokeCommand(t, srv.columnsController.ShiftColumnLeft(1))
 
-		invokeCommand(t, srv.exportController.ExportCSV(tempFile))
+		invokeCommand(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{}))
 
 		bts, err := os.ReadFile(tempFile)
 		assert.NoError(t, err)
@@ -125,7 +127,7 @@ func TestExportController_ExportCSV(t *testing.T) {
 		invokeCommand(t, srv.columnsController.ToggleVisible(1))
 		invokeCommand(t, srv.columnsController.ToggleVisible(2))
 
-		invokeCommand(t, srv.exportController.ExportCSV(tempFile))
+		invokeCommand(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{}))
 
 		bts, err := os.ReadFile(tempFile)
 		assert.NoError(t, err)

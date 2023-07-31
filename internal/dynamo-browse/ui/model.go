@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"context"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/common/ui/commandctrl"
@@ -100,19 +99,17 @@ func NewModel(
 				}
 			},
 			"export": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
-				var exportAll = false
-				if len(args) == 2 && args[0] == "-all" {
-					exportAll = true
-					args = args[1:]
-				}
-
 				if len(args) == 0 {
 					return events.Error(errors.New("expected filename"))
 				}
-				if exportAll {
-					return exportController.ExportAllCSV(context.Background(), args[0])
+
+				opts := controllers.ExportOptions{}
+				if len(args) == 2 && args[0] == "-all" {
+					opts.AllResults = true
+					args = args[1:]
 				}
-				return exportController.ExportCSV(args[0])
+
+				return exportController.ExportCSV(args[0], opts)
 			},
 			"mark": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				var markOp = controllers.MarkOpMark
