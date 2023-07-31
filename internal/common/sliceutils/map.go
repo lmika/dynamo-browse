@@ -9,6 +9,14 @@ func All[T any](ts []T, predicate func(t T) bool) bool {
 	return true
 }
 
+func Generate[U any](from, to int, fn func(t int) U) []U {
+	us := make([]U, to-from+1)
+	for i := from; i <= to; i++ {
+		us[i-from] = fn(i)
+	}
+	return us
+}
+
 func Map[T, U any](ts []T, fn func(t T) U) []U {
 	us := make([]U, len(ts))
 	for i, t := range ts {

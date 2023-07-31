@@ -102,7 +102,14 @@ func NewModel(
 				if len(args) == 0 {
 					return events.Error(errors.New("expected filename"))
 				}
-				return exportController.ExportCSV(args[0])
+
+				opts := controllers.ExportOptions{}
+				if len(args) == 2 && args[0] == "-all" {
+					opts.AllResults = true
+					args = args[1:]
+				}
+
+				return exportController.ExportCSV(args[0], opts)
 			},
 			"mark": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				var markOp = controllers.MarkOpMark

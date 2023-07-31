@@ -51,6 +51,9 @@ func (jb JobBuilder[T]) executeJob(ctx context.Context) tea.Msg {
 	if jb.onEither != nil {
 		return jb.onEither(res, err)
 	} else if err == nil {
+		if jb.onDone == nil {
+			return nil
+		}
 		return jb.onDone(res)
 	} else {
 		if jb.onErr != nil {

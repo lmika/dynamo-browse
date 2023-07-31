@@ -135,3 +135,7 @@ func (rs *ResultSet) RefreshColumns() {
 
 	rs.columns = columns
 }
+
+func (rs *ResultSet) HasNextPage() bool {
+	return rs.LastEvaluatedKey != nil
+}

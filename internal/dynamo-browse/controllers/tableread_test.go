@@ -89,7 +89,7 @@ func TestTableReadController_Query(t *testing.T) {
 
 		invokeCommand(t, srv.readController.Init())
 		invokeCommandWithPrompts(t, srv.readController.PromptForQuery(), `pk ^= "abc"`)
-		invokeCommand(t, srv.exportController.ExportCSV(tempFile))
+		invokeCommand(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{}))
 
 		bts, err := os.ReadFile(tempFile)
 		assert.NoError(t, err)
@@ -107,7 +107,7 @@ func TestTableReadController_Query(t *testing.T) {
 
 		invokeCommand(t, srv.readController.Init())
 		invokeCommandWithPrompts(t, srv.readController.PromptForQuery(), `alpha = "This is some value"`)
-		invokeCommand(t, srv.exportController.ExportCSV(tempFile))
+		invokeCommand(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{}))
 
 		bts, err := os.ReadFile(tempFile)
 		assert.NoError(t, err)
@@ -124,7 +124,7 @@ func TestTableReadController_Query(t *testing.T) {
 		tempFile := tempFile(t)
 
 		invokeCommandExpectingError(t, srv.readController.Init())
-		invokeCommandExpectingError(t, srv.exportController.ExportCSV(tempFile))
+		invokeCommandExpectingError(t, srv.exportController.ExportCSV(tempFile, controllers.ExportOptions{}))
 	})
 }
 
