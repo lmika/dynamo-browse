@@ -31,24 +31,54 @@ func TestExportController_ExportCSV(t *testing.T) {
 	})
 
 	t.Run("should export all pages of the results", func(t *testing.T) {
-		ctx := context.Background()
-		srv := newService(t, serviceConfig{tableName: "count-to-30", defaultLimit: 5})
+		pageLimits := []int{5, 10, 50}
 
-		tempFile := tempFile(t)
+		for _, pageLimit := range pageLimits {
+			t.Run(fmt.Sprintf("page size %d", pageLimit), func(t *testing.T) {
+				t.Run("all results", func(t *testing.T) {
+					ctx := context.Background()
+					srv := newService(t, serviceConfig{tableName: "count-to-30", defaultLimit: 5})
 
-		expected := append([]string{
-			"pk,sk,num\n",
-		}, sliceutils.Generate(1, 30, func(i int) string {
-			return fmt.Sprintf("NUM,NUM#%02d,%d\n", i, i)
-		})...)
+					tempFile := tempFile(t)
 
-		invokeCommand(t, srv.readController.Init())
-		invokeCommand(t, srv.exportController.ExportAllCSV(ctx, tempFile))
+					expected := append([]string{
+						"pk,sk,num\n",
+					}, sliceutils.Generate(1, 30, func(i int) string {
+						return fmt.Sprintf("NUM,NUM#%02d,%d\n", i, i)
+					})...)
 
-		bts, err := os.ReadFile(tempFile)
-		assert.NoError(t, err)
+					invokeCommand(t, srv.readController.Init())
+					invokeCommand(t, srv.exportController.ExportAllCSV(ctx, tempFile))
 
-		assert.Equal(t, strings.Join(expected, ""), string(bts))
+					bts, err := os.ReadFile(tempFile)
+					assert.NoError(t, err)
+
+					assert.Equal(t, strings.Join(expected, ""), string(bts))
+				})
+
+				t.Run("with query", func(t *testing.T) {
+					ctx := context.Background()
+					srv := newService(t, serviceConfig{tableName: "count-to-30", defaultLimit: 5})
+
+					tempFile := tempFile(t)
+
+					expected := append([]string{
+						"pk,sk,num\n",
+					}, sliceutils.Generate(1, 15, func(i int) string {
+						return fmt.Sprintf("NUM,NUM#%02d,%d\n", i, i)
+					})...)
+
+					invokeCommand(t, srv.readController.Init())
+					invokeCommandWithPrompt(t, srv.readController.PromptForQuery(), "num<=15")
+					invokeCommand(t, srv.exportController.ExportAllCSV(ctx, tempFile))
+
+					bts, err := os.ReadFile(tempFile)
+					assert.NoError(t, err)
+
+					assert.Equal(t, strings.Join(expected, ""), string(bts))
+				})
+			})
+		}
 	})
 
 	t.Run("should return error if result set is not set", func(t *testing.T) {
