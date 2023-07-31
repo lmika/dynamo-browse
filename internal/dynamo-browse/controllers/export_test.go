@@ -1,6 +1,9 @@
 package controllers_test
 
 import (
+	"context"
+	"fmt"
+	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
@@ -25,6 +28,27 @@ func TestExportController_ExportCSV(t *testing.T) {
 			"bbb,131,,2468,foobar\n",
 			"foo,bar,This is some value,,\n",
 		}, ""))
+	})
+
+	t.Run("should export all pages of the results", func(t *testing.T) {
+		ctx := context.Background()
+		srv := newService(t, serviceConfig{tableName: "count-to-30", defaultLimit: 5})
+
+		tempFile := tempFile(t)
+
+		expected := append([]string{
+			"pk,sk,num\n",
+		}, sliceutils.Generate(1, 30, func(i int) string {
+			return fmt.Sprintf("NUM,NUM#%02d,%d\n", i, i)
+		})...)
+
+		invokeCommand(t, srv.readController.Init())
+		invokeCommand(t, srv.exportController.ExportAllCSV(ctx, tempFile))
+
+		bts, err := os.ReadFile(tempFile)
+		assert.NoError(t, err)
+
+		assert.Equal(t, strings.Join(expected, ""), string(bts))
 	})
 
 	t.Run("should return error if result set is not set", func(t *testing.T) {

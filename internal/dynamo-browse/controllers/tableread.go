@@ -377,7 +377,7 @@ func (c *TableReadController) NextPage() tea.Msg {
 	resultSet := c.state.ResultSet()
 	if resultSet == nil {
 		return events.StatusMsg("Result-set is nil")
-	} else if resultSet.LastEvaluatedKey == nil {
+	} else if !resultSet.HasNextPage() {
 		return events.StatusMsg("No more results")
 	}
 	currentFilter := c.state.filter

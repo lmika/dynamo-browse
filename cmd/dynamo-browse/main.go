@@ -108,7 +108,7 @@ func main() {
 	tableReadController := controllers.NewTableReadController(state, tableService, workspaceService, itemRendererService, jobsController, inputHistoryService, eventBus, *flagTable)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
 	columnsController := controllers.NewColumnsController(eventBus)
-	exportController := controllers.NewExportController(state, columnsController)
+	exportController := controllers.NewExportController(state, tableService, jobsController, columnsController)
 	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	keyBindings := keybindings.Default()
 	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController, settingsController, eventBus)
