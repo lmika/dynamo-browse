@@ -29,7 +29,7 @@ func TestResultSetProxy(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 
 			// Test properties of the result set
 			assert(res.table.name, "hello")
@@ -87,7 +87,7 @@ func TestResultSetProxy_GetAttr(t *testing.T) {
 		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{}).Return(rs, nil)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 
 			assert(res[0].attr("pk") == "abc", "str attr")
 			assert(res[0].attr("sk") == 123, "num attr")
@@ -164,7 +164,7 @@ func TestResultSetProxy_SetAttr(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 
 			res[0].set_attr("pk", "bla-di-bla")
 			res[0].set_attr("num", 123)
@@ -215,7 +215,7 @@ func TestResultSetProxy_DeleteAttr(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 			res[0].delete_attr("deleteMe")
 			session.set_result_set(res)
 		`)

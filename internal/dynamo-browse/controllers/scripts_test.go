@@ -53,7 +53,7 @@ func TestScriptController_RunScript(t *testing.T) {
 			srv := newService(t, serviceConfig{
 				tableName: "alpha-table",
 				scriptFS: testScriptFile(t, "test.tm", `
-					rs := session.query('pk="abc"').unwrap()
+					rs := session.query('pk="abc"')
 					ui.print(rs.length)
 				`),
 			})
@@ -72,7 +72,7 @@ func TestScriptController_RunScript(t *testing.T) {
 			srv := newService(t, serviceConfig{
 				tableName: "alpha-table",
 				scriptFS: testScriptFile(t, "test.tm", `
-					rs := session.query('pk!="abc"', { table: "count-to-30" }).unwrap()
+					rs := session.query('pk!="abc"', { table: "count-to-30" })
 					ui.print(rs.length)
 				`),
 			})
@@ -93,7 +93,7 @@ func TestScriptController_RunScript(t *testing.T) {
 			srv := newService(t, serviceConfig{
 				tableName: "alpha-table",
 				scriptFS: testScriptFile(t, "test.tm", `
-					rs := session.query('pk="abc"').unwrap()
+					rs := session.query('pk="abc"')
 					session.set_result_set(rs)
 				`),
 			})
@@ -112,7 +112,7 @@ func TestScriptController_RunScript(t *testing.T) {
 			srv := newService(t, serviceConfig{
 				tableName: "alpha-table",
 				scriptFS: testScriptFile(t, "test.tm", `
-						rs := session.query('pk="abc"').unwrap()
+						rs := session.query('pk="abc"')
 						rs[0].set_attr("pk", "131")
 						session.set_result_set(rs)
 					`),

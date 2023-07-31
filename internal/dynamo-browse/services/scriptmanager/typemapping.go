@@ -3,10 +3,10 @@ package scriptmanager
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/cloudcmds/tamarin/object"
 	"github.com/lmika/dynamo-browse/internal/common/maputils"
 	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
 	"github.com/pkg/errors"
+	"github.com/risor-io/risor/object"
 	"regexp"
 	"strconv"
 )

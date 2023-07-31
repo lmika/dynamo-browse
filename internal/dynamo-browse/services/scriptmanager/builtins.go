@@ -7,7 +7,8 @@ package scriptmanager
 
 import (
 	"context"
-	"github.com/cloudcmds/tamarin/object"
+	"fmt"
+	"github.com/risor-io/risor/object"
 	"log"
 )
 
@@ -52,4 +53,20 @@ func printfBuiltin(ctx context.Context, args ...object.Object) object.Object {
 	}
 	log.Printf("%s "+format, values...)
 	return object.Nil
+}
+
+// This is taken from the args package
+func require(funcName string, count int, args []object.Object) *object.Error {
+	nArgs := len(args)
+	if nArgs != count {
+		if count == 1 {
+			return object.Errorf(
+				fmt.Sprintf("type error: %s() takes exactly 1 argument (%d given)",
+					funcName, nArgs))
+		}
+		return object.Errorf(
+			fmt.Sprintf("type error: %s() takes exactly %d arguments (%d given)",
+				funcName, count, nArgs))
+	}
+	return nil
 }

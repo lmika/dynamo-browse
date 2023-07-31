@@ -102,7 +102,7 @@ func TestModSession_Query(t *testing.T) {
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "res[1].attr('size(pk)') = 4")
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 			ui.print(res.length)
 			ui.print("res[0]['pk'].S = ", res[0].attr("pk"))
 			ui.print("res[1]['pk'].S = ", res[1].attr("pk"))
@@ -128,13 +128,9 @@ func TestModSession_Query(t *testing.T) {
 		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{}).Return(nil, errors.New("bang"))
 
 		mockedUIService := mocks.NewUIService(t)
-		mockedUIService.EXPECT().PrintMessage(mock.Anything, "true")
-		mockedUIService.EXPECT().PrintMessage(mock.Anything, "err(\"bang\")")
 
 		testFS := testScriptFile(t, "test.tm", `
 			res := session.query("some expr")
-			ui.print(res.is_err())
-			ui.print(res)
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -145,7 +141,7 @@ func TestModSession_Query(t *testing.T) {
 
 		ctx := context.Background()
 		err := <-srv.RunAdHocScript(ctx, "test.tm")
-		assert.NoError(t, err)
+		assert.Error(t, err)
 
 		mockedUIService.AssertExpectations(t)
 		mockedSessionService.AssertExpectations(t)
@@ -165,7 +161,7 @@ func TestModSession_Query(t *testing.T) {
 			res := session.query("some expr", {
 				table: "some-table",
 			})
-			assert(!res.is_err())
+			assert(res)
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -201,7 +197,7 @@ func TestModSession_Query(t *testing.T) {
 			res := session.query("some expr", {
 				table: session.result_set().table,
 			})
-			assert(!res.is_err())
+			assert(res)
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -242,7 +238,7 @@ func TestModSession_Query(t *testing.T) {
 					value: "world",
 				},
 			})
-			assert(!res.is_err())
+			assert(res)
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -288,7 +284,7 @@ func TestModSession_Query(t *testing.T) {
 					"nil": nil,
 				},
 			})
-			assert(!res.is_err())
+			assert(res)
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -315,7 +311,6 @@ func TestModSession_Query(t *testing.T) {
 					"bad": func() { },
 				},
 			})
-			assert(res.is_err())
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -411,7 +406,7 @@ func TestModSession_SetResultSet(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 			session.set_result_set(res)
 		`)
 

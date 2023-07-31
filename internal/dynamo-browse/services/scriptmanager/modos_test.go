@@ -68,13 +68,11 @@ func TestOSModule_Env(t *testing.T) {
 func TestOSModule_Exec(t *testing.T) {
 	t.Run("should run command and return stdout", func(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
-		mockedUIService.EXPECT().PrintMessage(mock.Anything, "false")
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "hello world\n")
 
 		testFS := testScriptFile(t, "test.tm", `
 			res := os.exec('echo "hello world"')
-			ui.print(res.is_err())
-			ui.print(res.unwrap())
+			ui.print(res)
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -97,11 +95,11 @@ func TestOSModule_Exec(t *testing.T) {
 
 	t.Run("should refuse to execute command if do not have permissions", func(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
-		mockedUIService.EXPECT().PrintMessage(mock.Anything, "true")
+		mockedUIService.EXPECT().PrintMessage(mock.Anything, "failed")
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := os.exec('echo "hello world"')
-			ui.print(res.is_err())
+			res := try(func() { return os.exec('echo "hello world"') }, "failed")
+			ui.print(res)
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -125,14 +123,13 @@ func TestOSModule_Exec(t *testing.T) {
 	t.Run("should be able to change permissions which will affect plugins", func(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 		mockedUIService.EXPECT().PrintMessage(mock.Anything, "Loaded the plugin\n")
-		mockedUIService.EXPECT().PrintMessage(mock.Anything, "true")
 
 		testFS := testScriptFile(t, "test.tm", `
 			ext.command("mycommand", func() {
-				ui.print(os.exec('echo "this cannot run"').is_err())
+				ui.print(os.exec('echo "this cannot run"'))
 			})
 
-			ui.print(os.exec('echo "Loaded the plugin"').unwrap())
+			ui.print(os.exec('echo "Loaded the plugin"'))
 		`)
 
 		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
@@ -159,7 +156,7 @@ func TestOSModule_Exec(t *testing.T) {
 
 		errChan := make(chan error)
 		assert.NoError(t, srv.LookupCommand("mycommand").Invoke(ctx, []string{}, errChan))
-		assert.NoError(t, waitForErr(t, errChan))
+		assert.Error(t, waitForErr(t, errChan))
 
 		mockedUIService.AssertExpectations(t)
 	})

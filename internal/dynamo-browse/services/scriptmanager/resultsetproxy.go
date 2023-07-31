@@ -2,15 +2,27 @@ package scriptmanager
 
 import (
 	"context"
-	"github.com/cloudcmds/tamarin/arg"
-	"github.com/cloudcmds/tamarin/object"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	"github.com/pkg/errors"
+	"github.com/risor-io/risor/object"
+	"github.com/risor-io/risor/op"
 )
 
 type resultSetProxy struct {
 	resultSet *models.ResultSet
+}
+
+func (r *resultSetProxy) SetAttr(name string, value object.Object) error {
+	return errors.Errorf("attribute error: %v", name)
+}
+
+func (r *resultSetProxy) RunOperation(opType op.BinaryOpType, right object.Object) object.Object {
+	return object.Errorf("op error: unsupported %v", opType)
+}
+
+func (r *resultSetProxy) Cost() int {
+	return len(r.resultSet.Items())
 }
 
 func (r *resultSetProxy) Interface() interface{} {
@@ -106,6 +118,18 @@ type itemProxy struct {
 	item           models.Item
 }
 
+func (i *itemProxy) SetAttr(name string, value object.Object) error {
+	return errors.Errorf("attribute error: %v", name)
+}
+
+func (i *itemProxy) RunOperation(opType op.BinaryOpType, right object.Object) object.Object {
+	return object.Errorf("op error: unsupported %v", opType)
+}
+
+func (i *itemProxy) Cost() int {
+	return len(i.item)
+}
+
 func newItemProxy(rs *resultSetProxy, itemIndex int) *itemProxy {
 	return &itemProxy{
 		resultSetProxy: rs,
@@ -154,7 +178,7 @@ func (i *itemProxy) GetAttr(name string) (object.Object, bool) {
 }
 
 func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Object {
-	if objErr := arg.Require("item.attr", 1, args); objErr != nil {
+	if objErr := require("item.attr", 1, args); objErr != nil {
 		return objErr
 	}
 
@@ -180,7 +204,7 @@ func (i *itemProxy) value(ctx context.Context, args ...object.Object) object.Obj
 }
 
 func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.Object {
-	if objErr := arg.Require("item.set_attr", 2, args); objErr != nil {
+	if objErr := require("item.set_attr", 2, args); objErr != nil {
 		return objErr
 	}
 
@@ -207,7 +231,7 @@ func (i *itemProxy) setValue(ctx context.Context, args ...object.Object) object.
 }
 
 func (i *itemProxy) deleteAttr(ctx context.Context, args ...object.Object) object.Object {
-	if objErr := arg.Require("item.delete_attr", 1, args); objErr != nil {
+	if objErr := require("item.delete_attr", 1, args); objErr != nil {
 		return objErr
 	}
 
