@@ -2,8 +2,9 @@ package scriptmanager
 
 import (
 	"context"
-	"github.com/risor-io/risor/object"
 	"strings"
+
+	"github.com/risor-io/risor/object"
 )
 
 type uiModule struct {
@@ -13,6 +14,10 @@ type uiModule struct {
 func (um *uiModule) print(ctx context.Context, args ...object.Object) object.Object {
 	var msg strings.Builder
 	for _, arg := range args {
+		if arg == nil {
+			continue
+		}
+
 		switch a := arg.(type) {
 		case *object.String:
 			msg.WriteString(a.Value())
