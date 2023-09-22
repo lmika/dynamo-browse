@@ -3,6 +3,8 @@ package scriptmanager
 import (
 	"context"
 	"os"
+
+	"github.com/risor-io/risor/limits"
 )
 
 type Options struct {
@@ -50,5 +52,7 @@ func scriptEnvFromCtx(ctx context.Context) scriptEnv {
 }
 
 func ctxWithScriptEnv(ctx context.Context, perms scriptEnv) context.Context {
-	return context.WithValue(ctx, scriptEnvKey, perms)
+	newCtx := context.WithValue(ctx, scriptEnvKey, perms)
+	newCtx = limits.WithLimits(newCtx, limits.New())
+	return newCtx
 }

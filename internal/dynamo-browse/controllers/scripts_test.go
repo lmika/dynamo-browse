@@ -151,7 +151,7 @@ func TestScriptController_LookupCommand(t *testing.T) {
 					tableName: "alpha-table",
 					scriptFS: testScriptFile(t, "test.tm", `
 						ext.command("mycommand", func(name = "nil value") {
-							ui.print("Hello, ", name)
+							ui.print(sprintf("Hello, %v", name))
 						})
 					`),
 				})
