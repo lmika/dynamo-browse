@@ -2,15 +2,16 @@ package scriptmanager
 
 import (
 	"context"
-	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/keybindings"
-	"github.com/pkg/errors"
-	"github.com/risor-io/risor"
-	"github.com/risor-io/risor/object"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/keybindings"
+	"github.com/pkg/errors"
+	"github.com/risor-io/risor"
+	"github.com/risor-io/risor/object"
 )
 
 type Service struct {
@@ -96,9 +97,10 @@ func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan
 	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename), options: s.options})
 
 	if _, err := risor.Eval(ctx, code,
-		risor.WithDefaultBuiltins(),
-		risor.WithDefaultModules(),
-		risor.WithBuiltins(s.builtins()),
+		risor.WithGlobals(s.builtins()),
+		// risor.WithDefaultBuiltins(),
+		// risor.WithDefaultModules(),
+		// risor.WithBuiltins(s.builtins()),
 	); err != nil {
 		errChan <- errors.Wrapf(err, "script %v", filename)
 		return
@@ -127,10 +129,11 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename), options: s.options})
 
 	if _, err := risor.Eval(ctx, code,
-		risor.WithDefaultBuiltins(),
-		risor.WithDefaultModules(),
-		risor.WithBuiltins(s.builtins()),
-		risor.WithBuiltins(map[string]object.Object{
+		// risor.WithDefaultBuiltins(),
+		// risor.WithDefaultModules(),
+		// risor.WithBuiltins(s.builtins()),
+		risor.WithGlobals(s.builtins()),
+		risor.WithGlobals(map[string]any{
 			"ext": (&extModule{scriptPlugin: newPlugin}).register(),
 		}),
 	); err != nil {
@@ -244,8 +247,8 @@ func (s *Service) RebindKeyBinding(keyBinding string, newKey string) error {
 	return keybindings.InvalidBindingError(keyBinding)
 }
 
-func (s *Service) builtins() map[string]object.Object {
-	return map[string]object.Object{
+func (s *Service) builtins() map[string]any {
+	return map[string]any{
 		"ui":      (&uiModule{uiService: s.ifaces.UI}).register(),
 		"session": (&sessionModule{sessionService: s.ifaces.Session}).register(),
 		"os":      (&osModule{}).register(),
