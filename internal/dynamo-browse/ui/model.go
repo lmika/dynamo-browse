@@ -126,7 +126,12 @@ func NewModel(
 					}
 				}
 
-				return rc.Mark(markOp)
+				var whereExpr = ""
+				if len(args) == 3 && args[1] == "-where" {
+					whereExpr = args[2]
+				}
+
+				return rc.Mark(markOp, whereExpr)
 			},
 			"next-page": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				return rc.NextPage()

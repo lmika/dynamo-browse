@@ -4,11 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
+	"strings"
+	"sync"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrcodec"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
@@ -17,9 +22,6 @@ import (
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/viewsnapshot"
 	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
-	"log"
-	"strings"
-	"sync"
 )
 
 type resultSetUpdateOp int
@@ -278,11 +280,33 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 	return c.state.buildNewResultSetMessage("")
 }
 
-func (c *TableReadController) Mark(op MarkOp) tea.Msg {
-	c.state.withResultSet(func(resultSet *models.ResultSet) {
-		for i := range resultSet.Items() {
+func (c *TableReadController) Mark(op MarkOp, where string) tea.Msg {
+	var (
+		whereExpr *queryexpr.QueryExpr
+		err       error
+	)
+
+	if where != "" {
+		whereExpr, err = queryexpr.Parse(where)
+		if err != nil {
+			return events.Error(err)
+		}
+	}
+
+	if err := c.state.withResultSetReturningError(func(resultSet *models.ResultSet) error {
+		for i, item := range resultSet.Items() {
 			if resultSet.Hidden(i) {
 				continue
+			}
+
+			if whereExpr != nil {
+				res, err := whereExpr.EvalItem(item)
+				if err != nil {
+					return errors.Wrapf(err, "item %d", i)
+				}
+				if !attrutils.Truthy(res) {
+					continue
+				}
 			}
 
 			switch op {
@@ -294,7 +318,10 @@ func (c *TableReadController) Mark(op MarkOp) tea.Msg {
 				resultSet.SetMark(i, !resultSet.Marked(i))
 			}
 		}
-	})
+		return nil
+	}); err != nil {
+		return events.Error(err)
+	}
 	return ResultSetUpdated{}
 }
 
