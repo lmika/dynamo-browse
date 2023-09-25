@@ -83,6 +83,20 @@ func newExprValueFromAttributeValue(ev types.AttributeValue) (exprValue, error) 
 	return nil, errors.New("cannot convert to expr value")
 }
 
+type undefinedExprValue struct{}
+
+func (b undefinedExprValue) asGoValue() any {
+	return nil
+}
+
+func (b undefinedExprValue) asAttributeValue() types.AttributeValue {
+	return nil
+}
+
+func (s undefinedExprValue) typeName() string {
+	return "UNDEFINED"
+}
+
 type stringExprValue string
 
 func (s stringExprValue) asGoValue() any {

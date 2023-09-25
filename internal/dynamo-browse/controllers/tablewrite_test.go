@@ -9,6 +9,7 @@ import (
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/dynamo"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/inputhistorystore"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/pasteboardprovider"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/settingstore"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/providers/workspacestore"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/inputhistory"
@@ -617,11 +618,21 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 
 	state := controllers.NewState()
 	jobsController := controllers.NewJobsController(jobs.NewService(eventBus), eventBus, true)
-	readController := controllers.NewTableReadController(state, service, workspaceService, itemRendererService, jobsController, inputHistoryService, eventBus, cfg.tableName)
+	readController := controllers.NewTableReadController(
+		state,
+		service,
+		workspaceService,
+		itemRendererService,
+		jobsController,
+		inputHistoryService,
+		eventBus,
+		pasteboardprovider.NilProvider{},
+		cfg.tableName,
+	)
 	writeController := controllers.NewTableWriteController(state, service, jobsController, readController, settingStore)
 	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	columnsController := controllers.NewColumnsController(eventBus)
-	exportController := controllers.NewExportController(state, service, jobsController, columnsController)
+	exportController := controllers.NewExportController(state, service, jobsController, columnsController, pasteboardprovider.NilProvider{})
 	scriptController := controllers.NewScriptController(scriptService, readController, settingsController, eventBus)
 
 	commandController := commandctrl.NewCommandController(inputHistoryService)

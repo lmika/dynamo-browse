@@ -113,7 +113,7 @@ func (c *SettingStore) SetDefaultLimit(limit int) error {
 
 func (c *SettingStore) getStringValue(key string, def string) (string, error) {
 	var val string
-	if err := c.ws.Get(settingBucket, keyTableReadOnly, &val); err != nil {
+	if err := c.ws.Get(settingBucket, key, &val); err != nil {
 		if errors.Is(err, storm.ErrNotFound) {
 			return def, nil
 		}

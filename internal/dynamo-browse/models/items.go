@@ -16,7 +16,7 @@ type Item map[string]types.AttributeValue
 func (i Item) Clone() Item {
 	newItem := Item{}
 
-	// TODO: should be a deep clone?
+	// TODO: should be a deep clone? YES!!
 	for k, v := range i {
 		newItem[k] = v
 	}
@@ -31,6 +31,14 @@ func (i Item) KeyValue(info *TableInfo) map[string]types.AttributeValue {
 		itemKey[info.Keys.SortKey] = i[info.Keys.SortKey]
 	}
 	return itemKey
+}
+
+func (i Item) PKSK(info *TableInfo) (pk types.AttributeValue, sk types.AttributeValue) {
+	pk = i[info.Keys.PartitionKey]
+	if info.Keys.SortKey != "" {
+		sk = i[info.Keys.SortKey]
+	}
+	return pk, sk
 }
 
 func (i Item) AttributeValueAsString(key string) (string, bool) {

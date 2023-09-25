@@ -135,6 +135,9 @@ func NewModel(
 
 			// TEMP
 			"new-item": commandctrl.NoArgCommand(wc.NewItem),
+			"clone": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				return wc.CloneItem(dtv.SelectedItemIndex())
+			},
 			"set-attr": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected field"))
@@ -267,6 +270,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, events.SetTeaMessage(m.tableReadController.CopyItemToClipboard(idx))
 				}
+			case key.Matches(msg, m.keyMap.CopyTableToClipboard):
+				return m, events.SetTeaMessage(m.exportController.ExportCSVToClipboard())
 			case key.Matches(msg, m.keyMap.Rescan):
 				return m, m.tableReadController.Rescan
 			case key.Matches(msg, m.keyMap.PromptForQuery):

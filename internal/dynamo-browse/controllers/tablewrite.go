@@ -458,6 +458,44 @@ func (twc *TableWriteController) assertReadWrite() error {
 	return nil
 }
 
+func (twc *TableWriteController) CloneItem(idx int) tea.Msg {
+	if err := twc.assertReadWrite(); err != nil {
+		return events.Error(err)
+	}
+
+	// Work out which keys we need to prompt for
+	rs := twc.state.ResultSet()
+
+	keyPrompts := &promptSequence{
+		prompts: []string{rs.TableInfo.Keys.PartitionKey + ": "},
+	}
+	if rs.TableInfo.Keys.SortKey != "" {
+		keyPrompts.prompts = append(keyPrompts.prompts, rs.TableInfo.Keys.SortKey+": ")
+	}
+	keyPrompts.onAllDone = func(values []string) tea.Msg {
+		twc.state.withResultSet(func(set *models.ResultSet) {
+			applyToMarkedItems(set, idx, func(idx int, item models.Item) error {
+				// TODO: should be a deep clone
+				clonedItem := item.Clone()
+
+				clonedItem[rs.TableInfo.Keys.PartitionKey] = &types.AttributeValueMemberS{Value: values[0]}
+				if len(values) == 2 {
+					clonedItem[rs.TableInfo.Keys.SortKey] = &types.AttributeValueMemberS{Value: values[1]}
+				}
+
+				set.AddNewItem(clonedItem, models.ItemAttribute{
+					New:   true,
+					Dirty: true,
+				})
+				return nil
+			})
+		})
+		return twc.state.buildNewResultSetMessage("New item cloned")
+	}
+
+	return keyPrompts.next()
+}
+
 func applyToN(prefix string, n int, singular, plural, suffix string) string {
 	if n == 1 {
 		return fmt.Sprintf("%v%v %v%v", prefix, n, singular, suffix)

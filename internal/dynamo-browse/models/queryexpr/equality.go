@@ -73,8 +73,6 @@ func (a *astEqualityOp) evalItem(ctx *evalContext, item models.Item) (exprValue,
 		return nil, err
 	}
 
-	// TODO: use expr values here
-
 	switch a.Op {
 	case "=":
 		cmp, isComparable := attrutils.CompareScalarAttributes(left.asAttributeValue(), right.asAttributeValue())
@@ -96,7 +94,7 @@ func (a *astEqualityOp) evalItem(ctx *evalContext, item models.Item) (exprValue,
 
 		leftAsStr, canBeString := left.(stringableExprValue)
 		if !canBeString {
-			return nil, ValueNotConvertableToString{Val: leftAsStr.asAttributeValue()}
+			return nil, ValueNotConvertableToString{Val: left.asAttributeValue()}
 		}
 		return boolExprValue(strings.HasPrefix(leftAsStr.asString(), strValue.asString())), nil
 	}

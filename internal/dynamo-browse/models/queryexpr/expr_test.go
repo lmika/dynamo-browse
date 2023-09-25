@@ -646,6 +646,10 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 		}{
 			{expr: `alpha.bravo`, expectedError: queryexpr.ValueNotAMapError([]string{"alpha", "bravo"})},
 			{expr: `charlie.tree.bla`, expectedError: queryexpr.ValueNotAMapError([]string{"charlie", "tree", "bla"})},
+
+			{expr: `missing="no"`, expectedError: queryexpr.ValuesNotComparable{Right: &types.AttributeValueMemberS{Value: "no"}}},
+			{expr: `missing!="no"`, expectedError: queryexpr.ValuesNotComparable{Right: &types.AttributeValueMemberS{Value: "no"}}},
+			{expr: `missing^="no"`, expectedError: queryexpr.ValueNotConvertableToString{nil}},
 		}
 
 		for _, scenario := range scenarios {
