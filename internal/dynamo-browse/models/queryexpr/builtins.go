@@ -2,6 +2,7 @@ package queryexpr
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 )
 
@@ -48,6 +49,42 @@ var nativeFuncs = map[string]nativeFunc{
 			xs = append(xs, int64ExprValue(x))
 		}
 		return listExprValue(xs), nil
+	},
+
+	"marked": func(ctx context.Context, args []exprValue) (exprValue, error) {
+		if len(args) != 1 {
+			return nil, InvalidArgumentNumberError{Name: "marked", Expected: 1, Actual: len(args)}
+		}
+
+		fieldName, ok := args[0].(stringableExprValue)
+		if !ok {
+			return nil, InvalidArgumentTypeError{Name: "marked", ArgIndex: 0, Expected: "S"}
+		}
+
+		rs := currentResultSetFromContext(ctx)
+		if rs == nil {
+			return listExprValue{}, nil
+		}
+
+		var items = []exprValue{}
+		for i, itm := range rs.Items() {
+			if !rs.Marked(i) {
+				continue
+			}
+
+			attr, hasAttr := itm[fieldName.asString()]
+			if !hasAttr {
+				continue
+			}
+
+			exprAttrValue, err := newExprValueFromAttributeValue(attr)
+			if err != nil {
+				return nil, errors.Wrapf(err, "marked(): item %d, attr %v", i, fieldName.asString())
+			}
+
+			items = append(items, exprAttrValue)
+		}
+		return listExprValue(items), nil
 	},
 
 	"_x_now": func(ctx context.Context, args []exprValue) (exprValue, error) {

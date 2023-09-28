@@ -14,3 +14,4 @@ func (a *QueryExpr) WithTestTimeSource(timeNow time.Time) *QueryExpr {
 	a.timeSource = testTimeSource(timeNow)
 	return a
 }
+

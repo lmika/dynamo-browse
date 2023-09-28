@@ -3,6 +3,9 @@ package queryexpr
 import (
 	"bytes"
 	"encoding/gob"
+	"hash/fnv"
+	"io"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrcodec"
@@ -10,15 +13,14 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"hash/fnv"
-	"io"
 )
 
 type QueryExpr struct {
-	ast    *astExpr
-	index  string
-	names  map[string]string
-	values map[string]types.AttributeValue
+	ast              *astExpr
+	index            string
+	names            map[string]string
+	values           map[string]types.AttributeValue
+	currentResultSet *models.ResultSet
 
 	// tests fields only
 	timeSource timeSource
@@ -141,10 +143,11 @@ func (md *QueryExpr) HashCode() uint64 {
 
 func (md *QueryExpr) WithNameParams(value map[string]string) *QueryExpr {
 	return &QueryExpr{
-		ast:    md.ast,
-		index:  md.index,
-		names:  value,
-		values: md.values,
+		ast:              md.ast,
+		index:            md.index,
+		names:            value,
+		values:           md.values,
+		currentResultSet: md.currentResultSet,
 	}
 }
 
@@ -166,19 +169,31 @@ func (md *QueryExpr) ValueParamOrNil(name string) types.AttributeValue {
 
 func (md *QueryExpr) WithValueParams(value map[string]types.AttributeValue) *QueryExpr {
 	return &QueryExpr{
-		ast:    md.ast,
-		index:  md.index,
-		names:  md.names,
-		values: value,
+		ast:              md.ast,
+		index:            md.index,
+		names:            md.names,
+		values:           value,
+		currentResultSet: md.currentResultSet,
 	}
 }
 
 func (md *QueryExpr) WithIndex(index string) *QueryExpr {
 	return &QueryExpr{
-		ast:    md.ast,
-		index:  index,
-		names:  md.names,
-		values: md.values,
+		ast:              md.ast,
+		index:            index,
+		names:            md.names,
+		values:           md.values,
+		currentResultSet: md.currentResultSet,
+	}
+}
+
+func (md *QueryExpr) WithCurrentResultSet(currentResultSet *models.ResultSet) *QueryExpr {
+	return &QueryExpr{
+		ast:              md.ast,
+		index:            md.index,
+		names:            md.names,
+		values:           md.values,
+		currentResultSet: currentResultSet,
 	}
 }
 
@@ -217,6 +232,7 @@ func (md *QueryExpr) evalContext() *evalContext {
 	return &evalContext{
 		namePlaceholders:  md.names,
 		valuePlaceholders: md.values,
+		ctxResultSet:      md.currentResultSet,
 	}
 }
 
@@ -268,6 +284,7 @@ type evalContext struct {
 	valuePlaceholders map[string]types.AttributeValue
 	valueLookup       func(string) (types.AttributeValue, bool)
 	timeSource        timeSource
+	ctxResultSet      *models.ResultSet
 }
 
 func (ec *evalContext) lookupName(name string) (string, bool) {
