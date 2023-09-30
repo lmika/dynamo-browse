@@ -2,6 +2,7 @@ package scriptmanager
 
 import (
 	"context"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
@@ -183,6 +184,7 @@ func (i *resultSetProxy) merge(ctx context.Context, args ...object.Object) objec
 	}
 
 	newResultSet := &models.ResultSet{
+		Created:   time.Now(),
 		TableInfo: i.resultSet.TableInfo,
 	}
 	newResultSet.SetItems(newItems)

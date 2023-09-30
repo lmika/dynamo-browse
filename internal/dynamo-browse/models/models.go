@@ -3,12 +3,14 @@ package models
 import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"sort"
+	"time"
 )
 
 type ResultSet struct {
 	// Query information
 	TableInfo         *TableInfo
 	Query             Queryable
+	Created           time.Time
 	ExclusiveStartKey map[string]types.AttributeValue
 
 	// Result information

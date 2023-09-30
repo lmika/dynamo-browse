@@ -79,6 +79,7 @@ func (s *Service) doScan(
 	if err != nil && len(results) == 0 {
 		return &models.ResultSet{
 			TableInfo:         tableInfo,
+			Created:           time.Now(),
 			Query:             expr,
 			ExclusiveStartKey: exclusiveStartKey,
 			LastEvaluatedKey:  lastEvalKey,
@@ -89,6 +90,7 @@ func (s *Service) doScan(
 
 	resultSet := &models.ResultSet{
 		TableInfo:         tableInfo,
+		Created:           time.Now(),
 		Query:             expr,
 		ExclusiveStartKey: exclusiveStartKey,
 		LastEvaluatedKey:  lastEvalKey,

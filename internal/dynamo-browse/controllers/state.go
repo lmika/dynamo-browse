@@ -1,9 +1,8 @@
 package controllers
 
 import (
-	"sync"
-
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"sync"
 )
 
 type State struct {

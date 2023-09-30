@@ -17,6 +17,7 @@ type StatusAndPrompt struct {
 	model              layout.ResizingModel
 	style              Style
 	modeLine           string
+	rightModeLine      string
 	statusMessage      string
 	spinner            spinner.Model
 	spinnerVisible     bool
@@ -37,6 +38,7 @@ func New(model layout.ResizingModel, initialMsg string, style Style) *StatusAndP
 		style:         style,
 		statusMessage: initialMsg,
 		modeLine:      "",
+		rightModeLine: "",
 		spinner:       spinner.New(spinner.WithSpinner(spinner.Line)),
 		textInput:     textInput,
 	}
@@ -72,6 +74,11 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.MessageWithStatus:
 		if hasModeMessage, ok := msg.(events.MessageWithMode); ok {
 			s.modeLine = hasModeMessage.ModeMessage()
+		}
+		if rightModeMessage, ok := msg.(events.MessageWithRightMode); ok {
+			s.rightModeLine = rightModeMessage.RightModeMessage()
+		} else {
+			s.rightModeLine = ""
 		}
 		s.statusMessage = msg.StatusMessage()
 	case events.PromptForInputMsg:
@@ -176,7 +183,10 @@ func (s *StatusAndPrompt) Resize(w, h int) layout.ResizingModel {
 }
 
 func (s *StatusAndPrompt) viewStatus() string {
-	modeLine := s.style.ModeLine.Render(lipgloss.PlaceHorizontal(s.width, lipgloss.Left, s.modeLine, lipgloss.WithWhitespaceChars(" ")))
+	rightModeLine := s.style.ModeLine.Render(s.rightModeLine)
+	modeLine := s.style.ModeLine.Render(
+		lipgloss.PlaceHorizontal(s.width-lipgloss.Width(rightModeLine), lipgloss.Left, s.modeLine, lipgloss.WithWhitespaceChars(" ")),
+	) + rightModeLine
 
 	var statusLine string
 	if s.pendingInput != nil {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"time"
 )
 
 type SetTableItemView struct {
@@ -40,6 +41,13 @@ func (rs NewResultSet) ModeMessage() string {
 		modeLine = fmt.Sprintf("%v - Filter: '%v'", modeLine, rs.currentFilter)
 	}
 	return modeLine
+}
+
+func (rs NewResultSet) RightModeMessage() string {
+	if !rs.ResultSet.Created.IsZero() {
+		return rs.ResultSet.Created.Format(time.Kitchen)
+	}
+	return ""
 }
 
 func (rs NewResultSet) StatusMessage() string {

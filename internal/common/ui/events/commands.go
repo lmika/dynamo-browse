@@ -54,3 +54,8 @@ type MessageWithMode interface {
 	MessageWithStatus
 	ModeMessage() string
 }
+
+type MessageWithRightMode interface {
+	MessageWithStatus
+	RightModeMessage() string
+}
