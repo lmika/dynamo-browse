@@ -19,3 +19,7 @@ type CommandList struct {
 type CommandLookupExtension interface {
 	LookupCommand(name string) Command
 }
+
+type CommandCompletionProvider interface {
+	AttributesWithPrefix(prefix string) []string
+}

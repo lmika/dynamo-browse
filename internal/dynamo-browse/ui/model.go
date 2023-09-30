@@ -271,6 +271,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, events.SetTeaMessage(m.tableWriteController.ToggleMark(idx))
 				}
+			case key.Matches(msg, m.keyMap.ToggleMarkedItems):
+				return m, events.SetTeaMessage(m.tableReadController.Mark(controllers.MarkOpToggle, ""))
 			case key.Matches(msg, m.keyMap.CopyItemToClipboard):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, events.SetTeaMessage(m.tableReadController.CopyItemToClipboard(idx))

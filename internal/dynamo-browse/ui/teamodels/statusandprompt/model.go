@@ -103,6 +103,13 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					})
 				}
 				s.pendingInput = nil
+			case tea.KeyTab:
+				if tabCompletion := s.pendingInput.originalMsg.OnTabComplete; tabCompletion != nil {
+					if completion, ok := tabCompletion(s.textInput.Value()); ok {
+						s.textInput.SetValue(completion)
+						s.textInput.SetCursor(len(s.textInput.Value()))
+					}
+				}
 			case tea.KeyEnter:
 				pendingInput := s.pendingInput
 				s.pendingInput = nil

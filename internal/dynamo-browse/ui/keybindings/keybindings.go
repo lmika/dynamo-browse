@@ -31,6 +31,7 @@ type TableKeyBinding struct {
 
 type ViewKeyBindings struct {
 	Mark                 key.Binding `keymap:"mark"`
+	ToggleMarkedItems    key.Binding `keymap:"toggle-marked-items"`
 	CopyItemToClipboard  key.Binding `keymap:"copy-item-to-clipboard"`
 	CopyTableToClipboard key.Binding `keymap:"copy-table-to-clipboard"`
 	Rescan               key.Binding `keymap:"rescan"`

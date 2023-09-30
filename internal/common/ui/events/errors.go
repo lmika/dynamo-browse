@@ -21,8 +21,9 @@ type ModeMessage string
 
 // PromptForInput indicates that the context is requesting a line of input
 type PromptForInputMsg struct {
-	Prompt   string
-	History  services.HistoryProvider
-	OnDone   func(value string) tea.Msg
-	OnCancel func() tea.Msg
+	Prompt        string
+	History       services.HistoryProvider
+	OnDone        func(value string) tea.Msg
+	OnCancel      func() tea.Msg
+	OnTabComplete func(value string) (string, bool)
 }

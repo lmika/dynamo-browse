@@ -159,6 +159,7 @@ func main() {
 
 	commandController := commandctrl.NewCommandController(inputHistoryService)
 	commandController.AddCommandLookupExtension(scriptController)
+	commandController.SetCommandCompletionProvider(columnsController)
 
 	model := ui.NewModel(
 		tableReadController,
