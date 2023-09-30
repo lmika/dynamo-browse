@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/colselector"
@@ -74,6 +75,7 @@ func NewModel(
 	scriptController *controllers.ScriptController,
 	eventBus *bus.Bus,
 	keyBindingController *controllers.KeyBindingController,
+	pasteboardProvider services.PasteboardProvider,
 	defaultKeyMap *keybindings.KeyBindings,
 ) Model {
 	uiStyles := styles.DefaultStyles
@@ -84,7 +86,7 @@ func NewModel(
 
 	colSelector := colselector.New(mainView, defaultKeyMap, columnsController)
 	itemEdit := dynamoitemedit.NewModel(colSelector)
-	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
+	statusAndPrompt := statusandprompt.New(itemEdit, pasteboardProvider, "", uiStyles.StatusAndPrompt)
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
 

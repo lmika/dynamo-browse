@@ -9,12 +9,14 @@ import (
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
+	"strings"
 )
 
 // StatusAndPrompt is a resizing model which displays a submodel and a status bar.  When the start prompt
 // event is received, focus will be torn away and the user will be given a prompt the enter text.
 type StatusAndPrompt struct {
 	model              layout.ResizingModel
+	pasteboardProvider PasteboardProvider
 	style              Style
 	modeLine           string
 	rightModeLine      string
@@ -31,16 +33,17 @@ type Style struct {
 	ModeLine lipgloss.Style
 }
 
-func New(model layout.ResizingModel, initialMsg string, style Style) *StatusAndPrompt {
+func New(model layout.ResizingModel, pasteboardProvider PasteboardProvider, initialMsg string, style Style) *StatusAndPrompt {
 	textInput := textinput.New()
 	return &StatusAndPrompt{
-		model:         model,
-		style:         style,
-		statusMessage: initialMsg,
-		modeLine:      "",
-		rightModeLine: "",
-		spinner:       spinner.New(spinner.WithSpinner(spinner.Line)),
-		textInput:     textInput,
+		model:              model,
+		pasteboardProvider: pasteboardProvider,
+		style:              style,
+		statusMessage:      initialMsg,
+		modeLine:           "",
+		rightModeLine:      "",
+		spinner:            spinner.New(spinner.WithSpinner(spinner.Line)),
+		textInput:          textInput,
 	}
 }
 
@@ -103,6 +106,17 @@ func (s *StatusAndPrompt) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					})
 				}
 				s.pendingInput = nil
+			case tea.KeyCtrlV:
+				if content, ok := s.pasteboardProvider.ReadText(); ok {
+					pasteContent := strings.TrimSpace(content)
+
+					cursorPos := s.textInput.Cursor()
+					beforeValue := s.textInput.Value()[:cursorPos] + pasteContent
+					newValue := beforeValue + s.textInput.Value()[cursorPos:]
+
+					s.textInput.SetValue(newValue)
+					s.textInput.SetCursor(len(beforeValue))
+				}
 			case tea.KeyTab:
 				if tabCompletion := s.pendingInput.originalMsg.OnTabComplete; tabCompletion != nil {
 					if completion, ok := tabCompletion(s.textInput.Value()); ok {

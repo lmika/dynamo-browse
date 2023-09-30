@@ -40,3 +40,16 @@ func (c *Provider) WriteText(bts []byte) error {
 	clipboard.Write(clipboard.FmtText, bts)
 	return nil
 }
+
+func (c *Provider) ReadText() (string, bool) {
+	if err := c.initClipboard(); err != nil {
+		return "", false
+	}
+
+	content := clipboard.Read(clipboard.FmtText)
+	if content == nil {
+		return "", false
+	}
+
+	return string(content), true
+}

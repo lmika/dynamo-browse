@@ -10,3 +10,7 @@ type pendingInputState struct {
 func newPendingInputState(msg events.PromptForInputMsg) *pendingInputState {
 	return &pendingInputState{originalMsg: msg, historyIdx: -1}
 }
+
+type PasteboardProvider interface {
+	ReadText() (string, bool)
+}

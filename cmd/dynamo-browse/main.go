@@ -173,6 +173,7 @@ func main() {
 		scriptController,
 		eventBus,
 		keyBindingController,
+		pasteboardProvider,
 		keyBindings,
 	)
 
