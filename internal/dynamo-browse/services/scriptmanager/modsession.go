@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/cloudcmds/tamarin/arg"
-	"github.com/cloudcmds/tamarin/object"
-	"github.com/cloudcmds/tamarin/scope"
 	"github.com/pkg/errors"
+	"github.com/risor-io/risor/object"
 )
 
 type sessionModule struct {
@@ -77,13 +75,13 @@ func (um *sessionModule) query(ctx context.Context, args ...object.Object) objec
 	resp, err := um.sessionService.Query(ctx, expr, options)
 
 	if err != nil {
-		return object.NewErrResult(object.NewError(err))
+		return object.NewError(err)
 	}
-	return object.NewOkResult(&resultSetProxy{resultSet: resp})
+	return &resultSetProxy{resultSet: resp}
 }
 
 func (um *sessionModule) resultSet(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("session.result_set", 0, args); err != nil {
+	if err := require("session.result_set", 0, args); err != nil {
 		return err
 	}
 
@@ -95,7 +93,7 @@ func (um *sessionModule) resultSet(ctx context.Context, args ...object.Object) o
 }
 
 func (um *sessionModule) selectedItem(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("session.result_set", 0, args); err != nil {
+	if err := require("session.result_set", 0, args); err != nil {
 		return err
 	}
 
@@ -110,7 +108,7 @@ func (um *sessionModule) selectedItem(ctx context.Context, args ...object.Object
 }
 
 func (um *sessionModule) setResultSet(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("session.set_result_set", 1, args); err != nil {
+	if err := require("session.set_result_set", 1, args); err != nil {
 		return err
 	}
 
@@ -124,7 +122,7 @@ func (um *sessionModule) setResultSet(ctx context.Context, args ...object.Object
 }
 
 func (um *sessionModule) currentTable(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("session.current_table", 0, args); err != nil {
+	if err := require("session.current_table", 0, args); err != nil {
 		return err
 	}
 
@@ -136,17 +134,12 @@ func (um *sessionModule) currentTable(ctx context.Context, args ...object.Object
 	return &tableProxy{table: rs.TableInfo}
 }
 
-func (um *sessionModule) register(scp *scope.Scope) {
-	modScope := scope.New(scope.Opts{})
-	mod := object.NewModule("session", modScope)
-
-	modScope.AddBuiltins([]*object.Builtin{
-		object.NewBuiltin("query", um.query, mod),
-		object.NewBuiltin("current_table", um.currentTable, mod),
-		object.NewBuiltin("result_set", um.resultSet, mod),
-		object.NewBuiltin("selected_item", um.selectedItem, mod),
-		object.NewBuiltin("set_result_set", um.setResultSet, mod),
+func (um *sessionModule) register() *object.Module {
+	return object.NewBuiltinsModule("session", map[string]object.Object{
+		"query":          object.NewBuiltin("query", um.query),
+		"current_table":  object.NewBuiltin("current_table", um.currentTable),
+		"result_set":     object.NewBuiltin("result_set", um.resultSet),
+		"selected_item":  object.NewBuiltin("selected_item", um.selectedItem),
+		"set_result_set": object.NewBuiltin("set_result_set", um.setResultSet),
 	})
-
-	scp.Declare("session", mod, true)
 }

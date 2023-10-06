@@ -69,6 +69,10 @@ type ValueNotConvertableToString struct {
 
 func (n ValueNotConvertableToString) Error() string {
 	render := itemrender.ToRenderer(n.Val)
+	if render == nil {
+		return "nil value is not convertable to string"
+	}
+
 	return fmt.Sprintf("values '%v', type %v, is not convertable to string", render.StringValue(), render.TypeName())
 }
 

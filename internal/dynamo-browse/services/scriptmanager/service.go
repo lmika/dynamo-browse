@@ -2,16 +2,16 @@ package scriptmanager
 
 import (
 	"context"
-	"github.com/cloudcmds/tamarin/exec"
-	"github.com/cloudcmds/tamarin/object"
-	"github.com/cloudcmds/tamarin/scope"
-	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/keybindings"
-	"github.com/pkg/errors"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/keybindings"
+	"github.com/pkg/errors"
+	"github.com/risor-io/risor"
+	"github.com/risor-io/risor/object"
 )
 
 type Service struct {
@@ -94,19 +94,14 @@ func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan
 		return
 	}
 
-	scp := scope.New(scope.Opts{Parent: s.parentScope()})
-
 	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename), options: s.options})
 
-	if _, err = exec.Execute(ctx, exec.Opts{
-		Input: string(code),
-		File:  filename,
-		Scope: scp,
-		Builtins: []*object.Builtin{
-			object.NewBuiltin("print", printBuiltin),
-			object.NewBuiltin("printf", printfBuiltin),
-		},
-	}); err != nil {
+	if _, err := risor.Eval(ctx, code,
+		risor.WithGlobals(s.builtins()),
+		// risor.WithDefaultBuiltins(),
+		// risor.WithDefaultModules(),
+		// risor.WithBuiltins(s.builtins()),
+	); err != nil {
 		errChan <- errors.Wrapf(err, "script %v", filename)
 		return
 	}
@@ -131,17 +126,17 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 		scriptService: s,
 	}
 
-	scp := scope.New(scope.Opts{Parent: s.parentScope()})
-
-	(&extModule{scriptPlugin: newPlugin}).register(scp)
-
 	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename), options: s.options})
 
-	if _, err = exec.Execute(ctx, exec.Opts{
-		Input: string(code),
-		File:  filename,
-		Scope: scp,
-	}); err != nil {
+	if _, err := risor.Eval(ctx, code,
+		// risor.WithDefaultBuiltins(),
+		// risor.WithDefaultModules(),
+		// risor.WithBuiltins(s.builtins()),
+		risor.WithGlobals(s.builtins()),
+		risor.WithGlobals(map[string]any{
+			"ext": (&extModule{scriptPlugin: newPlugin}).register(),
+		}),
+	); err != nil {
 		resChan <- loadedScriptResult{err: errors.Wrapf(err, "script %v", filename)}
 		return
 	}
@@ -149,7 +144,7 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 	resChan <- loadedScriptResult{scriptPlugin: newPlugin}
 }
 
-func (s *Service) readScript(filename string, allowCwd bool) ([]byte, error) {
+func (s *Service) readScript(filename string, allowCwd bool) (string, error) {
 	if allowCwd {
 		if cwd, err := os.Getwd(); err == nil {
 			fullScriptPath := filepath.Join(cwd, filename)
@@ -157,9 +152,9 @@ func (s *Service) readScript(filename string, allowCwd bool) ([]byte, error) {
 			if stat, err := os.Stat(fullScriptPath); err == nil && !stat.IsDir() {
 				code, err := os.ReadFile(filename)
 				if err != nil {
-					return nil, err
+					return "", err
 				}
-				return code, nil
+				return string(code), nil
 			}
 		} else {
 			log.Printf("warn: cannot get cwd for reading script %v: %v", filename, err)
@@ -169,9 +164,9 @@ func (s *Service) readScript(filename string, allowCwd bool) ([]byte, error) {
 	if strings.HasPrefix(filename, string(filepath.Separator)) {
 		code, err := os.ReadFile(filename)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
-		return code, nil
+		return string(code), nil
 	}
 
 	for _, currFS := range s.lookupPaths {
@@ -181,7 +176,7 @@ func (s *Service) readScript(filename string, allowCwd bool) ([]byte, error) {
 			if errors.Is(err, os.ErrNotExist) {
 				continue
 			} else {
-				return nil, err
+				return "", err
 			}
 		} else if stat.IsDir() {
 			continue
@@ -189,13 +184,13 @@ func (s *Service) readScript(filename string, allowCwd bool) ([]byte, error) {
 
 		code, err := fs.ReadFile(currFS, filename)
 		if err == nil {
-			return code, nil
+			return string(code), nil
 		} else {
-			return nil, err
+			return "", err
 		}
 	}
 
-	return nil, os.ErrNotExist
+	return "", os.ErrNotExist
 }
 
 // LookupCommand looks up a command defined by a script.
@@ -252,10 +247,12 @@ func (s *Service) RebindKeyBinding(keyBinding string, newKey string) error {
 	return keybindings.InvalidBindingError(keyBinding)
 }
 
-func (s *Service) parentScope() *scope.Scope {
-	scp := scope.New(scope.Opts{})
-	(&uiModule{uiService: s.ifaces.UI}).register(scp)
-	(&sessionModule{sessionService: s.ifaces.Session}).register(scp)
-	(&osModule{}).register(scp)
-	return scp
+func (s *Service) builtins() map[string]any {
+	return map[string]any{
+		"ui":      (&uiModule{uiService: s.ifaces.UI}).register(),
+		"session": (&sessionModule{sessionService: s.ifaces.Session}).register(),
+		"os":      (&osModule{}).register(),
+		"print":   object.NewBuiltin("print", printBuiltin),
+		"printf":  object.NewBuiltin("printf", printfBuiltin),
+	}
 }

@@ -3,6 +3,8 @@ package queryexpr
 import (
 	"context"
 	"time"
+
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 )
 
 type timeSource interface {
@@ -24,4 +26,15 @@ func timeSourceFromContext(ctx context.Context) timeSource {
 		return tts
 	}
 	return defaultTimeSource{}
+}
+
+type currentResultSetContextKeyType struct{}
+
+var currentResultSetContextKey = currentResultSetContextKeyType{}
+
+func currentResultSetFromContext(ctx context.Context) *models.ResultSet {
+	if crs, ok := ctx.Value(currentResultSetContextKey).(*models.ResultSet); ok {
+		return crs
+	}
+	return nil
 }

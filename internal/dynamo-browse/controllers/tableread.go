@@ -4,22 +4,24 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
+	"strings"
+	"sync"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrcodec"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/serialisable"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/inputhistory"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/viewsnapshot"
 	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
-	"golang.design/x/clipboard"
-	"log"
-	"strings"
-	"sync"
 )
 
 type resultSetUpdateOp int
@@ -57,11 +59,11 @@ type TableReadController struct {
 	eventBus            *bus.Bus
 	tableName           string
 	loadFromLastView    bool
+	pasteboardProvider  services.PasteboardProvider
 
 	// state
-	mutex         *sync.Mutex
-	state         *State
-	clipboardInit bool
+	mutex *sync.Mutex
+	state *State
 }
 
 func NewTableReadController(
@@ -72,6 +74,7 @@ func NewTableReadController(
 	jobController *JobsController,
 	inputHistoryService *inputhistory.Service,
 	eventBus *bus.Bus,
+	pasteboardProvider services.PasteboardProvider,
 	tableName string,
 ) *TableReadController {
 	return &TableReadController{
@@ -83,6 +86,7 @@ func NewTableReadController(
 		inputHistoryService: inputHistoryService,
 		eventBus:            eventBus,
 		tableName:           tableName,
+		pasteboardProvider:  pasteboardProvider,
 		mutex:               new(sync.Mutex),
 	}
 }
@@ -276,11 +280,33 @@ func (c *TableReadController) setResultSetAndFilter(resultSet *models.ResultSet,
 	return c.state.buildNewResultSetMessage("")
 }
 
-func (c *TableReadController) Mark(op MarkOp) tea.Msg {
-	c.state.withResultSet(func(resultSet *models.ResultSet) {
-		for i := range resultSet.Items() {
+func (c *TableReadController) Mark(op MarkOp, where string) tea.Msg {
+	var (
+		whereExpr *queryexpr.QueryExpr
+		err       error
+	)
+
+	if where != "" {
+		whereExpr, err = queryexpr.Parse(where)
+		if err != nil {
+			return events.Error(err)
+		}
+	}
+
+	if err := c.state.withResultSetReturningError(func(resultSet *models.ResultSet) error {
+		for i, item := range resultSet.Items() {
 			if resultSet.Hidden(i) {
 				continue
+			}
+
+			if whereExpr != nil {
+				res, err := whereExpr.EvalItem(item)
+				if err != nil {
+					return errors.Wrapf(err, "item %d", i)
+				}
+				if !attrutils.Truthy(res) {
+					continue
+				}
 			}
 
 			switch op {
@@ -292,7 +318,10 @@ func (c *TableReadController) Mark(op MarkOp) tea.Msg {
 				resultSet.SetMark(i, !resultSet.Marked(i))
 			}
 		}
-	})
+		return nil
+	}); err != nil {
+		return events.Error(err)
+	}
 	return ResultSetUpdated{}
 }
 
@@ -446,12 +475,8 @@ func (c *TableReadController) updateViewToSnapshot(viewSnapshot *serialisable.Vi
 }
 
 func (c *TableReadController) CopyItemToClipboard(idx int) tea.Msg {
-	if err := c.initClipboard(); err != nil {
-		return events.Error(err)
-	}
-
 	itemCount := 0
-	c.state.withResultSet(func(resultSet *models.ResultSet) {
+	if err := c.state.withResultSetReturningError(func(resultSet *models.ResultSet) error {
 		sb := new(strings.Builder)
 		_ = applyToMarkedItems(resultSet, idx, func(idx int, item models.Item) error {
 			if sb.Len() > 0 {
@@ -461,23 +486,14 @@ func (c *TableReadController) CopyItemToClipboard(idx int) tea.Msg {
 			itemCount += 1
 			return nil
 		})
-		clipboard.Write(clipboard.FmtText, []byte(sb.String()))
-	})
+
+		if err := c.pasteboardProvider.WriteText([]byte(sb.String())); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return events.Error(err)
+	}
 
 	return events.StatusMsg(applyToN("", itemCount, "item", "items", " copied to clipboard"))
-}
-
-func (c *TableReadController) initClipboard() error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	if c.clipboardInit {
-		return nil
-	}
-
-	if err := clipboard.Init(); err != nil {
-		return errors.Wrap(err, "unable to enable clipboard")
-	}
-	c.clipboardInit = true
-	return nil
 }

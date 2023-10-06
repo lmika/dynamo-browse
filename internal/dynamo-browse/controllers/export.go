@@ -1,26 +1,39 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
+	"os"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/columns"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/jobs"
 	"github.com/pkg/errors"
-	"os"
 )
 
 type ExportController struct {
-	state         *State
-	tableService  TableReadService
-	jobController *JobsController
-	columns       *ColumnsController
+	state              *State
+	tableService       TableReadService
+	jobController      *JobsController
+	columns            *ColumnsController
+	pasteboardProvider services.PasteboardProvider
 }
 
-func NewExportController(state *State, tableService TableReadService, jobsController *JobsController, columns *ColumnsController) *ExportController {
-	return &ExportController{state, tableService, jobsController, columns}
+func NewExportController(
+	state *State,
+	tableService TableReadService,
+	jobsController *JobsController,
+	columns *ColumnsController,
+	pasteboardProvider services.PasteboardProvider,
+) *ExportController {
+	return &ExportController{state, tableService, jobsController, columns, pasteboardProvider}
 }
 
 func (c *ExportController) ExportCSV(filename string, opts ExportOptions) tea.Msg {
@@ -77,6 +90,54 @@ func (c *ExportController) ExportCSV(filename string, opts ExportOptions) tea.Ms
 	}).OnDone(func(rows int) tea.Msg {
 		return events.StatusMsg(applyToN("Exported ", rows, "item", "items", " to "+filename))
 	}).Submit()
+}
+
+func (c *ExportController) ExportCSVToClipboard() tea.Msg {
+	var bts bytes.Buffer
+
+	resultSet := c.state.ResultSet()
+	if resultSet == nil {
+		return errors.New("no result set")
+	}
+
+	if err := c.exportCSV(&bts, c.columns.Columns().VisibleColumns(), resultSet); err != nil {
+		return events.Error(err)
+	}
+
+	if err := c.pasteboardProvider.WriteText(bts.Bytes()); err != nil {
+		return events.Error(err)
+	}
+	return nil
+}
+
+// TODO: this really needs to be a service!
+func (c *ExportController) ExportToWriter(w io.Writer, resultSet *models.ResultSet) error {
+	return c.exportCSV(w, columns.NewColumnsFromResultSet(resultSet).Columns, resultSet)
+}
+
+func (c *ExportController) exportCSV(w io.Writer, cols []columns.Column, resultSet *models.ResultSet) error {
+	cw := csv.NewWriter(w)
+	defer cw.Flush()
+
+	colNames := make([]string, len(cols))
+	for i, c := range cols {
+		colNames[i] = c.Name
+	}
+	if err := cw.Write(colNames); err != nil {
+		return errors.Wrap(err, "cannot export to clipboard")
+	}
+
+	row := make([]string, len(cols))
+	for _, item := range resultSet.Items() {
+		for i, col := range cols {
+			row[i], _ = attrutils.AttributeToString(col.Evaluator.EvaluateForItem(item))
+		}
+		if err := cw.Write(row); err != nil {
+			return errors.Wrap(err, "cannot export to clipboard")
+		}
+	}
+
+	return nil
 }
 
 type ExportOptions struct {

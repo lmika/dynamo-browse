@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/itemrenderer"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/colselector"
@@ -74,6 +75,7 @@ func NewModel(
 	scriptController *controllers.ScriptController,
 	eventBus *bus.Bus,
 	keyBindingController *controllers.KeyBindingController,
+	pasteboardProvider services.PasteboardProvider,
 	defaultKeyMap *keybindings.KeyBindings,
 ) Model {
 	uiStyles := styles.DefaultStyles
@@ -84,7 +86,7 @@ func NewModel(
 
 	colSelector := colselector.New(mainView, defaultKeyMap, columnsController)
 	itemEdit := dynamoitemedit.NewModel(colSelector)
-	statusAndPrompt := statusandprompt.New(itemEdit, "", uiStyles.StatusAndPrompt)
+	statusAndPrompt := statusandprompt.New(itemEdit, pasteboardProvider, "", uiStyles.StatusAndPrompt)
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
 
@@ -126,7 +128,12 @@ func NewModel(
 					}
 				}
 
-				return rc.Mark(markOp)
+				var whereExpr = ""
+				if len(args) == 3 && args[1] == "-where" {
+					whereExpr = args[2]
+				}
+
+				return rc.Mark(markOp, whereExpr)
 			},
 			"next-page": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				return rc.NextPage()
@@ -135,6 +142,9 @@ func NewModel(
 
 			// TEMP
 			"new-item": commandctrl.NoArgCommand(wc.NewItem),
+			"clone": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
+				return wc.CloneItem(dtv.SelectedItemIndex())
+			},
 			"set-attr": func(ctx commandctrl.ExecContext, args []string) tea.Msg {
 				if len(args) == 0 {
 					return events.Error(errors.New("expected field"))
@@ -263,10 +273,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, events.SetTeaMessage(m.tableWriteController.ToggleMark(idx))
 				}
+			case key.Matches(msg, m.keyMap.ToggleMarkedItems):
+				return m, events.SetTeaMessage(m.tableReadController.Mark(controllers.MarkOpToggle, ""))
 			case key.Matches(msg, m.keyMap.CopyItemToClipboard):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
 					return m, events.SetTeaMessage(m.tableReadController.CopyItemToClipboard(idx))
 				}
+			case key.Matches(msg, m.keyMap.CopyTableToClipboard):
+				return m, events.SetTeaMessage(m.exportController.ExportCSVToClipboard())
 			case key.Matches(msg, m.keyMap.Rescan):
 				return m, m.tableReadController.Rescan
 			case key.Matches(msg, m.keyMap.PromptForQuery):

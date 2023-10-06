@@ -18,9 +18,10 @@ import (
 const commandsCategory = "commands"
 
 type CommandController struct {
-	historyProvider  IterProvider
-	commandList      *CommandList
-	lookupExtensions []CommandLookupExtension
+	historyProvider    IterProvider
+	commandList        *CommandList
+	lookupExtensions   []CommandLookupExtension
+	completionProvider CommandCompletionProvider
 }
 
 func NewCommandController(historyProvider IterProvider) *CommandController {
@@ -40,6 +41,10 @@ func (c *CommandController) AddCommandLookupExtension(ext CommandLookupExtension
 	c.lookupExtensions = append(c.lookupExtensions, ext)
 }
 
+func (c *CommandController) SetCommandCompletionProvider(provider CommandCompletionProvider) {
+	c.completionProvider = provider
+}
+
 func (c *CommandController) Prompt() tea.Msg {
 	return events.PromptForInputMsg{
 		Prompt:  ":",
@@ -47,6 +52,24 @@ func (c *CommandController) Prompt() tea.Msg {
 		OnDone: func(value string) tea.Msg {
 			return c.Execute(value)
 		},
+		// TEMP
+		OnTabComplete: func(value string) (string, bool) {
+			if c.completionProvider == nil {
+				return "", false
+			}
+
+			if strings.HasPrefix(value, "sa ") || strings.HasPrefix(value, "da ") {
+				tokens := shellwords.Split(strings.TrimSpace(value))
+				lastToken := tokens[len(tokens)-1]
+
+				options := c.completionProvider.AttributesWithPrefix(lastToken)
+				if len(options) == 1 {
+					return value[:len(value)-len(lastToken)] + options[0], true
+				}
+			}
+			return "", false
+		},
+		// END TEMP
 	}
 }
 

@@ -1,9 +1,11 @@
 package scriptmanager
 
 import (
-	"github.com/cloudcmds/tamarin/object"
 	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/pkg/errors"
+	"github.com/risor-io/risor/object"
+	"github.com/risor-io/risor/op"
 	"reflect"
 )
 
@@ -14,6 +16,18 @@ const (
 
 type tableProxy struct {
 	table *models.TableInfo
+}
+
+func (t *tableProxy) SetAttr(name string, value object.Object) error {
+	return errors.Errorf("attribute error: %v", name)
+}
+
+func (t *tableProxy) RunOperation(opType op.BinaryOpType, right object.Object) object.Object {
+	return object.Errorf("op error: unsupported %v", opType)
+}
+
+func (t *tableProxy) Cost() int {
+	return 0
 }
 
 func (t *tableProxy) Type() object.Type {
@@ -66,6 +80,18 @@ func (t *tableProxy) IsTruthy() bool {
 
 type tableIndexProxy struct {
 	gsi models.TableGSI
+}
+
+func (t tableIndexProxy) SetAttr(name string, value object.Object) error {
+	return errors.Errorf("attribute error: %v", name)
+}
+
+func (t tableIndexProxy) RunOperation(opType op.BinaryOpType, right object.Object) object.Object {
+	return object.Errorf("op error: unsupported %v", opType)
+}
+
+func (t tableIndexProxy) Cost() int {
+	return 0
 }
 
 func newTableIndexProxy(gsi models.TableGSI) object.Object {

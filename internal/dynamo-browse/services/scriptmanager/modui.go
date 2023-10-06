@@ -2,10 +2,9 @@ package scriptmanager
 
 import (
 	"context"
-	"github.com/cloudcmds/tamarin/arg"
-	"github.com/cloudcmds/tamarin/object"
-	"github.com/cloudcmds/tamarin/scope"
 	"strings"
+
+	"github.com/risor-io/risor/object"
 )
 
 type uiModule struct {
@@ -15,6 +14,10 @@ type uiModule struct {
 func (um *uiModule) print(ctx context.Context, args ...object.Object) object.Object {
 	var msg strings.Builder
 	for _, arg := range args {
+		if arg == nil {
+			continue
+		}
+
 		switch a := arg.(type) {
 		case *object.String:
 			msg.WriteString(a.Value())
@@ -28,7 +31,7 @@ func (um *uiModule) print(ctx context.Context, args ...object.Object) object.Obj
 }
 
 func (um *uiModule) prompt(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("ui.prompt", 1, args); err != nil {
+	if err := require("ui.prompt", 1, args); err != nil {
 		return err
 	}
 
@@ -47,14 +50,9 @@ func (um *uiModule) prompt(ctx context.Context, args ...object.Object) object.Ob
 	}
 }
 
-func (um *uiModule) register(scp *scope.Scope) {
-	modScope := scope.New(scope.Opts{})
-	mod := object.NewModule("ui", modScope)
-
-	modScope.AddBuiltins([]*object.Builtin{
-		object.NewBuiltin("print", um.print, mod),
-		object.NewBuiltin("prompt", um.prompt, mod),
+func (um *uiModule) register() *object.Module {
+	return object.NewBuiltinsModule("ui", map[string]object.Object{
+		"print":  object.NewBuiltin("print", um.print),
+		"prompt": object.NewBuiltin("prompt", um.prompt),
 	})
-
-	scp.Declare("ui", mod, true)
 }

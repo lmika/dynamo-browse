@@ -3,10 +3,8 @@ package scriptmanager
 import (
 	"context"
 	"fmt"
-	"github.com/cloudcmds/tamarin/arg"
-	"github.com/cloudcmds/tamarin/object"
-	"github.com/cloudcmds/tamarin/scope"
 	"github.com/pkg/errors"
+	"github.com/risor-io/risor/object"
 	"regexp"
 )
 
@@ -18,22 +16,17 @@ type extModule struct {
 	scriptPlugin *ScriptPlugin
 }
 
-func (m *extModule) register(scp *scope.Scope) {
-	modScope := scope.New(scope.Opts{})
-	mod := object.NewModule("ext", modScope)
-
-	modScope.AddBuiltins([]*object.Builtin{
-		object.NewBuiltin("command", m.command, mod),
-		object.NewBuiltin("key_binding", m.keyBinding, mod),
+func (m *extModule) register() *object.Module {
+	return object.NewBuiltinsModule("ext", map[string]object.Object{
+		"command":     object.NewBuiltin("command", m.command),
+		"key_binding": object.NewBuiltin("key_binding", m.keyBinding),
 	})
-
-	scp.Declare("ext", mod, true)
 }
 
 func (m *extModule) command(ctx context.Context, args ...object.Object) object.Object {
 	thisEnv := scriptEnvFromCtx(ctx)
 
-	if err := arg.Require("ext.command", 2, args); err != nil {
+	if err := require("ext.command", 2, args); err != nil {
 		return err
 	}
 
@@ -62,8 +55,10 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 		newEnv.options = m.scriptPlugin.scriptService.options
 		ctx = ctxWithScriptEnv(ctx, newEnv)
 
-		res := callFn(ctx, fnRes.Scope(), fnRes, objArgs)
-		if object.IsError(res) {
+		res, err := callFn(ctx, fnRes, objArgs)
+		if err != nil {
+			return errors.Errorf("command error '%v':%v - %v", m.scriptPlugin.name, cmdName, err)
+		} else if object.IsError(res) {
 			errObj := res.(*object.Error)
 			return errors.Errorf("command error '%v':%v - %v", m.scriptPlugin.name, cmdName, errObj.Inspect())
 		}
@@ -80,7 +75,7 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) object.Object {
 	thisEnv := scriptEnvFromCtx(ctx)
 
-	if err := arg.Require("ext.key_binding", 3, args); err != nil {
+	if err := require("ext.key_binding", 3, args); err != nil {
 		return err
 	}
 
@@ -122,8 +117,10 @@ func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) objec
 		newEnv.options = m.scriptPlugin.scriptService.options
 		ctx = ctxWithScriptEnv(ctx, newEnv)
 
-		res := callFn(ctx, fnRes.Scope(), fnRes, objArgs)
-		if object.IsError(res) {
+		res, err := callFn(ctx, fnRes, objArgs)
+		if err != nil {
+			return errors.Errorf("command error '%v':%v - %v", m.scriptPlugin.name, bindingName, err)
+		} else if object.IsError(res) {
 			errObj := res.(*object.Error)
 			return errors.Errorf("command error '%v':%v - %v", m.scriptPlugin.name, bindingName, errObj.Inspect())
 		}

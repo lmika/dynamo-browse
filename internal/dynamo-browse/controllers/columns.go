@@ -7,6 +7,7 @@ import (
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/columns"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	bus "github.com/lmika/events"
+	"strings"
 )
 
 type ColumnsController struct {
@@ -114,4 +115,14 @@ func (cc *ColumnsController) DeleteColumn(afterIndex int) tea.Msg {
 	cc.colModel.WasRearranged = true
 
 	return ColumnsUpdated{}
+}
+
+func (c *ColumnsController) AttributesWithPrefix(prefix string) []string {
+	options := make([]string, 0)
+	for _, col := range c.resultSet.Columns() {
+		if strings.HasPrefix(col, prefix) {
+			options = append(options, col)
+		}
+	}
+	return options
 }

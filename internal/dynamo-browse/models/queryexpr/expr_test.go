@@ -3,11 +3,12 @@ package queryexpr_test
 import (
 	"bytes"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
-	"testing"
-	"time"
 
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/stretchr/testify/assert"
@@ -603,19 +604,40 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 	t.Run("functions", func(t *testing.T) {
 		timeNow := time.Now()
 
+		contextResultSet := models.ResultSet{}
+		contextResultSet.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "1"}, "num": &types.AttributeValueMemberN{Value: "1"}},
+			{"pk": &types.AttributeValueMemberS{Value: "2"}, "num": &types.AttributeValueMemberN{Value: "2"}},
+			{"pk": &types.AttributeValueMemberS{Value: "3"}, "num": &types.AttributeValueMemberN{Value: "3"}},
+			{"pk": &types.AttributeValueMemberS{Value: "4"}, "num": &types.AttributeValueMemberN{Value: "4"}},
+		})
+		contextResultSet.SetMark(0, true)
+		contextResultSet.SetMark(1, true)
+
 		scenarios := []struct {
 			expr     string
 			expected types.AttributeValue
 		}{
 			// _x_now() -- unreleased version of now
 			{expr: `_x_now()`, expected: &types.AttributeValueMemberN{Value: fmt.Sprint(timeNow.Unix())}},
+
+			// Marked
+			{expr: `marked("num")`, expected: &types.AttributeValueMemberL{Value: []types.AttributeValue{
+				&types.AttributeValueMemberN{Value: "1"},
+				&types.AttributeValueMemberN{Value: "2"},
+			}}},
+			{expr: `one in marked("num")`, expected: &types.AttributeValueMemberBOOL{Value: true}},
+			{expr: `three in marked("num")`, expected: &types.AttributeValueMemberBOOL{Value: false}},
 		}
 		for _, scenario := range scenarios {
 			t.Run(scenario.expr, func(t *testing.T) {
 				modExpr, err := queryexpr.Parse(scenario.expr)
 				assert.NoError(t, err)
 
-				res, err := modExpr.WithTestTimeSource(timeNow).EvalItem(item)
+				res, err := modExpr.
+					WithTestTimeSource(timeNow).
+					WithCurrentResultSet(&contextResultSet).
+					EvalItem(item)
 				assert.NoError(t, err)
 
 				assert.Equal(t, scenario.expected, res)
@@ -646,6 +668,10 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 		}{
 			{expr: `alpha.bravo`, expectedError: queryexpr.ValueNotAMapError([]string{"alpha", "bravo"})},
 			{expr: `charlie.tree.bla`, expectedError: queryexpr.ValueNotAMapError([]string{"charlie", "tree", "bla"})},
+
+			{expr: `missing="no"`, expectedError: queryexpr.ValuesNotComparable{Right: &types.AttributeValueMemberS{Value: "no"}}},
+			{expr: `missing!="no"`, expectedError: queryexpr.ValuesNotComparable{Right: &types.AttributeValueMemberS{Value: "no"}}},
+			{expr: `missing^="no"`, expectedError: queryexpr.ValueNotConvertableToString{nil}},
 		}
 
 		for _, scenario := range scenarios {

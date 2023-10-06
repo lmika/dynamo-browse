@@ -2,13 +2,14 @@ package scriptmanager_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/scriptmanager"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/scriptmanager/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
 )
 
 func TestResultSetProxy(t *testing.T) {
@@ -29,7 +30,7 @@ func TestResultSetProxy(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 
 			// Test properties of the result set
 			assert(res.table.name, "hello")
@@ -56,6 +57,123 @@ func TestResultSetProxy(t *testing.T) {
 		assert.NoError(t, err)
 
 		mockedUIService.AssertExpectations(t)
+		mockedSessionService.AssertExpectations(t)
+	})
+}
+
+func TestResultSetProxy_Find(t *testing.T) {
+	t.Run("should return the first item that matches the given expression", func(t *testing.T) {
+		rs := &models.ResultSet{}
+		rs.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}},
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}, "sk": &types.AttributeValueMemberS{Value: "abc"}, "primary": &types.AttributeValueMemberS{Value: "yes"}},
+			{"pk": &types.AttributeValueMemberS{Value: "1232"}, "findMe": &types.AttributeValueMemberS{Value: "yes"}},
+			{"pk": &types.AttributeValueMemberS{Value: "2345"}, "findMe": &types.AttributeValueMemberS{Value: "second"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{}).Return(rs, nil)
+
+		testFS := testScriptFile(t, "test.tm", `
+			res := session.query("some expr")
+
+			assert(res.find('findMe is "any"').attr("pk") == "1232")
+			assert(res.find('findMe = "second"').attr("pk") == "2345")
+			assert(res.find('pk = sk').attr("primary") == "yes")
+
+			assert(res.find('findMe = "missing"') == nil)
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedSessionService.AssertExpectations(t)
+	})
+}
+
+func TestResultSetProxy_Merge(t *testing.T) {
+	t.Run("should return a result set with items from both if both are from the same table", func(t *testing.T) {
+		td := &models.TableInfo{Name: "test", Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"}}
+
+		rs1 := &models.ResultSet{TableInfo: td}
+		rs1.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}, "sk": &types.AttributeValueMemberS{Value: "123"}},
+		})
+
+		rs2 := &models.ResultSet{TableInfo: td}
+		rs2.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "bcd"}, "sk": &types.AttributeValueMemberS{Value: "234"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "rs1", scriptmanager.QueryOptions{}).Return(rs1, nil)
+		mockedSessionService.EXPECT().Query(mock.Anything, "rs2", scriptmanager.QueryOptions{}).Return(rs2, nil)
+
+		testFS := testScriptFile(t, "test.tm", `
+			r1 := session.query("rs1")
+			r2 := session.query("rs2")
+
+			res := r1.merge(r2)
+
+			assert(res[0].attr("pk") == "abc")
+			assert(res[0].attr("sk") == "123")
+			assert(res[1].attr("pk") == "bcd")
+			assert(res[1].attr("sk") == "234")
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
+		mockedSessionService.AssertExpectations(t)
+	})
+
+	t.Run("should return nil if result-sets are from different tables", func(t *testing.T) {
+		td1 := &models.TableInfo{Name: "test", Keys: models.KeyAttribute{PartitionKey: "pk", SortKey: "sk"}}
+		rs1 := &models.ResultSet{TableInfo: td1}
+		rs1.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}, "sk": &types.AttributeValueMemberS{Value: "123"}},
+		})
+
+		td2 := &models.TableInfo{Name: "test2", Keys: models.KeyAttribute{PartitionKey: "pk2", SortKey: "sk"}}
+		rs2 := &models.ResultSet{TableInfo: td2}
+		rs2.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "bcd"}, "sk": &types.AttributeValueMemberS{Value: "234"}},
+		})
+
+		mockedSessionService := mocks.NewSessionService(t)
+		mockedSessionService.EXPECT().Query(mock.Anything, "rs1", scriptmanager.QueryOptions{}).Return(rs1, nil)
+		mockedSessionService.EXPECT().Query(mock.Anything, "rs2", scriptmanager.QueryOptions{}).Return(rs2, nil)
+
+		testFS := testScriptFile(t, "test.tm", `
+			r1 := session.query("rs1")
+			r2 := session.query("rs2")
+
+			res := r1.merge(r2)
+
+			assert(res == nil)
+		`)
+
+		srv := scriptmanager.New(scriptmanager.WithFS(testFS))
+		srv.SetIFaces(scriptmanager.Ifaces{
+			Session: mockedSessionService,
+		})
+
+		ctx := context.Background()
+		err := <-srv.RunAdHocScript(ctx, "test.tm")
+		assert.NoError(t, err)
+
 		mockedSessionService.AssertExpectations(t)
 	})
 }
@@ -87,7 +205,7 @@ func TestResultSetProxy_GetAttr(t *testing.T) {
 		mockedSessionService.EXPECT().Query(mock.Anything, "some expr", scriptmanager.QueryOptions{}).Return(rs, nil)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 
 			assert(res[0].attr("pk") == "abc", "str attr")
 			assert(res[0].attr("sk") == 123, "num attr")
@@ -164,7 +282,7 @@ func TestResultSetProxy_SetAttr(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 
 			res[0].set_attr("pk", "bla-di-bla")
 			res[0].set_attr("num", 123)
@@ -215,7 +333,7 @@ func TestResultSetProxy_DeleteAttr(t *testing.T) {
 		mockedUIService := mocks.NewUIService(t)
 
 		testFS := testScriptFile(t, "test.tm", `
-			res := session.query("some expr").unwrap()
+			res := session.query("some expr")
 			res[0].delete_attr("deleteMe")
 			session.set_result_set(res)
 		`)

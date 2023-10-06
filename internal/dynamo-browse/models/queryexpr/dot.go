@@ -18,7 +18,7 @@ func (dt *astRef) unqualifiedName() (string, bool) {
 func (dt *astRef) evalItem(ctx *evalContext, item models.Item) (exprValue, error) {
 	res, hasV := item[dt.Name]
 	if !hasV {
-		return nil, nil
+		return undefinedExprValue{}, nil
 	}
 
 	return newExprValueFromAttributeValue(res)

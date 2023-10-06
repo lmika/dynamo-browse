@@ -2,9 +2,7 @@ package scriptmanager
 
 import (
 	"context"
-	"github.com/cloudcmds/tamarin/arg"
-	"github.com/cloudcmds/tamarin/object"
-	"github.com/cloudcmds/tamarin/scope"
+	"github.com/risor-io/risor/object"
 	"os"
 	"os/exec"
 )
@@ -13,7 +11,7 @@ type osModule struct {
 }
 
 func (om *osModule) exec(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("os.exec", 1, args); err != nil {
+	if err := require("os.exec", 1, args); err != nil {
 		return err
 	}
 
@@ -24,20 +22,20 @@ func (om *osModule) exec(ctx context.Context, args ...object.Object) object.Obje
 
 	opts := scriptEnvFromCtx(ctx).options
 	if !opts.Permissions.AllowShellCommands {
-		return object.NewErrResult(object.Errorf("permission error: no permission to shell out"))
+		return object.Errorf("permission error: no permission to shell out")
 	}
 
 	cmd := exec.Command(opts.OSExecShell, "-c", cmdExec)
 	out, err := cmd.Output()
 	if err != nil {
-		return object.NewErrResult(object.NewError(err))
+		return object.NewError(err)
 	}
 
-	return object.NewOkResult(object.NewString(string(out)))
+	return object.NewString(string(out))
 }
 
 func (om *osModule) env(ctx context.Context, args ...object.Object) object.Object {
-	if err := arg.Require("os.env", 1, args); err != nil {
+	if err := require("os.env", 1, args); err != nil {
 		return err
 	}
 
@@ -58,14 +56,9 @@ func (om *osModule) env(ctx context.Context, args ...object.Object) object.Objec
 	return object.NewString(envVal)
 }
 
-func (om *osModule) register(scp *scope.Scope) {
-	modScope := scope.New(scope.Opts{})
-	mod := object.NewModule("os", modScope)
-
-	modScope.AddBuiltins([]*object.Builtin{
-		object.NewBuiltin("exec", om.exec, mod),
-		object.NewBuiltin("env", om.env, mod),
+func (om *osModule) register() *object.Module {
+	return object.NewBuiltinsModule("os", map[string]object.Object{
+		"exec": object.NewBuiltin("exec", om.exec),
+		"env":  object.NewBuiltin("env", om.env),
 	})
-
-	scp.Declare("os", mod, true)
 }

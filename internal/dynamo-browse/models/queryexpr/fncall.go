@@ -2,11 +2,12 @@ package queryexpr
 
 import (
 	"context"
+	"strings"
+
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 func (a *astFunctionCall) evalToIR(ctx *evalContext, info *models.TableInfo) (irAtom, error) {
@@ -88,6 +89,7 @@ func (a *astFunctionCall) evalItem(ctx *evalContext, item models.Item) (exprValu
 	}
 
 	cCtx := context.WithValue(context.Background(), timeSourceContextKey, ctx.timeSource)
+	cCtx = context.WithValue(cCtx, currentResultSetContextKey, ctx.ctxResultSet)
 	return fn(cCtx, args)
 }
 
