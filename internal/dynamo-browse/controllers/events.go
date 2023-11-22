@@ -89,3 +89,5 @@ func (rs ResultSetUpdated) StatusMessage() string {
 
 type ShowColumnOverlay struct{}
 type HideColumnOverlay struct{}
+
+type ShowRelatedItemsOverlay struct{}

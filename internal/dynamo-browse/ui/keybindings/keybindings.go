@@ -45,6 +45,7 @@ type ViewKeyBindings struct {
 	CycleLayoutBackwards key.Binding `keymap:"cycle-layout-backwards"`
 	PromptForCommand     key.Binding `keymap:"prompt-for-command"`
 	ShowColumnOverlay    key.Binding `keymap:"show-fields-popup"`
+	ShowRelItemsOverlay  key.Binding `keymap:"show-rel-items-popup"`
 	CancelRunningJob     key.Binding `keymap:"cancel-running-job"`
 	Quit                 key.Binding `keymap:"quit"`
 }
