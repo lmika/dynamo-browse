@@ -8,8 +8,11 @@ import (
 )
 
 const (
-	overlayWidth  = 50
-	overlayHeight = 30
+	overlayWidth = 50
+
+	overlayHeight       = 8
+	overlayHeightExtra2 = 2
+	maxItems            = 8
 )
 
 type Model struct {
@@ -38,7 +41,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cc utils.CmdCollector
 	switch msg := msg.(type) {
 	case controllers.ShowRelatedItemsOverlay:
-		m.compositor.SetOverlay(m.listModel, m.w/2-overlayWidth/2, m.h/2-overlayHeight/2, overlayWidth, overlayHeight)
+		newHeight := overlayHeight + utils.Min(len(msg.Items), maxItems)*overlayHeightExtra2
+
+		m.listModel.setItems(msg.Items, newHeight)
+		m.compositor.SetOverlay(m.listModel, m.w/2-overlayWidth/2, m.h/2-newHeight/2, overlayWidth, newHeight)
+	case controllers.HideColumnOverlay:
+		m.compositor.ClearOverlay()
 	case tea.KeyMsg:
 		m.compositor = cc.Collect(m.compositor.Update(msg)).(*layout.Compositor)
 	default:

@@ -90,4 +90,7 @@ func (rs ResultSetUpdated) StatusMessage() string {
 type ShowColumnOverlay struct{}
 type HideColumnOverlay struct{}
 
-type ShowRelatedItemsOverlay struct{}
+type ShowRelatedItemsOverlay struct {
+	Items []models.RelatedItem
+}
+type HideRelatedItemsOverlay struct{}

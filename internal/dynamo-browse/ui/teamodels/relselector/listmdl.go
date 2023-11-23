@@ -5,32 +5,34 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
+	"github.com/lmika/dynamo-browse/internal/common/ui/events"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
 	"strings"
 )
 
-var frameColor = lipgloss.Color("63")
+var (
+	frameColor = lipgloss.Color("63")
 
-var frameStyle = lipgloss.NewStyle().
-	Foreground(frameColor)
-var style = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(frameColor)
+	frameStyle = lipgloss.NewStyle().
+			Foreground(frameColor)
+	style = lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(frameColor)
+
+	keyEnter = key.NewBinding(key.WithKeys(tea.KeyEnter.String()))
+)
 
 type listModel struct {
-	list list.Model
+	list   list.Model
+	height int
 }
 
 func newListModel() *listModel {
-	items := []list.Item{
-		relItemModel{name: "Customer"},
-		relItemModel{name: "PL Subscription"},
-		relItemModel{name: "Subscription"},
-		relItemModel{name: "User"},
-		relItemModel{name: "Stripe"},
-		relItemModel{name: "RTS"},
-	}
+	items := []list.Item{}
 
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = false
@@ -78,7 +80,17 @@ func (m *listModel) Init() tea.Cmd {
 func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cc utils.CmdCollector
 
-	m.list = cc.Collect(m.list.Update(msg)).(list.Model)
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keyEnter):
+			return m, events.SetTeaMessage(controllers.HideColumnOverlay{})
+		default:
+			m.list = cc.Collect(m.list.Update(msg)).(list.Model)
+		}
+	default:
+		m.list = cc.Collect(m.list.Update(msg)).(list.Model)
+	}
 	return m, cc.Cmd()
 }
 
@@ -90,11 +102,22 @@ func (m *listModel) View() string {
 		m.list.View(),
 	)
 
-	view := style.Width(overlayWidth - 2).Height(overlayHeight - 2).Render(innerView)
+	view := style.Width(overlayWidth - 2).Height(m.height - 2).Render(innerView)
 
 	return view
 }
 
 func (m *listModel) Resize(w, h int) layout.ResizingModel {
 	return m
+}
+
+func (m *listModel) setItems(items []models.RelatedItem, newHeight int) {
+	listItems := sliceutils.Map(items, func(item models.RelatedItem) list.Item {
+		return relItemModel{name: item.Name}
+	})
+	m.list.SetItems(listItems)
+	m.list.Select(0)
+	m.list.SetHeight(newHeight - 4)
+
+	m.height = newHeight
 }
