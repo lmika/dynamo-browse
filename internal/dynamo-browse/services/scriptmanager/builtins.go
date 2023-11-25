@@ -70,3 +70,24 @@ func require(funcName string, count int, args []object.Object) *object.Error {
 	}
 	return nil
 }
+
+func bindArgs(funcName string, args []object.Object, bindArgs ...any) *object.Error {
+	if err := require(funcName, len(bindArgs), args); err != nil {
+		return err
+	}
+
+	for i, bindArg := range bindArgs {
+		switch t := bindArg.(type) {
+		case *string:
+			str, err := object.AsString(args[i])
+			if err != nil {
+				return err
+			}
+
+			*t = str
+			//default:
+			//	return object.Errorf()
+		}
+	}
+	return object.Errorf("BLA")
+}

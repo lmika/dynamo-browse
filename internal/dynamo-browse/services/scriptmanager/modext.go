@@ -18,8 +18,9 @@ type extModule struct {
 
 func (m *extModule) register() *object.Module {
 	return object.NewBuiltinsModule("ext", map[string]object.Object{
-		"command":     object.NewBuiltin("command", m.command),
-		"key_binding": object.NewBuiltin("key_binding", m.keyBinding),
+		"command":       object.NewBuiltin("command", m.command),
+		"key_binding":   object.NewBuiltin("key_binding", m.keyBinding),
+		"related_items": object.NewBuiltin("related_items", m.relatedItem),
 	})
 }
 
@@ -134,5 +135,15 @@ func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) objec
 
 	m.scriptPlugin.definedKeyBindings[fullBindingName] = &Command{plugin: m.scriptPlugin, cmdFn: newCommand}
 	m.scriptPlugin.keyToKeyBinding[defaultKey] = fullBindingName
+	return nil
+}
+
+func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) object.Object {
+	thisEnv := scriptEnvFromCtx(ctx)
+
+	if err := require("ext.key_binding", 3, args); err != nil {
+		return err
+	}
+
 	return nil
 }

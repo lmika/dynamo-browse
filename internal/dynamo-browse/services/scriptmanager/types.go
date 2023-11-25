@@ -1,6 +1,8 @@
 package scriptmanager
 
-import "context"
+import (
+	"context"
+)
 
 type ScriptPlugin struct {
 	scriptService      *Service
@@ -8,6 +10,7 @@ type ScriptPlugin struct {
 	definedCommands    map[string]*Command
 	definedKeyBindings map[string]*Command
 	keyToKeyBinding    map[string]string
+	relatedItems       []*relatedItemBuilder
 }
 
 func (sp *ScriptPlugin) Name() string {
@@ -26,3 +29,7 @@ func (c *Command) Invoke(ctx context.Context, args []string, errChan chan error)
 		errChan <- c.cmdFn(ctx, args)
 	})
 }
+
+//func (c *Command) LookupRelevantItems(ctx context.Context, table *models.TableInfo, item *models.Item) error {
+//
+//}
