@@ -3,9 +3,11 @@ package scriptmanager
 import (
 	"context"
 	"fmt"
+	"regexp"
+
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/pkg/errors"
 	"github.com/risor-io/risor/object"
-	"regexp"
 )
 
 var (
@@ -141,9 +143,43 @@ func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) objec
 func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) object.Object {
 	thisEnv := scriptEnvFromCtx(ctx)
 
-	if err := require("ext.key_binding", 3, args); err != nil {
+	var (
+		tableName  string
+		callbackFn *object.Function
+	)
+	if err := bindArgs("ext.related_items", args, &tableName, &callbackFn); err != nil {
 		return err
 	}
+
+	callFn, hasCallFn := object.GetCallFunc(ctx)
+	if !hasCallFn {
+		return object.NewError(errors.New("no callFn found in context"))
+	}
+
+	// TEMP
+	newHandler := func(ctx context.Context, rs *models.ResultSet, index int) ([]relatedItem, error) {
+		newEnv := thisEnv
+		newEnv.options = m.scriptPlugin.scriptService.options
+		ctx = ctxWithScriptEnv(ctx, newEnv)
+
+		res, err := callFn(ctx, callbackFn, []object.Object{
+			newItemProxy(newResultSetProxy(rs), index),
+		})
+
+		if err != nil {
+			return nil, errors.Errorf("script error '%v':related_item - %v", m.scriptPlugin.name, err)
+		} else if object.IsError(res) {
+			errObj := res.(*object.Error)
+			return nil, errors.Errorf("script error '%v':related_item - %v", m.scriptPlugin.name, errObj.Inspect())
+		}
+
+		// TODO: map from list of maps -> slice of relItems
+
+		return nil
+	}
+	// END TEMP
+
+	newHandler()
 
 	return nil
 }

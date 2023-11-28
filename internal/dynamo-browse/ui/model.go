@@ -1,6 +1,10 @@
 package ui
 
 import (
+	"log"
+	"os"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/common/ui/commandctrl"
@@ -23,9 +27,6 @@ import (
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
 	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
-	"log"
-	"os"
-	"strings"
 )
 
 const (
@@ -307,20 +308,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keyMap.ShowColumnOverlay):
 				return m, events.SetTeaMessage(controllers.ShowColumnOverlay{})
 			case key.Matches(msg, m.keyMap.ShowRelItemsOverlay):
-				return m, events.SetTeaMessage(controllers.ShowRelatedItemsOverlay{
-					Items: []models.RelatedItem{
-						models.RelatedItem{Name: "Item 1"},
-						models.RelatedItem{Name: "Item 2"},
-						models.RelatedItem{Name: "Item 3"},
-						models.RelatedItem{Name: "Item 4"},
-						models.RelatedItem{Name: "Item 5"},
-						models.RelatedItem{Name: "Item 6"},
-						models.RelatedItem{Name: "Item 7"},
-						models.RelatedItem{Name: "Item 8"},
-						models.RelatedItem{Name: "Item 9"},
-						models.RelatedItem{Name: "Item 10"},
-					},
-				})
+				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
+					return m, events.SetTeaMessage(m.tableReadController.LookupRelatedItems(idx))
+				}
 			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
 			case key.Matches(msg, m.keyMap.PromptForTable):

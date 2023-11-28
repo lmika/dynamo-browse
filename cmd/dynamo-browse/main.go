@@ -118,6 +118,7 @@ func main() {
 		inputHistoryService,
 		eventBus,
 		pasteboardProvider,
+		scriptManagerService,
 		*flagTable,
 	)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)

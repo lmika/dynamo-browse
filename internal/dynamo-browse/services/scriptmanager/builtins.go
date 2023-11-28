@@ -8,8 +8,10 @@ package scriptmanager
 import (
 	"context"
 	"fmt"
-	"github.com/risor-io/risor/object"
 	"log"
+
+	"github.com/pkg/errors"
+	"github.com/risor-io/risor/object"
 )
 
 func printBuiltin(ctx context.Context, args ...object.Object) object.Object {
@@ -85,9 +87,16 @@ func bindArgs(funcName string, args []object.Object, bindArgs ...any) *object.Er
 			}
 
 			*t = str
-			//default:
-			//	return object.Errorf()
+		case **object.Function:
+			fnRes, isFnRes := args[i].(*object.Function)
+			if !isFnRes {
+				return object.NewError(errors.Errorf("expected arg %v to be a function, was %T", i, bindArg))
+			}
+
+			*t = fnRes
+		default:
+			return object.NewError(errors.Errorf("unhandled arg type %v", i))
 		}
 	}
-	return object.Errorf("BLA")
+	return nil
 }

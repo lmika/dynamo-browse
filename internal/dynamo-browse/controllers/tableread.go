@@ -60,6 +60,7 @@ type TableReadController struct {
 	tableName           string
 	loadFromLastView    bool
 	pasteboardProvider  services.PasteboardProvider
+	relatedItemSupplier RelatedItemSupplier
 
 	// state
 	mutex *sync.Mutex
@@ -75,6 +76,7 @@ func NewTableReadController(
 	inputHistoryService *inputhistory.Service,
 	eventBus *bus.Bus,
 	pasteboardProvider services.PasteboardProvider,
+	relatedItemSupplier RelatedItemSupplier,
 	tableName string,
 ) *TableReadController {
 	return &TableReadController{
@@ -87,6 +89,7 @@ func NewTableReadController(
 		eventBus:            eventBus,
 		tableName:           tableName,
 		pasteboardProvider:  pasteboardProvider,
+		relatedItemSupplier: relatedItemSupplier,
 		mutex:               new(sync.Mutex),
 	}
 }
@@ -496,4 +499,24 @@ func (c *TableReadController) CopyItemToClipboard(idx int) tea.Msg {
 	}
 
 	return events.StatusMsg(applyToN("", itemCount, "item", "items", " copied to clipboard"))
+}
+
+func (c *TableReadController) LookupRelatedItems(idx int) (res tea.Msg) {
+	if c.relatedItemSupplier == nil {
+		return events.StatusMsg("No related items available")
+	}
+
+	var relItems []models.RelatedItem
+	if err := c.state.withResultSetReturningError(func(rs *models.ResultSet) (err error) {
+		relItems, err = c.relatedItemSupplier.RelatedItemOfItem(rs, idx)
+		return err
+	}); err != nil {
+		return events.Error(err)
+	} else if len(relItems) == 0 {
+		return events.StatusMsg("No related items available")
+	}
+
+	return ShowRelatedItemsOverlay{
+		Items: relItems,
+	}
 }
