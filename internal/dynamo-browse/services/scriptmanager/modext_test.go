@@ -41,7 +41,7 @@ func TestExtModule_RelatedItems(t *testing.T) {
 			{"pk": &types.AttributeValueMemberS{Value: "1232"}},
 		})
 
-		relItems, err := srv.RelatedItemOfItem(rs, 0)
+		relItems, err := srv.RelatedItemOfItem(context.Background(), rs, 0)
 		assert.NoError(t, err)
 		assert.Len(t, relItems, 2)
 		assert.Equal(t, "Customer", relItems[0].Name)

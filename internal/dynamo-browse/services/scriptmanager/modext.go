@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	"github.com/pkg/errors"
 	"github.com/risor-io/risor/object"
 )
@@ -156,7 +157,6 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 		return object.NewError(errors.New("no callFn found in context"))
 	}
 
-	// TEMP
 	newHandler := func(ctx context.Context, rs *models.ResultSet, index int) ([]relatedItem, error) {
 		newEnv := thisEnv
 		newEnv.options = m.scriptPlugin.scriptService.options
@@ -173,13 +173,46 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 			return nil, errors.Errorf("script error '%v':related_item - %v", m.scriptPlugin.name, errObj.Inspect())
 		}
 
-		// TODO: map from list of maps -> slice of relItems
+		itr, objErr := object.AsIterator(res)
+		if err != nil {
+			return nil, objErr.Value()
+		}
 
-		return nil
+		var relItems []relatedItem
+		for next, hasNext := itr.Next(); hasNext; next, hasNext = itr.Next() {
+			itemMap, objErr := object.AsMap(next)
+			if err != nil {
+				return nil, objErr.Value()
+			}
+
+			labelName, objErr := object.AsString(itemMap.Get("label"))
+			if objErr != nil {
+				continue
+			}
+
+			queryExprStr, objErr := object.AsString(itemMap.Get("query"))
+			if objErr != nil {
+				continue
+			}
+
+			query, err := queryexpr.Parse(queryExprStr)
+			if err != nil {
+				continue
+			}
+
+			relItems = append(relItems, relatedItem{
+				label: labelName,
+				query: query,
+			})
+		}
+
+		return relItems, nil
 	}
-	// END TEMP
 
-	newHandler()
+	m.scriptPlugin.relatedItems = append(m.scriptPlugin.relatedItems, &relatedItemBuilder{
+		table:          tableName,
+		itemProduction: newHandler,
+	})
 
 	return nil
 }
