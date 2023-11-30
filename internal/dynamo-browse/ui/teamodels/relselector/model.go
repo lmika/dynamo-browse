@@ -43,7 +43,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case controllers.ShowRelatedItemsOverlay:
 		newHeight := overlayHeight + utils.Min(len(msg.Items), maxItems)*overlayHeightExtra2
 
-		m.listModel.setItems(msg.Items, newHeight)
+		m.listModel.setItems(msg, newHeight)
 		m.compositor.SetOverlay(m.listModel, m.w/2-overlayWidth/2, m.h/2-newHeight/2, overlayWidth, newHeight)
 	case controllers.HideColumnOverlay:
 		m.compositor.ClearOverlay()

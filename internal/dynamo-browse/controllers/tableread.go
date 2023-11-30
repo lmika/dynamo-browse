@@ -507,11 +507,10 @@ func (c *TableReadController) LookupRelatedItems(idx int) (res tea.Msg) {
 		return events.StatusMsg("No related items available")
 	}
 
-	var relItems []relitems.RelatedItem
-	if err := c.state.withResultSetReturningError(func(rs *models.ResultSet) (err error) {
-		relItems, err = c.relatedItemSupplier.RelatedItemOfItem(context.Background(), rs, idx)
-		return err
-	}); err != nil {
+	rs := c.state.ResultSet()
+
+	relItems, err := c.relatedItemSupplier.RelatedItemOfItem(context.Background(), rs, idx)
+	if err != nil {
 		return events.Error(err)
 	} else if len(relItems) == 0 {
 		return events.StatusMsg("No related items available")
@@ -519,5 +518,8 @@ func (c *TableReadController) LookupRelatedItems(idx int) (res tea.Msg) {
 
 	return ShowRelatedItemsOverlay{
 		Items: relItems,
+		OnSelected: func(item relitems.RelatedItem) tea.Msg {
+			return c.runQuery(rs.TableInfo, item.Query, "", true, nil)
+		},
 	}
 }

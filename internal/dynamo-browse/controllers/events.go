@@ -93,6 +93,7 @@ type ShowColumnOverlay struct{}
 type HideColumnOverlay struct{}
 
 type ShowRelatedItemsOverlay struct {
-	Items []relitems.RelatedItem
+	Items      []relitems.RelatedItem
+	OnSelected func(item relitems.RelatedItem) tea.Msg
 }
 type HideRelatedItemsOverlay struct{}

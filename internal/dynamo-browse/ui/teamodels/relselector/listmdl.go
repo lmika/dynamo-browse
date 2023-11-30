@@ -28,6 +28,7 @@ var (
 )
 
 type listModel struct {
+	event  controllers.ShowRelatedItemsOverlay
 	list   list.Model
 	height int
 }
@@ -85,6 +86,9 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keyEnter):
+			if onSel := m.event.OnSelected; onSel != nil {
+				cc.Add(events.SetTeaMessage(onSel(m.event.Items[m.list.Index()])))
+			}
 			return m, events.SetTeaMessage(controllers.HideColumnOverlay{})
 		default:
 			m.list = cc.Collect(m.list.Update(msg)).(list.Model)
@@ -112,10 +116,11 @@ func (m *listModel) Resize(w, h int) layout.ResizingModel {
 	return m
 }
 
-func (m *listModel) setItems(items []relitems.RelatedItem, newHeight int) {
-	listItems := sliceutils.Map(items, func(item relitems.RelatedItem) list.Item {
+func (m *listModel) setItems(event controllers.ShowRelatedItemsOverlay, newHeight int) {
+	listItems := sliceutils.Map(event.Items, func(item relitems.RelatedItem) list.Item {
 		return relItemModel{name: item.Name}
 	})
+	m.event = event
 	m.list.SetItems(listItems)
 	m.list.Select(0)
 	m.list.SetHeight(newHeight - 4)
