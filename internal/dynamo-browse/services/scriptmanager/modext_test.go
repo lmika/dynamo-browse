@@ -44,7 +44,11 @@ func TestExtModule_RelatedItems(t *testing.T) {
 		relItems, err := srv.RelatedItemOfItem(context.Background(), rs, 0)
 		assert.NoError(t, err)
 		assert.Len(t, relItems, 2)
+
 		assert.Equal(t, "Customer", relItems[0].Name)
+		assert.Equal(t, "pk=$foo", relItems[0].Query.String())
+
 		assert.Equal(t, "Payment", relItems[1].Name)
+		assert.Equal(t, "fla=$daa", relItems[1].Query.String())
 	})
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/relitems"
 )
 
 type relatedItem struct {
@@ -17,8 +18,8 @@ type relatedItemBuilder struct {
 	itemProduction func(ctx context.Context, rs *models.ResultSet, index int) ([]relatedItem, error)
 }
 
-func (s *Service) RelatedItemOfItem(ctx context.Context, rs *models.ResultSet, index int) ([]models.RelatedItem, error) {
-	riModels := []models.RelatedItem{}
+func (s *Service) RelatedItemOfItem(ctx context.Context, rs *models.ResultSet, index int) ([]relitems.RelatedItem, error) {
+	riModels := []relitems.RelatedItem{}
 
 	for _, plugin := range s.plugins {
 		for _, rb := range plugin.relatedItems {
@@ -32,8 +33,9 @@ func (s *Service) RelatedItemOfItem(ctx context.Context, rs *models.ResultSet, i
 
 				// TODO: make this nicer
 				for _, ri := range relatedItems {
-					riModels = append(riModels, models.RelatedItem{
-						Name: ri.label,
+					riModels = append(riModels, relitems.RelatedItem{
+						Name:  ri.label,
+						Query: ri.query,
 					})
 				}
 			}

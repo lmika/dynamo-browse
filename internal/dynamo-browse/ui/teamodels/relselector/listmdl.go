@@ -1,6 +1,8 @@
 package relselector
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -8,10 +10,9 @@ import (
 	"github.com/lmika/dynamo-browse/internal/common/sliceutils"
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
-	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/relitems"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
-	"strings"
 )
 
 var (
@@ -111,8 +112,8 @@ func (m *listModel) Resize(w, h int) layout.ResizingModel {
 	return m
 }
 
-func (m *listModel) setItems(items []models.RelatedItem, newHeight int) {
-	listItems := sliceutils.Map(items, func(item models.RelatedItem) list.Item {
+func (m *listModel) setItems(items []relitems.RelatedItem, newHeight int) {
+	listItems := sliceutils.Map(items, func(item relitems.RelatedItem) list.Item {
 		return relItemModel{name: item.Name}
 	})
 	m.list.SetItems(listItems)

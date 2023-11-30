@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/relitems"
 )
 
 type TableReadService interface {
@@ -36,5 +37,5 @@ type CustomKeyBindingSource interface {
 }
 
 type RelatedItemSupplier interface {
-	RelatedItemOfItem(*models.ResultSet, int) ([]models.RelatedItem, error)
+	RelatedItemOfItem(context.Context, *models.ResultSet, int) ([]relitems.RelatedItem, error)
 }

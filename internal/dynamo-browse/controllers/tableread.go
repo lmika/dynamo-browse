@@ -15,6 +15,7 @@ import (
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrcodec"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/relitems"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/inputhistory"
@@ -506,9 +507,9 @@ func (c *TableReadController) LookupRelatedItems(idx int) (res tea.Msg) {
 		return events.StatusMsg("No related items available")
 	}
 
-	var relItems []models.RelatedItem
+	var relItems []relitems.RelatedItem
 	if err := c.state.withResultSetReturningError(func(rs *models.ResultSet) (err error) {
-		relItems, err = c.relatedItemSupplier.RelatedItemOfItem(rs, idx)
+		relItems, err = c.relatedItemSupplier.RelatedItemOfItem(context.Background(), rs, idx)
 		return err
 	}); err != nil {
 		return events.Error(err)
