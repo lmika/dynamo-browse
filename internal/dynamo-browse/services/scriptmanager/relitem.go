@@ -2,6 +2,7 @@ package scriptmanager
 
 import (
 	"context"
+	"path"
 
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
@@ -24,7 +25,8 @@ func (s *Service) RelatedItemOfItem(ctx context.Context, rs *models.ResultSet, i
 	for _, plugin := range s.plugins {
 		for _, rb := range plugin.relatedItems {
 			// TODO: should support matching
-			if rb.table == rs.TableInfo.Name {
+			match, _ := tableMatchesGlob(rb.table, rs.TableInfo.Name)
+			if match {
 				relatedItems, err := rb.itemProduction(ctx, rs, index)
 				if err != nil {
 					// TODO: should probably return error if no rel items were found and an error was raised
@@ -42,4 +44,8 @@ func (s *Service) RelatedItemOfItem(ctx context.Context, rs *models.ResultSet, i
 		}
 	}
 	return riModels, nil
+}
+
+func tableMatchesGlob(tableName, pattern string) (bool, error) {
+	return path.Match(tableName, pattern)
 }

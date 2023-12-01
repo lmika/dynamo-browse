@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 	"github.com/pkg/errors"
@@ -198,6 +199,32 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 			query, err := queryexpr.Parse(queryExprStr)
 			if err != nil {
 				continue
+			}
+
+			// Placeholders
+			if argsVal, isArgsValMap := object.AsMap(itemMap.Get("args")); isArgsValMap == nil {
+				namePlaceholders := make(map[string]string)
+				valuePlaceholders := make(map[string]types.AttributeValue)
+
+				for k, val := range argsVal.Value() {
+					switch v := val.(type) {
+					case *object.String:
+						namePlaceholders[k] = v.Value()
+						valuePlaceholders[k] = &types.AttributeValueMemberS{Value: v.Value()}
+					case *object.Int:
+						valuePlaceholders[k] = &types.AttributeValueMemberN{Value: fmt.Sprint(v.Value())}
+					case *object.Float:
+						valuePlaceholders[k] = &types.AttributeValueMemberN{Value: fmt.Sprint(v.Value())}
+					case *object.Bool:
+						valuePlaceholders[k] = &types.AttributeValueMemberBOOL{Value: v.Value()}
+					case *object.NilType:
+						valuePlaceholders[k] = &types.AttributeValueMemberNULL{Value: true}
+					default:
+						continue
+					}
+				}
+
+				query = query.WithNameParams(namePlaceholders).WithValueParams(valuePlaceholders)
 			}
 
 			relItems = append(relItems, relatedItem{
