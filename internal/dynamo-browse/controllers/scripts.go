@@ -3,21 +3,24 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/common/ui/commandctrl"
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/relitems"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/scriptmanager"
 	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
-	"log"
-	"strings"
 )
 
 type ScriptController struct {
 	scriptManager       *scriptmanager.Service
 	tableReadController *TableReadController
+	jobController       *JobsController
 	settingsController  *SettingsController
 	eventBus            *bus.Bus
 	sendMsg             func(msg tea.Msg)
@@ -26,12 +29,14 @@ type ScriptController struct {
 func NewScriptController(
 	scriptManager *scriptmanager.Service,
 	tableReadController *TableReadController,
+	jobController *JobsController,
 	settingsController *SettingsController,
 	eventBus *bus.Bus,
 ) *ScriptController {
 	sc := &ScriptController{
 		scriptManager:       scriptManager,
 		tableReadController: tableReadController,
+		jobController:       jobController,
 		settingsController:  settingsController,
 		eventBus:            eventBus,
 	}
@@ -162,7 +167,6 @@ func (s *sessionImpl) SetResultSet(ctx context.Context, newResultSet *models.Res
 }
 
 func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanager.QueryOptions) (*models.ResultSet, error) {
-
 	// Parse the query
 	expr, err := queryexpr.Parse(query)
 	if err != nil {
@@ -179,11 +183,18 @@ func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanage
 		expr = expr.WithIndex(opts.IndexName)
 	}
 
+	return s.sc.doQuery(ctx, expr, opts)
+}
+
+func (s *ScriptController) doQuery(ctx context.Context, expr *queryexpr.QueryExpr, opts scriptmanager.QueryOptions) (*models.ResultSet, error) {
 	// Get the table info
-	var tableInfo *models.TableInfo
+	var (
+		tableInfo *models.TableInfo
+		err       error
+	)
 
 	tableName := opts.TableName
-	currentResultSet := s.sc.tableReadController.state.ResultSet()
+	currentResultSet := s.tableReadController.state.ResultSet()
 
 	if tableName != "" {
 		// Table specified.  If it's the same as the current table, then use the existing table info
@@ -192,7 +203,7 @@ func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanage
 		}
 
 		// Otherwise, describe the table
-		tableInfo, err = s.sc.tableReadController.tableService.Describe(ctx, tableName)
+		tableInfo, err = s.tableReadController.tableService.Describe(ctx, tableName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "cannot describe table '%v'", tableName)
 		}
@@ -204,7 +215,7 @@ func (s *sessionImpl) Query(ctx context.Context, query string, opts scriptmanage
 		tableInfo = currentResultSet.TableInfo
 	}
 
-	newResultSet, err := s.sc.tableReadController.tableService.ScanOrQuery(ctx, tableInfo, expr, nil)
+	newResultSet, err := s.tableReadController.tableService.ScanOrQuery(ctx, tableInfo, expr, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -239,4 +250,28 @@ func (sc *ScriptController) LookupBinding(theKey string) string {
 
 func (sc *ScriptController) UnbindKey(key string) {
 	sc.scriptManager.UnbindKey(key)
+}
+
+func (c *ScriptController) LookupRelatedItems(idx int) (res tea.Msg) {
+	rs := c.tableReadController.state.ResultSet()
+
+	relItems, err := c.scriptManager.RelatedItemOfItem(context.Background(), rs, idx)
+	if err != nil {
+		return events.Error(err)
+	} else if len(relItems) == 0 {
+		return events.StatusMsg("No related items available")
+	}
+
+	return ShowRelatedItemsOverlay{
+		Items: relItems,
+		OnSelected: func(item relitems.RelatedItem) tea.Msg {
+			return NewJob(c.jobController, "Running query…", func(ctx context.Context) (*models.ResultSet, error) {
+				return c.doQuery(ctx, item.Query, scriptmanager.QueryOptions{
+					TableName: item.Table,
+				})
+			}).OnDone(func(rs *models.ResultSet) tea.Msg {
+				return c.tableReadController.setResultSetAndFilter(rs, "", true, resultSetUpdateQuery)
+			}).Submit()
+		},
+	}
 }

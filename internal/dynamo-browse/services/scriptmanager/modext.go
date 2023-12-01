@@ -196,6 +196,14 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 				continue
 			}
 
+			var tableStr = ""
+			if itemMap.Get("table") != object.Nil {
+				tableStr, objErr = object.AsString(itemMap.Get("table"))
+				if objErr != nil {
+					continue
+				}
+			}
+
 			query, err := queryexpr.Parse(queryExprStr)
 			if err != nil {
 				continue
@@ -230,6 +238,7 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 			relItems = append(relItems, relatedItem{
 				label: labelName,
 				query: query,
+				table: tableStr,
 			})
 		}
 

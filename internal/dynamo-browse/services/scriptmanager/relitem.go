@@ -11,6 +11,7 @@ import (
 
 type relatedItem struct {
 	label string
+	table string
 	query *queryexpr.QueryExpr
 }
 
@@ -38,6 +39,7 @@ func (s *Service) RelatedItemOfItem(ctx context.Context, rs *models.ResultSet, i
 					riModels = append(riModels, relitems.RelatedItem{
 						Name:  ri.label,
 						Query: ri.query,
+						Table: ri.table,
 					})
 				}
 			}

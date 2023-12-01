@@ -15,7 +15,6 @@ import (
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrcodec"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/attrutils"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
-	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/relitems"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/serialisable"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/services/inputhistory"
@@ -500,26 +499,4 @@ func (c *TableReadController) CopyItemToClipboard(idx int) tea.Msg {
 	}
 
 	return events.StatusMsg(applyToN("", itemCount, "item", "items", " copied to clipboard"))
-}
-
-func (c *TableReadController) LookupRelatedItems(idx int) (res tea.Msg) {
-	if c.relatedItemSupplier == nil {
-		return events.StatusMsg("No related items available")
-	}
-
-	rs := c.state.ResultSet()
-
-	relItems, err := c.relatedItemSupplier.RelatedItemOfItem(context.Background(), rs, idx)
-	if err != nil {
-		return events.Error(err)
-	} else if len(relItems) == 0 {
-		return events.StatusMsg("No related items available")
-	}
-
-	return ShowRelatedItemsOverlay{
-		Items: relItems,
-		OnSelected: func(item relitems.RelatedItem) tea.Msg {
-			return c.runQuery(rs.TableInfo, item.Query, "", true, nil)
-		},
-	}
 }

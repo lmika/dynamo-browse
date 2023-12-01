@@ -14,6 +14,10 @@ import (
 	"github.com/risor-io/risor/object"
 )
 
+var (
+	relPrefix = "." + string(filepath.Separator)
+)
+
 type Service struct {
 	lookupPaths []fs.FS
 	ifaces      Ifaces
@@ -150,7 +154,7 @@ func (s *Service) readScript(filename string, allowCwd bool) (string, error) {
 		}
 	}
 
-	if strings.HasPrefix(filename, string(filepath.Separator)) {
+	if strings.HasPrefix(filename, string(filepath.Separator)) || strings.HasPrefix(filename, relPrefix) {
 		code, err := os.ReadFile(filename)
 		if err != nil {
 			return "", err

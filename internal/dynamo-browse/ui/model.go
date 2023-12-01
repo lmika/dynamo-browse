@@ -309,7 +309,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, events.SetTeaMessage(controllers.ShowColumnOverlay{})
 			case key.Matches(msg, m.keyMap.ShowRelItemsOverlay):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
-					return m, events.SetTeaMessage(m.tableReadController.LookupRelatedItems(idx))
+					return m, events.SetTeaMessage(m.scriptController.LookupRelatedItems(idx))
 				}
 			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
