@@ -24,6 +24,7 @@ var (
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(frameColor)
 
+	keyEsc   = key.NewBinding(key.WithKeys(tea.KeyEsc.String()))
 	keyEnter = key.NewBinding(key.WithKeys(tea.KeyEnter.String()))
 )
 
@@ -89,6 +90,8 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if onSel := m.event.OnSelected; onSel != nil {
 				cc.Add(events.SetTeaMessage(onSel(m.event.Items[m.list.Index()])))
 			}
+			return m, events.SetTeaMessage(controllers.HideColumnOverlay{})
+		case key.Matches(msg, keyEsc):
 			return m, events.SetTeaMessage(controllers.HideColumnOverlay{})
 		default:
 			m.list = cc.Collect(m.list.Update(msg)).(list.Model)
