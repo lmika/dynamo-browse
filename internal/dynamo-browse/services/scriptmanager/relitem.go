@@ -2,6 +2,7 @@ package scriptmanager
 
 import (
 	"context"
+	"log"
 	"path"
 
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
@@ -27,6 +28,7 @@ func (s *Service) RelatedItemOfItem(ctx context.Context, rs *models.ResultSet, i
 		for _, rb := range plugin.relatedItems {
 			// TODO: should support matching
 			match, _ := tableMatchesGlob(rb.table, rs.TableInfo.Name)
+			log.Printf("RelatedItemOfItem: table = '%v', pattern = '%v', match = '%v'", rb.table, rs.TableInfo.Name, match)
 			if match {
 				relatedItems, err := rb.itemProduction(ctx, rs, index)
 				if err != nil {
