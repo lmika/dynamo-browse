@@ -265,6 +265,10 @@ func (c *ScriptController) LookupRelatedItems(idx int) (res tea.Msg) {
 	return ShowRelatedItemsOverlay{
 		Items: relItems,
 		OnSelected: func(item relitems.RelatedItem) tea.Msg {
+			if item.OnSelect != nil {
+				return item.OnSelect()
+			}
+			
 			return NewJob(c.jobController, "Running query…", func(ctx context.Context) (*models.ResultSet, error) {
 				return c.doQuery(ctx, item.Query, scriptmanager.QueryOptions{
 					TableName: item.Table,
