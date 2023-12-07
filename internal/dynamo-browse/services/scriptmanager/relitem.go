@@ -11,9 +11,10 @@ import (
 )
 
 type relatedItem struct {
-	label string
-	table string
-	query *queryexpr.QueryExpr
+	label    string
+	table    string
+	query    *queryexpr.QueryExpr
+	onSelect func() error
 }
 
 type relatedItemBuilder struct {
@@ -39,9 +40,10 @@ func (s *Service) RelatedItemOfItem(ctx context.Context, rs *models.ResultSet, i
 				// TODO: make this nicer
 				for _, ri := range relatedItems {
 					riModels = append(riModels, relitems.RelatedItem{
-						Name:  ri.label,
-						Query: ri.query,
-						Table: ri.table,
+						Name:     ri.label,
+						Query:    ri.query,
+						Table:    ri.table,
+						OnSelect: ri.onSelect,
 					})
 				}
 			}

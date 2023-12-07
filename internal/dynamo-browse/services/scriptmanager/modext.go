@@ -181,6 +181,8 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 
 		var relItems []relatedItem
 		for next, hasNext := itr.Next(); hasNext; next, hasNext = itr.Next() {
+			var newRelItem relatedItem
+
 			itemMap, objErr := object.AsMap(next)
 			if err != nil {
 				return nil, objErr.Value()
@@ -190,11 +192,7 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 			if objErr != nil {
 				continue
 			}
-
-			queryExprStr, objErr := object.AsString(itemMap.Get("query"))
-			if objErr != nil {
-				continue
-			}
+			newRelItem.label = labelName
 
 			var tableStr = ""
 			if itemMap.Get("table") != object.Nil {
@@ -203,43 +201,63 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 					continue
 				}
 			}
+			newRelItem.table = tableStr
 
-			query, err := queryexpr.Parse(queryExprStr)
-			if err != nil {
-				continue
-			}
+			if selectFn, ok := itemMap.Get("on_select").(*object.Function); ok {
+				newRelItem.onSelect = func() error {
+					thisNewEnv := thisEnv
+					thisNewEnv.options = m.scriptPlugin.scriptService.options
+					ctx = ctxWithScriptEnv(ctx, thisNewEnv)
 
-			// Placeholders
-			if argsVal, isArgsValMap := object.AsMap(itemMap.Get("args")); isArgsValMap == nil {
-				namePlaceholders := make(map[string]string)
-				valuePlaceholders := make(map[string]types.AttributeValue)
-
-				for k, val := range argsVal.Value() {
-					switch v := val.(type) {
-					case *object.String:
-						namePlaceholders[k] = v.Value()
-						valuePlaceholders[k] = &types.AttributeValueMemberS{Value: v.Value()}
-					case *object.Int:
-						valuePlaceholders[k] = &types.AttributeValueMemberN{Value: fmt.Sprint(v.Value())}
-					case *object.Float:
-						valuePlaceholders[k] = &types.AttributeValueMemberN{Value: fmt.Sprint(v.Value())}
-					case *object.Bool:
-						valuePlaceholders[k] = &types.AttributeValueMemberBOOL{Value: v.Value()}
-					case *object.NilType:
-						valuePlaceholders[k] = &types.AttributeValueMemberNULL{Value: true}
-					default:
-						continue
+					res, err := callFn(ctx, selectFn, []object.Object{})
+					if err != nil {
+						return errors.Errorf("rel error '%v' - %v", m.scriptPlugin.name, err)
+					} else if object.IsError(res) {
+						errObj := res.(*object.Error)
+						return errors.Errorf("rel error '%v' - %v", m.scriptPlugin.name, errObj.Inspect())
 					}
+					return nil
+				}
+			} else {
+				queryExprStr, objErr := object.AsString(itemMap.Get("query"))
+				if objErr != nil {
+					continue
 				}
 
-				query = query.WithNameParams(namePlaceholders).WithValueParams(valuePlaceholders)
+				query, err := queryexpr.Parse(queryExprStr)
+				if err != nil {
+					continue
+				}
+
+				// Placeholders
+				if argsVal, isArgsValMap := object.AsMap(itemMap.Get("args")); isArgsValMap == nil {
+					namePlaceholders := make(map[string]string)
+					valuePlaceholders := make(map[string]types.AttributeValue)
+
+					for k, val := range argsVal.Value() {
+						switch v := val.(type) {
+						case *object.String:
+							namePlaceholders[k] = v.Value()
+							valuePlaceholders[k] = &types.AttributeValueMemberS{Value: v.Value()}
+						case *object.Int:
+							valuePlaceholders[k] = &types.AttributeValueMemberN{Value: fmt.Sprint(v.Value())}
+						case *object.Float:
+							valuePlaceholders[k] = &types.AttributeValueMemberN{Value: fmt.Sprint(v.Value())}
+						case *object.Bool:
+							valuePlaceholders[k] = &types.AttributeValueMemberBOOL{Value: v.Value()}
+						case *object.NilType:
+							valuePlaceholders[k] = &types.AttributeValueMemberNULL{Value: true}
+						default:
+							continue
+						}
+					}
+
+					query = query.WithNameParams(namePlaceholders).WithValueParams(valuePlaceholders)
+				}
+				newRelItem.query = query
 			}
 
-			relItems = append(relItems, relatedItem{
-				label: labelName,
-				query: query,
-				table: tableStr,
-			})
+			relItems = append(relItems, newRelItem)
 		}
 
 		return relItems, nil

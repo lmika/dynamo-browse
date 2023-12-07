@@ -111,4 +111,41 @@ func TestExtModule_RelatedItems(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("should support rel_items with on select", func(t *testing.T) {
+		// Load the script
+		srv := scriptmanager.New(scriptmanager.WithFS(testScriptFile(t, "test.tm", `
+			ext.related_items("test-table", func(item) {
+				print("Hello")
+				return [
+					{"label": "Customer", "on_select": func() {
+						print("Selected")
+					}},
+				]
+			})	
+		`)))
+
+		ctx := context.Background()
+		plugin, err := srv.LoadScript(ctx, "test.tm")
+		assert.NoError(t, err)
+		assert.NotNil(t, plugin)
+
+		// Get related items of result set
+		rs := &models.ResultSet{
+			TableInfo: &models.TableInfo{
+				Name: "test-table",
+			},
+		}
+		rs.SetItems([]models.Item{
+			{"pk": &types.AttributeValueMemberS{Value: "abc"}},
+			{"pk": &types.AttributeValueMemberS{Value: "1232"}},
+		})
+
+		relItems, err := srv.RelatedItemOfItem(context.Background(), rs, 0)
+		assert.NoError(t, err)
+		assert.Len(t, relItems, 1)
+
+		assert.Equal(t, "Customer", relItems[0].Name)
+		assert.NoError(t, relItems[0].OnSelect())
+	})
 }
