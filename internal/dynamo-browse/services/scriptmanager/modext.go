@@ -160,7 +160,6 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 
 	newHandler := func(ctx context.Context, rs *models.ResultSet, index int) ([]relatedItem, error) {
 		newEnv := thisEnv
-		newEnv.options = m.scriptPlugin.scriptService.options
 		ctx = ctxWithScriptEnv(ctx, newEnv)
 
 		res, err := callFn(ctx, callbackFn, []object.Object{
@@ -180,7 +179,7 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 		}
 
 		var relItems []relatedItem
-		for next, hasNext := itr.Next(); hasNext; next, hasNext = itr.Next() {
+		for next, hasNext := itr.Next(ctx); hasNext; next, hasNext = itr.Next(ctx) {
 			var newRelItem relatedItem
 
 			itemMap, objErr := object.AsMap(next)
@@ -206,7 +205,6 @@ func (m *extModule) relatedItem(ctx context.Context, args ...object.Object) obje
 			if selectFn, ok := itemMap.Get("on_select").(*object.Function); ok {
 				newRelItem.onSelect = func() error {
 					thisNewEnv := thisEnv
-					thisNewEnv.options = m.scriptPlugin.scriptService.options
 					ctx = ctxWithScriptEnv(ctx, thisNewEnv)
 
 					res, err := callFn(ctx, selectFn, []object.Object{})

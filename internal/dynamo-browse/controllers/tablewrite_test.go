@@ -627,13 +627,14 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 		inputHistoryService,
 		eventBus,
 		pasteboardprovider.NilProvider{},
+		nil,
 		cfg.tableName,
 	)
 	writeController := controllers.NewTableWriteController(state, service, jobsController, readController, settingStore)
 	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	columnsController := controllers.NewColumnsController(eventBus)
 	exportController := controllers.NewExportController(state, service, jobsController, columnsController, pasteboardprovider.NilProvider{})
-	scriptController := controllers.NewScriptController(scriptService, readController, settingsController, eventBus)
+	scriptController := controllers.NewScriptController(scriptService, readController, jobsController, settingsController, eventBus)
 
 	commandController := commandctrl.NewCommandController(inputHistoryService)
 	commandController.AddCommandLookupExtension(scriptController)
