@@ -17,6 +17,10 @@ type resultSetProxy struct {
 	resultSet *models.ResultSet
 }
 
+func newResultSetProxy(rs *models.ResultSet) *resultSetProxy {
+	return &resultSetProxy{resultSet: rs}
+}
+
 func (r *resultSetProxy) SetAttr(name string, value object.Object) error {
 	return errors.Errorf("attribute error: %v", name)
 }

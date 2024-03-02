@@ -1,6 +1,10 @@
 package ui
 
 import (
+	"log"
+	"os"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/common/ui/commandctrl"
@@ -16,15 +20,13 @@ import (
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/dynamoitemview"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/dynamotableview"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/relselector"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/statusandprompt"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/styles"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/tableselect"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/utils"
 	bus "github.com/lmika/events"
 	"github.com/pkg/errors"
-	"log"
-	"os"
-	"strings"
 )
 
 const (
@@ -48,6 +50,7 @@ type Model struct {
 	scriptController     *controllers.ScriptController
 	jobController        *controllers.JobsController
 	colSelector          *colselector.Model
+	relSelector          *relselector.Model
 	itemEdit             *dynamoitemedit.Model
 	statusAndPrompt      *statusandprompt.StatusAndPrompt
 	tableSelect          *tableselect.Model
@@ -85,7 +88,8 @@ func NewModel(
 	mainView := layout.NewVBox(layout.LastChildFixedAt(14), dtv, div)
 
 	colSelector := colselector.New(mainView, defaultKeyMap, columnsController)
-	itemEdit := dynamoitemedit.NewModel(colSelector)
+	relSelector := relselector.New(colSelector)
+	itemEdit := dynamoitemedit.NewModel(relSelector)
 	statusAndPrompt := statusandprompt.New(itemEdit, pasteboardProvider, "", uiStyles.StatusAndPrompt)
 	dialogPrompt := dialogprompt.New(statusAndPrompt)
 	tableSelect := tableselect.New(dialogPrompt, uiStyles)
@@ -244,6 +248,7 @@ func NewModel(
 		jobController:        jobController,
 		itemEdit:             itemEdit,
 		colSelector:          colSelector,
+		relSelector:          relSelector,
 		statusAndPrompt:      statusAndPrompt,
 		tableSelect:          tableSelect,
 		root:                 root,
@@ -267,7 +272,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 	case tea.KeyMsg:
 		// TODO: use modes here
-		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() && !m.colSelector.ColSelectorVisible() {
+		if !m.statusAndPrompt.InPrompt() && !m.tableSelect.Visible() && !m.colSelector.ColSelectorVisible() && !m.relSelector.SelectorVisible() {
 			switch {
 			case key.Matches(msg, m.keyMap.Mark):
 				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
@@ -302,6 +307,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			//	return m, nil
 			case key.Matches(msg, m.keyMap.ShowColumnOverlay):
 				return m, events.SetTeaMessage(controllers.ShowColumnOverlay{})
+			case key.Matches(msg, m.keyMap.ShowRelItemsOverlay):
+				if idx := m.tableView.SelectedItemIndex(); idx >= 0 {
+					return m, events.SetTeaMessage(m.scriptController.LookupRelatedItems(idx))
+				}
 			case key.Matches(msg, m.keyMap.PromptForCommand):
 				return m, m.commandController.Prompt
 			case key.Matches(msg, m.keyMap.PromptForTable):

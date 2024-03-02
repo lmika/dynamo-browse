@@ -60,6 +60,7 @@ type TableReadController struct {
 	tableName           string
 	loadFromLastView    bool
 	pasteboardProvider  services.PasteboardProvider
+	relatedItemSupplier RelatedItemSupplier
 
 	// state
 	mutex *sync.Mutex
@@ -75,6 +76,7 @@ func NewTableReadController(
 	inputHistoryService *inputhistory.Service,
 	eventBus *bus.Bus,
 	pasteboardProvider services.PasteboardProvider,
+	relatedItemSupplier RelatedItemSupplier,
 	tableName string,
 ) *TableReadController {
 	return &TableReadController{
@@ -87,6 +89,7 @@ func NewTableReadController(
 		eventBus:            eventBus,
 		tableName:           tableName,
 		pasteboardProvider:  pasteboardProvider,
+		relatedItemSupplier: relatedItemSupplier,
 		mutex:               new(sync.Mutex),
 	}
 }

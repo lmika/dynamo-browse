@@ -8,8 +8,10 @@ package scriptmanager
 import (
 	"context"
 	"fmt"
-	"github.com/risor-io/risor/object"
 	"log"
+
+	"github.com/pkg/errors"
+	"github.com/risor-io/risor/object"
 )
 
 func printBuiltin(ctx context.Context, args ...object.Object) object.Object {
@@ -67,6 +69,34 @@ func require(funcName string, count int, args []object.Object) *object.Error {
 		return object.Errorf(
 			fmt.Sprintf("type error: %s() takes exactly %d arguments (%d given)",
 				funcName, count, nArgs))
+	}
+	return nil
+}
+
+func bindArgs(funcName string, args []object.Object, bindArgs ...any) *object.Error {
+	if err := require(funcName, len(bindArgs), args); err != nil {
+		return err
+	}
+
+	for i, bindArg := range bindArgs {
+		switch t := bindArg.(type) {
+		case *string:
+			str, err := object.AsString(args[i])
+			if err != nil {
+				return err
+			}
+
+			*t = str
+		case **object.Function:
+			fnRes, isFnRes := args[i].(*object.Function)
+			if !isFnRes {
+				return object.NewError(errors.Errorf("expected arg %v to be a function, was %T", i, bindArg))
+			}
+
+			*t = fnRes
+		default:
+			return object.NewError(errors.Errorf("unhandled arg type %v", i))
+		}
 	}
 	return nil
 }

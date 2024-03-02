@@ -2,10 +2,12 @@ package controllers
 
 import (
 	"context"
+	"io/fs"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
-	"io/fs"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/relitems"
 )
 
 type TableReadService interface {
@@ -32,4 +34,8 @@ type CustomKeyBindingSource interface {
 	CustomKeyCommand(key string) tea.Cmd
 	UnbindKey(key string)
 	Rebind(bindingName string, newKey string) error
+}
+
+type RelatedItemSupplier interface {
+	RelatedItemOfItem(context.Context, *models.ResultSet, int) ([]relitems.RelatedItem, error)
 }

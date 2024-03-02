@@ -4,6 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
+	"net"
+	"os"
+
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	tea "github.com/charmbracelet/bubbletea"
@@ -30,9 +34,6 @@ import (
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/styles"
 	bus "github.com/lmika/events"
 	"github.com/lmika/gopkgs/cli"
-	"log"
-	"net"
-	"os"
 )
 
 func main() {
@@ -118,6 +119,7 @@ func main() {
 		inputHistoryService,
 		eventBus,
 		pasteboardProvider,
+		scriptManagerService,
 		*flagTable,
 	)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
@@ -125,7 +127,7 @@ func main() {
 	exportController := controllers.NewExportController(state, tableService, jobsController, columnsController, pasteboardProvider)
 	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	keyBindings := keybindings.Default()
-	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController, settingsController, eventBus)
+	scriptController := controllers.NewScriptController(scriptManagerService, tableReadController, jobsController, settingsController, eventBus)
 
 	if *flagQuery != "" {
 		if *flagTable == "" {

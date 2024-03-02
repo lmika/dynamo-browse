@@ -2,10 +2,12 @@ package controllers
 
 import (
 	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"strings"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/relitems"
 )
 
 type SetTableItemView struct {
@@ -89,3 +91,9 @@ func (rs ResultSetUpdated) StatusMessage() string {
 
 type ShowColumnOverlay struct{}
 type HideColumnOverlay struct{}
+
+type ShowRelatedItemsOverlay struct {
+	Items      []relitems.RelatedItem
+	OnSelected func(item relitems.RelatedItem) tea.Msg
+}
+type HideRelatedItemsOverlay struct{}
