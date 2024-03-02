@@ -1,8 +1,8 @@
 module github.com/lmika/dynamo-browse
 
-go 1.21
+go 1.22
 
-toolchain go1.21.1
+toolchain go1.22.0
 
 require (
 	github.com/alecthomas/participle/v2 v2.0.0-beta.5
@@ -98,7 +98,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.13.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/risor-io/risor v1.1.1 // indirect
+	github.com/risor-io/risor v1.4.0 // indirect
 	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/sahilm/fuzzy v0.1.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
