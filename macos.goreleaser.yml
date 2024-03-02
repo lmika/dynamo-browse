@@ -17,7 +17,7 @@ archives:
         format: tar.gz
 brews:
   - name: audax
-    tap:
+    repository:
       owner: lmika
       name: homebrew-audax
       token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"

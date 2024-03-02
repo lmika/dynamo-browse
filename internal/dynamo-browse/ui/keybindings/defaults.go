@@ -27,6 +27,7 @@ func Default() *KeyBindings {
 			Mark:                 key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "mark")),
 			ToggleMarkedItems:    key.NewBinding(key.WithKeys("M"), key.WithHelp("M", "toggle marged items")),
 			CopyItemToClipboard:  key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "copy item to clipboard")),
+			CopyTableToClipboard: key.NewBinding(key.WithKeys("C"), key.WithHelp("C", "copy table to clipboard")),
 			Rescan:               key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "rescan")),
 			PromptForQuery:       key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "prompt for query")),
 			PromptForFilter:      key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
