@@ -61,13 +61,6 @@ func (sc *ScriptController) Init() {
 	} else {
 		log.Printf("warn: script lookup paths are invalid: %v", err)
 	}
-	sc.scriptManager.SetDefaultOptions(scriptmanager.Options{
-		OSExecShell: "/bin/bash",
-		Permissions: scriptmanager.Permissions{
-			AllowShellCommands: true,
-			AllowEnv:           true,
-		},
-	})
 }
 
 func (sc *ScriptController) SetMessageSender(sendMsg func(msg tea.Msg)) {

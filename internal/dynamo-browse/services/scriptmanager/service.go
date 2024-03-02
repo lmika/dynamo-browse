@@ -17,7 +17,6 @@ import (
 type Service struct {
 	lookupPaths []fs.FS
 	ifaces      Ifaces
-	options     Options
 	sched       *scriptScheduler
 	plugins     []*ScriptPlugin
 }
@@ -35,10 +34,6 @@ func New(opts ...ServiceOption) *Service {
 
 func (s *Service) SetLookupPaths(fs []fs.FS) {
 	s.lookupPaths = fs
-}
-
-func (s *Service) SetDefaultOptions(options Options) {
-	s.options = options
 }
 
 func (s *Service) SetIFaces(ifaces Ifaces) {
@@ -94,13 +89,10 @@ func (s *Service) startAdHocScript(ctx context.Context, filename string, errChan
 		return
 	}
 
-	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename), options: s.options})
+	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename)})
 
 	if _, err := risor.Eval(ctx, code,
 		risor.WithGlobals(s.builtins()),
-		// risor.WithDefaultBuiltins(),
-		// risor.WithDefaultModules(),
-		// risor.WithBuiltins(s.builtins()),
 	); err != nil {
 		errChan <- errors.Wrapf(err, "script %v", filename)
 		return
@@ -126,12 +118,9 @@ func (s *Service) loadScript(ctx context.Context, filename string, resChan chan 
 		scriptService: s,
 	}
 
-	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename), options: s.options})
+	ctx = ctxWithScriptEnv(ctx, scriptEnv{filename: filepath.Base(filename)})
 
 	if _, err := risor.Eval(ctx, code,
-		// risor.WithDefaultBuiltins(),
-		// risor.WithDefaultModules(),
-		// risor.WithBuiltins(s.builtins()),
 		risor.WithGlobals(s.builtins()),
 		risor.WithGlobals(map[string]any{
 			"ext": (&extModule{scriptPlugin: newPlugin}).register(),
@@ -251,7 +240,6 @@ func (s *Service) builtins() map[string]any {
 	return map[string]any{
 		"ui":      (&uiModule{uiService: s.ifaces.UI}).register(),
 		"session": (&sessionModule{sessionService: s.ifaces.Session}).register(),
-		"os":      (&osModule{}).register(),
 		"print":   object.NewBuiltin("print", printBuiltin),
 		"printf":  object.NewBuiltin("printf", printfBuiltin),
 	}

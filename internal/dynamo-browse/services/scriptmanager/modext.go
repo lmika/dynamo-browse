@@ -52,7 +52,6 @@ func (m *extModule) command(ctx context.Context, args ...object.Object) object.O
 		}
 
 		newEnv := thisEnv
-		newEnv.options = m.scriptPlugin.scriptService.options
 		ctx = ctxWithScriptEnv(ctx, newEnv)
 
 		res, err := callFn(ctx, fnRes, objArgs)
@@ -114,7 +113,6 @@ func (m *extModule) keyBinding(ctx context.Context, args ...object.Object) objec
 		}
 
 		newEnv := thisEnv
-		newEnv.options = m.scriptPlugin.scriptService.options
 		ctx = ctxWithScriptEnv(ctx, newEnv)
 
 		res, err := callFn(ctx, fnRes, objArgs)
