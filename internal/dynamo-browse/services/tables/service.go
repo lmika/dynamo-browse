@@ -86,8 +86,6 @@ func (s *Service) doScan(
 		}, errors.Wrapf(err, "unable to scan table %v", tableInfo.Name)
 	}
 
-	models.Sort(results, tableInfo)
-
 	resultSet := &models.ResultSet{
 		TableInfo:         tableInfo,
 		Created:           time.Now(),
@@ -97,6 +95,7 @@ func (s *Service) doScan(
 	}
 	resultSet.SetItems(results)
 	resultSet.RefreshColumns()
+	resultSet.Sort(models.PKSKSortFilter(tableInfo))
 
 	return resultSet, err
 }

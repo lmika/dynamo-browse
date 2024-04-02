@@ -8,13 +8,60 @@ import (
 // sortedItems is a collection of items that is sorted.
 // Items are sorted based on the PK, and SK in ascending order
 type sortedItems struct {
-	tableInfo *TableInfo
-	items     []Item
+	criteria SortCriteria
+	items    []Item
+}
+
+type SortField struct {
+	Field FieldValueEvaluator
+	Asc   bool
+}
+
+type SortCriteria struct {
+	Fields []SortField
+}
+
+func (sc SortCriteria) FirstField() SortField {
+	if len(sc.Fields) == 0 {
+		return SortField{}
+	}
+	return sc.Fields[0]
+}
+
+func (sc SortCriteria) Equals(osc SortCriteria) bool {
+	if len(sc.Fields) != len(osc.Fields) {
+		return false
+	}
+
+	for i := range osc.Fields {
+		if sc.Fields[i].Field != osc.Fields[i].Field ||
+			sc.Fields[i].Asc != osc.Fields[i].Asc {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (sc SortCriteria) Append(osc SortCriteria) SortCriteria {
+	newItems := make([]SortField, 0, len(osc.Fields))
+	newItems = append(newItems, sc.Fields...)
+	newItems = append(newItems, osc.Fields...)
+	return SortCriteria{Fields: newItems}
+}
+
+func PKSKSortFilter(ti *TableInfo) SortCriteria {
+	return SortCriteria{
+		Fields: []SortField{
+			{Field: SimpleFieldValueEvaluator(ti.Keys.PartitionKey), Asc: true},
+			{Field: SimpleFieldValueEvaluator(ti.Keys.SortKey), Asc: true},
+		},
+	}
 }
 
 // Sort sorts the items in place
-func Sort(items []Item, tableInfo *TableInfo) {
-	si := sortedItems{items: items, tableInfo: tableInfo}
+func Sort(items []Item, criteria SortCriteria) {
+	si := sortedItems{items: items, criteria: criteria}
 	sort.Sort(&si)
 }
 
@@ -23,30 +70,21 @@ func (si *sortedItems) Len() int {
 }
 
 func (si *sortedItems) Less(i, j int) bool {
-	// Compare primary keys
-	pv1, pv2 := si.items[i][si.tableInfo.Keys.PartitionKey], si.items[j][si.tableInfo.Keys.PartitionKey]
-	pc, ok := attrutils.CompareScalarAttributes(pv1, pv2)
-	if !ok {
-		return i < j
-	}
-
-	if pc < 0 {
-		return true
-	} else if pc > 0 {
-		return false
-	}
-
-	// Partition keys are equal, compare sort key
-	if sortKey := si.tableInfo.Keys.SortKey; sortKey != "" {
-		sv1, sv2 := si.items[i][sortKey], si.items[j][sortKey]
-		sc, ok := attrutils.CompareScalarAttributes(sv1, sv2)
+	for _, field := range si.criteria.Fields {
+		// Compare primary keys
+		pv1, pv2 := field.Field.EvaluateForItem(si.items[i]), field.Field.EvaluateForItem(si.items[j])
+		pc, ok := attrutils.CompareScalarAttributes(pv1, pv2)
 		if !ok {
 			return i < j
 		}
 
-		if sc < 0 {
+		if !field.Asc {
+			pc = -pc
+		}
+
+		if pc < 0 {
 			return true
-		} else if sc > 0 {
+		} else if pc > 0 {
 			return false
 		}
 	}

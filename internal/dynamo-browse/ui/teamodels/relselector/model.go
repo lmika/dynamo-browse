@@ -45,7 +45,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.listModel.setItems(msg, newHeight)
 		m.compositor.SetOverlay(m.listModel, m.w/2-overlayWidth/2, m.h/2-newHeight/2, overlayWidth, newHeight)
-	case controllers.HideColumnOverlay:
+	case controllers.HideRelatedItemsOverlay:
 		m.compositor.ClearOverlay()
 	case tea.KeyMsg:
 		m.compositor = cc.Collect(m.compositor.Update(msg)).(*layout.Compositor)

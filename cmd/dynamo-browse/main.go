@@ -123,7 +123,7 @@ func main() {
 		*flagTable,
 	)
 	tableWriteController := controllers.NewTableWriteController(state, tableService, jobsController, tableReadController, settingStore)
-	columnsController := controllers.NewColumnsController(eventBus)
+	columnsController := controllers.NewColumnsController(tableReadController, eventBus)
 	exportController := controllers.NewExportController(state, tableService, jobsController, columnsController, pasteboardProvider)
 	settingsController := controllers.NewSettingsController(settingStore, eventBus)
 	keyBindings := keybindings.Default()

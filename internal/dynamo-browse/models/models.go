@@ -18,7 +18,8 @@ type ResultSet struct {
 	items            []Item
 	attributes       []ItemAttribute
 
-	columns []string
+	columns      []string
+	sortCriteria SortCriteria
 }
 
 type Queryable interface {
@@ -46,6 +47,10 @@ func (rs *ResultSet) Items() []Item {
 func (rs *ResultSet) SetItems(items []Item) {
 	rs.items = items
 	rs.attributes = make([]ItemAttribute, len(items))
+}
+
+func (rs *ResultSet) SortCriteria() SortCriteria {
+	return rs.sortCriteria
 }
 
 func (rs *ResultSet) AddNewItem(item Item, attrs ItemAttribute) {
@@ -140,4 +145,9 @@ func (rs *ResultSet) RefreshColumns() {
 
 func (rs *ResultSet) HasNextPage() bool {
 	return rs.LastEvaluatedKey != nil
+}
+
+func (rs *ResultSet) Sort(criteria SortCriteria) {
+	rs.sortCriteria = criteria
+	Sort(rs.items, criteria)
 }

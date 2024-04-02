@@ -15,7 +15,7 @@ func TestSort(t *testing.T) {
 		items := make([]models.Item, len(testStringData))
 		copy(items, testStringData)
 
-		models.Sort(items, tableInfo)
+		models.Sort(items, models.PKSKSortFilter(tableInfo))
 
 		assert.Equal(t, items[0], testStringData[1])
 		assert.Equal(t, items[1], testStringData[2])
@@ -28,7 +28,7 @@ func TestSort(t *testing.T) {
 		items := make([]models.Item, len(testNumberData))
 		copy(items, testNumberData)
 
-		models.Sort(items, tableInfo)
+		models.Sort(items, models.PKSKSortFilter(tableInfo))
 
 		assert.Equal(t, items[0], testNumberData[2])
 		assert.Equal(t, items[1], testNumberData[1])
@@ -41,7 +41,7 @@ func TestSort(t *testing.T) {
 		items := make([]models.Item, len(testBoolData))
 		copy(items, testBoolData)
 
-		models.Sort(items, tableInfo)
+		models.Sort(items, models.PKSKSortFilter(tableInfo))
 
 		assert.Equal(t, items[0], testBoolData[2])
 		assert.Equal(t, items[1], testBoolData[1])

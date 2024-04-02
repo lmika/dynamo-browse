@@ -53,6 +53,11 @@ func TestModExpr_Query(t *testing.T) {
 				`#0 = :0`,
 				exprNameIsString(0, 0, "pk", "prefix"),
 			),
+			//scanCase("when request pk is fixed (reverse)",
+			//	`prefix="pk"`,
+			//	`#0 = :0`,
+			//	exprNameIsString(0, 0, "pk", "prefix"),
+			//),
 			scanCase("when request pk is fixed in parens #1",
 				`(pk="prefix")`,
 				`#0 = :0`,
@@ -513,6 +518,7 @@ func TestQueryExpr_EvalItem(t *testing.T) {
 			{expr: "three <= 2", expected: &types.AttributeValueMemberBOOL{Value: false}},
 
 			// Between
+			{expr: "3 between 1 and 5", expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: "three between 1 and 5", expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: "three between one and five", expected: &types.AttributeValueMemberBOOL{Value: true}},
 			{expr: "three between 10 and 15", expected: &types.AttributeValueMemberBOOL{Value: false}},

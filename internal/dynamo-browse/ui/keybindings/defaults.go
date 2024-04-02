@@ -12,6 +12,7 @@ func Default() *KeyBindings {
 			ResetColumns:     key.NewBinding(key.WithKeys("R", "reset columns")),
 			AddColumn:        key.NewBinding(key.WithKeys("a", "add new column")),
 			DeleteColumn:     key.NewBinding(key.WithKeys("d", "delete column")),
+			SortByColumn:     key.NewBinding(key.WithKeys("s", "sort by column")),
 		},
 		TableView: &TableKeyBinding{
 			MoveUp:   key.NewBinding(key.WithKeys("i", "up")),

@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmika/dynamo-browse/internal/common/ui/events"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/controllers"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/columns"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/keybindings"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/ui/teamodels/layout"
@@ -25,8 +26,9 @@ type colListModel struct {
 	keyBinding    *keybindings.KeyBindings
 	colController *controllers.ColumnsController
 
-	rows  []table.Row
-	table table.Model
+	rows         []table.Row
+	table        table.Model
+	sortCriteria models.SortCriteria
 }
 
 func newColListModel(keyBinding *keybindings.KeyBindings, colController *controllers.ColumnsController) *colListModel {
@@ -68,6 +70,8 @@ func (m *colListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, events.SetTeaMessage(m.colController.AddColumn(m.table.Cursor()))
 		case key.Matches(msg, m.keyBinding.ColumnPopup.DeleteColumn):
 			return m, events.SetTeaMessage(m.colController.DeleteColumn(m.table.Cursor()))
+		case key.Matches(msg, m.keyBinding.ColumnPopup.SortByColumn):
+			return m, events.SetTeaMessage(m.colController.SortByColumn(m.table.Cursor()))
 
 		// Main table nav
 		case key.Matches(msg, m.keyBinding.TableView.ColLeft):
@@ -122,6 +126,7 @@ func (c *colListModel) Resize(w, h int) layout.ResizingModel {
 
 func (c *colListModel) refreshTable() {
 	colsFromController := c.colController.Columns()
+	c.sortCriteria = c.colController.SortCriteria()
 	if len(c.rows) != len(colsFromController.Columns) {
 		c.setColumnsFromModel(colsFromController)
 	}

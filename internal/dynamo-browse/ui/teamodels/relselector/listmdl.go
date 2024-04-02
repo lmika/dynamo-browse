@@ -90,9 +90,9 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if onSel := m.event.OnSelected; onSel != nil {
 				cc.Add(events.SetTeaMessage(onSel(m.event.Items[m.list.Index()])))
 			}
-			return m, events.SetTeaMessage(controllers.HideColumnOverlay{})
+			return m, events.SetTeaMessage(controllers.HideRelatedItemsOverlay{})
 		case key.Matches(msg, keyEsc):
-			return m, events.SetTeaMessage(controllers.HideColumnOverlay{})
+			return m, events.SetTeaMessage(controllers.HideRelatedItemsOverlay{})
 		default:
 			m.list = cc.Collect(m.list.Update(msg)).(list.Model)
 		}

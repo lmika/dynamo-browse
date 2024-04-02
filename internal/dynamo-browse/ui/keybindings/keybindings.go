@@ -16,6 +16,7 @@ type FieldsPopupBinding struct {
 	ResetColumns     key.Binding `keymap:"reset-columns"`
 	AddColumn        key.Binding `keymap:"add-column"`
 	DeleteColumn     key.Binding `keymap:"delete-column"`
+	SortByColumn     key.Binding `keymap:"sort-by-column"`
 }
 
 type TableKeyBinding struct {

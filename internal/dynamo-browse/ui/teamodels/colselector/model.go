@@ -42,6 +42,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cc utils.CmdCollector
 	switch msg := msg.(type) {
 	case controllers.ShowColumnOverlay:
+		m.colListModel.sortCriteria = m.columnsController.SortCriteria()
 		m.colListModel.setColumnsFromModel(m.columnsController.Columns())
 		m.compositor.SetOverlay(m.colListModel, m.w/2-overlayWidth/2, m.h/2-overlayHeight/2, overlayWidth, overlayHeight)
 	case controllers.HideColumnOverlay:

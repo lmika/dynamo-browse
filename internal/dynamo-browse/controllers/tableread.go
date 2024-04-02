@@ -35,6 +35,7 @@ const (
 	resultSetUpdateTouch
 	resultSetUpdateNextPage
 	resultSetUpdateScript
+	resultSetUpdateResort
 )
 
 type MarkOp int
@@ -148,6 +149,13 @@ func (c *TableReadController) ScanTable(name string) tea.Msg {
 
 		return resultSet, err
 	}).OnEither(c.handleResultSetFromJobResult(c.state.Filter(), true, false, resultSetUpdateInit)).Submit()
+}
+
+func (c *TableReadController) SortResultSet(newCriteria models.SortCriteria) {
+	c.state.withResultSet(func(rs *models.ResultSet) {
+		rs.Sort(newCriteria.Append(models.PKSKSortFilter(rs.TableInfo)))
+	})
+	c.eventBus.Fire(newResultSetEvent, c.state.resultSet, resultSetUpdateResort)
 }
 
 func (c *TableReadController) PromptForQuery() tea.Msg {

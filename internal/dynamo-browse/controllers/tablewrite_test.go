@@ -632,7 +632,7 @@ func newService(t *testing.T, cfg serviceConfig) *services {
 	)
 	writeController := controllers.NewTableWriteController(state, service, jobsController, readController, settingStore)
 	settingsController := controllers.NewSettingsController(settingStore, eventBus)
-	columnsController := controllers.NewColumnsController(eventBus)
+	columnsController := controllers.NewColumnsController(readController, eventBus)
 	exportController := controllers.NewExportController(state, service, jobsController, columnsController, pasteboardprovider.NilProvider{})
 	scriptController := controllers.NewScriptController(scriptService, readController, jobsController, settingsController, eventBus)
 

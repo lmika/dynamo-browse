@@ -1,9 +1,7 @@
 package columns
 
 import (
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models"
-	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/queryexpr"
 )
 
 type Columns struct {
@@ -19,7 +17,7 @@ func NewColumnsFromResultSet(rs *models.ResultSet) *Columns {
 	for i, c := range rsCols {
 		cols[i] = Column{
 			Name:      c,
-			Evaluator: SimpleFieldValueEvaluator(c),
+			Evaluator: models.SimpleFieldValueEvaluator(c),
 		}
 	}
 
@@ -44,7 +42,7 @@ func (cols *Columns) AddMissingColumns(rs *models.ResultSet) {
 			if _, hasCol := existingColumns[c]; !hasCol {
 				newCols = append(newCols, Column{
 					Name:      c,
-					Evaluator: SimpleFieldValueEvaluator(c),
+					Evaluator: models.SimpleFieldValueEvaluator(c),
 				})
 			}
 		}
@@ -56,7 +54,7 @@ func (cols *Columns) AddMissingColumns(rs *models.ResultSet) {
 			} else {
 				newCols[i] = Column{
 					Name:      c,
-					Evaluator: SimpleFieldValueEvaluator(c),
+					Evaluator: models.SimpleFieldValueEvaluator(c),
 				}
 			}
 		}
@@ -82,25 +80,6 @@ func (cols *Columns) VisibleColumns() []Column {
 
 type Column struct {
 	Name      string
-	Evaluator FieldValueEvaluator
+	Evaluator models.FieldValueEvaluator
 	Hidden    bool
-}
-
-type FieldValueEvaluator interface {
-	EvaluateForItem(item models.Item) types.AttributeValue
-}
-
-type SimpleFieldValueEvaluator string
-
-func (sfve SimpleFieldValueEvaluator) EvaluateForItem(item models.Item) types.AttributeValue {
-	return item[string(sfve)]
-}
-
-type ExprFieldValueEvaluator struct {
-	Expr *queryexpr.QueryExpr
-}
-
-func (sfve ExprFieldValueEvaluator) EvaluateForItem(item models.Item) types.AttributeValue {
-	val, _ := sfve.Expr.EvalItem(item)
-	return val
 }

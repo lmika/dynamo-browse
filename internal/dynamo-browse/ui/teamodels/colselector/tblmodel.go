@@ -3,6 +3,7 @@ package colselector
 import (
 	"fmt"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmika/dynamo-browse/internal/dynamo-browse/models/evaluators"
 	table "github.com/lmika/go-bubble-table"
 	"io"
 )
@@ -23,9 +24,17 @@ func (clr colListRowModel) Render(w io.Writer, model table.Model, index int) {
 	}
 
 	col := clr.m.colController.Columns().Columns[index]
-	if !col.Hidden {
-		fmt.Fprintln(w, style.Render(fmt.Sprintf("⋅\t%v", col.Name)))
-	} else {
+	ff := clr.m.sortCriteria.FirstField()
+	switch {
+	case col.Hidden:
 		fmt.Fprintln(w, style.Render(fmt.Sprintf("✕\t%v", col.Name)))
+	case evaluators.Equals(ff.Field, col.Evaluator):
+		if ff.Asc {
+			fmt.Fprintln(w, style.Render(fmt.Sprintf("v\t%v", col.Name)))
+		} else {
+			fmt.Fprintln(w, style.Render(fmt.Sprintf("^\t%v", col.Name)))
+		}
+	default:
+		fmt.Fprintln(w, style.Render(fmt.Sprintf("⋅\t%v", col.Name)))
 	}
 }
