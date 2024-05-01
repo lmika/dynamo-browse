@@ -170,8 +170,6 @@ func NewModel(
 					itemType = models.NullItemType
 				case args.HasSwitch("TO"):
 					itemType = models.ExprValueItemType
-				default:
-					return events.Error(errors.New("unrecognised item type"))
 				}
 
 				return wc.SetAttributeValue(dtv.SelectedItemIndex(), itemType, fieldName)

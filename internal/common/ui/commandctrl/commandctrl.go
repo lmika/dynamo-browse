@@ -22,9 +22,9 @@ type CommandController struct {
 	uclInst            *ucl.Inst
 	historyProvider    IterProvider
 	commandList        *CommandList
-	msgSender          func(tea.Msg)
 	lookupExtensions   []CommandLookupExtension
 	completionProvider CommandCompletionProvider
+	msgChan            chan tea.Msg
 }
 
 func NewCommandController(historyProvider IterProvider) *CommandController {
@@ -32,6 +32,7 @@ func NewCommandController(historyProvider IterProvider) *CommandController {
 		historyProvider:  historyProvider,
 		commandList:      nil,
 		lookupExtensions: nil,
+		msgChan:          make(chan tea.Msg),
 	}
 	cc.uclInst = ucl.New(
 		ucl.WithOut(ucl.LineHandler(cc.printLine)),
@@ -45,8 +46,10 @@ func (c *CommandController) AddCommands(ctx *CommandList) {
 	c.commandList = ctx
 }
 
-func (c *CommandController) SetMessageSender(msg func(tea.Msg)) {
-	c.msgSender = msg
+func (c *CommandController) StartMessageSender(msgSender func(tea.Msg)) {
+	for msg := range c.msgChan {
+		msgSender(msg)
+	}
 }
 
 func (c *CommandController) AddCommandLookupExtension(ext CommandLookupExtension) {
@@ -183,8 +186,10 @@ func (c *CommandController) cmdInvoker(ctx context.Context, name string, args uc
 }
 
 func (c *CommandController) printLine(s string) {
-	if c.msgSender != nil {
-		c.msgSender(events.StatusMsg(s))
+	select {
+	case c.msgChan <- events.StatusMsg(s):
+	default:
+		log.Println(s)
 	}
 }
 
